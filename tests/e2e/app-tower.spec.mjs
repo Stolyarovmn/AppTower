@@ -19,6 +19,7 @@ const extensionId = extensionIdFromManifestKey(manifest.key);
 const extensionUrl = file => `chrome-extension://${extensionId}/${file}`;
 
 let context;
+let bootstrapPage;
 let panel;
 let webPage;
 let server;
@@ -36,9 +37,9 @@ async function launchExtension() {
     ]
   });
 
-  for (const page of context.pages()) {
-    if (page.url() === "about:blank") await page.close().catch(() => {});
-  }
+  // A persistent Chromium context exits if its final browser tab is closed.
+  // Keep the bootstrap tab alive and reuse it as the first fixture page.
+  bootstrapPage = context.pages()[0] || await context.newPage();
 }
 
 function fixtureHtml(name) {
@@ -167,7 +168,7 @@ test.afterAll(async () => {
 });
 
 test("ATN-E2E-001 add current page pre-fills the real browser page", async () => {
-  webPage = await context.newPage();
+  webPage = bootstrapPage;
   await webPage.goto(`${baseUrl}/a`);
   await expect(webPage.locator("#fixture-title")).toHaveText("Fixture a");
 
