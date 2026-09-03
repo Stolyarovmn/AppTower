@@ -103,19 +103,21 @@ export async function openTowerContainer(windowId, {intent=null, tabId=null} = {
       return {kind:"sidePanel", windowId:numericWindowId, tabId:numericTabId, restored:true};
     }
 
-    // A live App Tower Side Panel already receives intents through the shared
-    // pendingAction/storage channel. Calling sidePanel.open() again is both
-    // unnecessary and harmful: Chromium can reject it with "No active side
-    // panel for tabId", while Edge may recreate the visible panel document.
-    // The background worker owns these session markers and clears the open
-    // marker on an authoritative close/collapse event, so reuse only when the
-    // window is marked open and explicitly not collapsed.
-    if (await nativePanelMarkedOpen(numericWindowId)) {
-      return {kind:"sidePanel", windowId:numericWindowId, reused:true};
+    // Start open() immediately so a genuine collapsed->open action preserves
+    // Chromium's user-gesture chain. Some Chromium builds reject a redundant
+    // open of an already-live App Tower document with "No active side panel for
+    // tabId". Only after that rejection do we consult background-owned session
+    // markers; the error is benign only when the window is still known open and
+    // explicitly not collapsed. Otherwise propagate the real open failure.
+    try {
+      await chrome.sidePanel.open({windowId:numericWindowId});
+      return {kind:"sidePanel", windowId:numericWindowId};
+    } catch (error) {
+      if (await nativePanelMarkedOpen(numericWindowId)) {
+        return {kind:"sidePanel", windowId:numericWindowId, reused:true};
+      }
+      throw error;
     }
-
-    await chrome.sidePanel.open({windowId:numericWindowId});
-    return {kind:"sidePanel", windowId:numericWindowId};
   }
 
   const hostWindowId = Number.isInteger(Number(windowId)) ? Number(windowId) : null;
