@@ -6,6 +6,10 @@ App Tower Next — Manifest V3 расширение для Microsoft Edge и Goo
 группы/шаблоны, воркспейсы, PWA/модули, управление ресурсами и «план управления»
 в духе настроек браузера.
 
+Контекст: Microsoft поэтапно отключает нативный «Sidebar app list»
+(«App Tower») в Edge 149+ (начиная с Microsoft-аккаунтов) — расширение
+восполняет эту фичу и расширяет её.
+
 <details><summary>English</summary>
 
 A Manifest V3 browser extension for Microsoft Edge and Google Chrome that
@@ -13,6 +17,10 @@ recreates and extends the classic right-side "App Tower": a persistent shortcut
 rail, a native Side Panel where available, two independent web panes,
 groups/templates, workspaces, PWA/module adapters, resource management and a
 browser-settings-like control plane.
+
+Context: Microsoft is retiring the native Sidebar app list ("App Tower")
+in Edge 149+ (phased, starting with Microsoft account users); this
+extension restores and extends it.
 </details>
 
 ## Возможности
