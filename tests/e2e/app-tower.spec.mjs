@@ -267,13 +267,13 @@ test("ATN-E2E-005 site-to-site drag creates a two-pane template", async () => {
 test("ATN-E2E-006 fixture page contains only one injected App Tower rail", async () => {
   await webPage.bringToFront();
   await expect.poll(() => webPage.evaluate(() =>
-    [...document.querySelectorAll("*")].filter(element => element.shadowRoot).length
+    document.querySelectorAll("#app-tower-next-host").length
   )).toBe(1);
 
   await webPage.reload();
   await expect(webPage.locator("#fixture-title")).toHaveText("Fixture a");
   await expect.poll(() => webPage.evaluate(() =>
-    [...document.querySelectorAll("*")].filter(element => element.shadowRoot).length
+    document.querySelectorAll("#app-tower-next-host").length
   )).toBe(1);
 });
 
