@@ -70,19 +70,21 @@ async function documentToken(panel) {
   });
 }
 
-async function sendPanelIntent(panel, intent, extra={}) {
-  return panel.evaluate(async ({intent,extra}) => {
+async function deliverLivePanelIntent(panel, intent, extra={}) {
+  await panel.evaluate(async ({intent,extra}) => {
     const currentWindow = await chrome.windows.getCurrent();
-    return chrome.runtime.sendMessage({
-      type:"OPEN_PANEL",
-      windowId:currentWindow.id,
-      intent,
-      ...extra
+    await chrome.storage.local.set({
+      pendingAction:{
+        intent,
+        windowId:currentWindow.id,
+        nonce:Date.now(),
+        ...extra
+      }
     });
   }, {intent,extra});
 }
 
-test("ATN-E2E-009 live panel commands do not recreate the Side Panel document", async () => {
+test("ATN-E2E-009 live panel consumes intents without recreation and page rail stays hidden", async () => {
   const {server,baseUrl} = await startFixtureServer();
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), "app-tower-panel-routing-"));
   const context = await launch(profile);
@@ -95,25 +97,30 @@ test("ATN-E2E-009 live panel commands do not recreate the Side Panel document", 
     const panel = await openPanelDocument(context);
     const token = await documentToken(panel);
 
-    const searchResponse = await sendPanelIntent(panel, "search");
-    expect(searchResponse?.ok).toBe(true);
+    // The connected panel port is authoritative for the page rail: a normal
+    // web page may retain the injected host, but it must be hidden while the
+    // App Tower panel document is live.
+    await expect.poll(() => web.evaluate(() => {
+      const host = document.getElementById("app-tower-next-host");
+      return Boolean(host?.classList.contains("app-tower-next-hidden"));
+    })).toBe(true);
+
+    await deliverLivePanelIntent(panel, "search");
     await expect.poll(() => isDialogOpen(panel, "#search-dialog")).toBe(true);
     expect(await documentToken(panel)).toBe(token);
     await panel.locator("#search-close").click();
     await expect.poll(() => isDialogOpen(panel, "#search-dialog")).toBe(false);
 
-    const organizeResponse = await sendPanelIntent(panel, "organize");
-    expect(organizeResponse?.ok).toBe(true);
+    await deliverLivePanelIntent(panel, "organize");
     await expect.poll(() => isDialogOpen(panel, "#organize-dialog")).toBe(true);
     expect(await documentToken(panel)).toBe(token);
     await panel.locator("#organize-dialog button[value=cancel]").click();
     await expect.poll(() => isDialogOpen(panel, "#organize-dialog")).toBe(false);
 
-    const addResponse = await sendPanelIntent(panel, "add", {
+    await deliverLivePanelIntent(panel, "add", {
       sourceUrl:`${baseUrl}/routing`,
       sourceTitle:"Fixture routing"
     });
-    expect(addResponse?.ok).toBe(true);
     await expect.poll(() => isDialogOpen(panel, "#site-dialog")).toBe(true);
     await expect(panel.locator("#site-url")).toHaveValue(`${baseUrl}/routing`);
     expect(await documentToken(panel)).toBe(token);
