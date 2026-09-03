@@ -30,8 +30,39 @@ and report manifest metadata to the extension. They do **not** read, store, or
 transmit page content, form data, cookies, or browsing history.
 
 ### `scripting`
-Used only to inject `rail.css`, `rail.js` and `pwa-discovery.js` into the tabs
-the user has pinned into App Tower (programmatic content-script injection).
+Used only to inject `rail.css`, `rail.js` and `pwa-discovery.js` (all frames)
+into **tabs already open** before the static content scripts ran — a catch-up so
+a freshly-opened tab is not missing the rail. Injects **local files only**
+(`content/rail.css`, `content/rail.js`, `content/pwa-discovery.js`); it reads,
+stores, and transmits no page content. Called from `injectIntoOpenTabs()` at
+startup/enable/update (`background.js`). This complements — does not replace —
+the universal content-script registration above.
+
+### Web view panes: not sandboxed, broad device-permission policy
+
+The two web-view panes (`sidepanel.html`) embed the sites you pin as `<iframe>`
+elements that are **not sandboxed** (no `sandbox` attribute). Embedding a real
+website requires its own scripts to run, so each frame runs as a fully
+privileged cross-origin document — the same as opening that site in a normal
+tab. Each frame declares an `allow` permission policy:
+
+`accelerometer; autoplay; camera; clipboard-write; encrypted-media; fullscreen; gyroscope; microphone; picture-in-picture; web-share`
+
+What this means:
+- An embedded site can **request** camera, microphone, clipboard writes,
+  fullscreen, autoplay and the other listed domains; the browser's own
+  permission prompts still apply at the device level — App Tower does not
+  auto-grant them.
+- An embedded site is **cross-origin** and **cannot** access the extension's
+  `chrome.*` APIs or its host permissions. The `allow` policy governs only
+  standard web Platform permission domains (camera/mic/clipboard/…), never
+  extension APIs — there is no privilege escalation from a pinned page into the
+  extension.
+- You explicitly choose every site that is embedded; nothing loads without your
+  action, and removing a site removes its frame.
+- This is the inherent risk surface of embedding real websites (identical to
+  opening the site in a normal browser tab). App Tower neither adds nor removes
+  it; it is disclosed here.
 
 ### `declarativeNetRequestWithHostAccess` (DNR)
 Removes `x-frame-options` / `content-security-policy` (frame-embedding) response
@@ -48,6 +79,14 @@ this in browser settings / Options.
 ### Optional permissions `contentSettings` / `notifications`
 Requested only on explicit user action in Options, to enable per-site media
 (autoplay) control and notifications. Not required for core function.
+
+### Suggested search hotkey
+The `manifest` declares `commands.open-search` with `suggested_key`
+Ctrl+Shift+Space (mac: Command+Shift+Space). This is a standard, user-disableable
+browser command (`chrome://extensions/shortcuts`) — not a permission and not a
+broad-injection surface. It does not conflict with the "no default shortcuts on
+a fresh install" invariant (which refers to site/rail activation shortcuts,
+empty by default).
 
 ## 3. Privacy policy (publish this text)
 
@@ -75,6 +114,15 @@ Requested only on explicit user action in Options, to enable per-site media
 > **Content scripts** on web pages render the rail and detect PWA manifests;
 > they do not read or send page content, form data, or browsing history.
 >
+> **Web content.** The two web views load the sites you explicitly pin. Those
+> sites run as ordinary web content in the browser, governed by their own
+> privacy policies; App Tower does not read or transmit their content. The web
+> views are not sandboxed and are opted into a device-permission policy (camera,
+> microphone, clipboard, fullscreen, autoplay, etc.) so embedded sites behave as
+> they would in a normal tab — the browser's standard permission prompts still
+> apply, and an embedded site cannot access the extension's own APIs or host
+> permissions.
+>
 > **You control everything:** you can export your data as JSON at any time and
 > remove the extension (which removes all stored data).
 >
@@ -89,7 +137,7 @@ Requested only on explicit user action in Options, to enable per-site media
 | `favicon` | Resolve site favicons for rail icons. |
 | `declarativeNetRequestWithHostAccess` | Scoped removal of frame-embedding headers for pinned sites only. |
 | `declarativeNetRequestFeedback` | Observe which compatibility rules fire (local diagnostics). |
-| `scripting` | Inject the rail / PWA detection into tabs you pin. |
+| `scripting` | Catch-up rail / PWA detection injection into already-open http/https tabs (local files only). |
 | `windows` | Create the tower container / sidecar fallback window. |
 | `alarms` | Periodic resource-lease housekeeping (idle pane sleep). |
 | `contextMenus` | Right-click actions on the rail / sites. |
@@ -102,6 +150,12 @@ Requested only on explicit user action in Options, to enable per-site media
 - Some sites that actively block embedding (anti-bot, DRM, OAuth, CAPTCHA) cannot
   be shown inside the two-pane iframes; App Tower does not bypass these. The
   "Real Page / PWA sidecar" mode opens such sites in a full tab instead.
+- **Embedded-site device permissions.** The web-view iframes are not sandboxed
+  and carry a broad `allow` policy (camera, microphone, clipboard-write,
+  fullscreen, autoplay, etc.). A pinned site can request these; the browser's
+  standard prompts apply. This is inherent to embedding real websites (equivalent
+  to a normal tab). An embedded site cannot access the extension's APIs or host
+  permissions.
 - Generic YouTube playback inside an iframe is unreliable; the YouTube module
   uses a PWA/real-page path where needed.
 - Native browser settings pages cannot be modified; configuration lives in the
