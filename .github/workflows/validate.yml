@@ -23,7 +23,7 @@ jobs:
       - name: Upload test packages
         uses: actions/upload-artifact@v4
         with:
-          name: app-tower-next-packages
+          name: app-tower-packages
           path: |
             dist/*.zip
             dist/CHECKSUMS.sha256
