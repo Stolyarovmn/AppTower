@@ -1,0 +1,60 @@
+{
+  "format": "app-tower-module",
+  "schemaVersion": 1,
+  "id": "youtube",
+  "name": "YouTube",
+  "version": "1.2.0",
+  "category": "media",
+  "description": "Официальный embed для конкретных видео/Shorts/live. Обычные страницы YouTube остаются в стандартном Auto/Compatibility renderer.",
+  "hosts": [
+    "youtube.com",
+    "youtu.be"
+  ],
+  "adapters": [
+    {
+      "id": "watch",
+      "match": {
+        "urlRegex": "^https?://(?:www\\.|m\\.)?youtube\\.com/watch\\?(?:[^#]*&)?v=([^&#]+)"
+      },
+      "renderer": {
+        "type": "media",
+        "serviceKey": "youtube",
+        "kind": "video",
+        "srcTemplate": "https://www.youtube-nocookie.com/embed/{{1}}?playsinline=1&rel=0",
+        "layout": {
+          "aspectRatio": "16 / 9"
+        }
+      }
+    },
+    {
+      "id": "shorts",
+      "match": {
+        "urlRegex": "^https?://(?:www\\.)?youtube\\.com/(?:shorts|embed|live)/([^?&#/]+)"
+      },
+      "renderer": {
+        "type": "media",
+        "serviceKey": "youtube",
+        "kind": "video",
+        "srcTemplate": "https://www.youtube-nocookie.com/embed/{{1}}?playsinline=1&rel=0",
+        "layout": {
+          "aspectRatio": "16 / 9"
+        }
+      }
+    },
+    {
+      "id": "short-link",
+      "match": {
+        "urlRegex": "^https?://youtu\\.be/([^?&#/]+)"
+      },
+      "renderer": {
+        "type": "media",
+        "serviceKey": "youtube",
+        "kind": "video",
+        "srcTemplate": "https://www.youtube-nocookie.com/embed/{{1}}?playsinline=1&rel=0",
+        "layout": {
+          "aspectRatio": "16 / 9"
+        }
+      }
+    }
+  ]
+}

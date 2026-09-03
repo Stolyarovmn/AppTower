@@ -1,0 +1,25 @@
+{
+  "project": "App Tower Next",
+  "current_version": "0.8.5",
+  "state_schema_version": 15,
+  "primary_targets": [
+    "Microsoft Edge",
+    "Google Chrome"
+  ],
+  "secondary_targets": [
+    "Yandex Browser sidecar fallback"
+  ],
+  "p0_live_verification": [
+    "Add current page with empty workspace",
+    "Collapse/expand with zero shortcuts",
+    "Collapse/expand after browser restart",
+    "Edge-native settings glyph in light/dark theme",
+    "No duplicate collapsed rail while Side Panel is open"
+  ],
+  "known_external_constraints": [
+    "sidePanel.open user activation",
+    "third-party iframe blocking/auth/anti-bot",
+    "browser internal pages not injectable",
+    "no supported custom entry in browser Settings navigation"
+  ]
+}

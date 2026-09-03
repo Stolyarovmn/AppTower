@@ -1,0 +1,74 @@
+{
+  "format": "app-tower-module",
+  "schemaVersion": 1,
+  "id": "yandex-music",
+  "name": "Яндекс Музыка",
+  "version": "1.0.0",
+  "category": "media",
+  "description": "Треки, альбомы и legacy/public плейлисты Яндекс Музыки.",
+  "hosts": [
+    "music.yandex.ru"
+  ],
+  "adapters": [
+    {
+      "id": "track",
+      "match": {
+        "urlRegex": "^https?://(?:www\\.)?music\\.yandex\\.ru/album/(\\d+)/track/(\\d+)(?:/|[?#]|$)"
+      },
+      "renderer": {
+        "type": "media",
+        "serviceKey": "yandex-music",
+        "kind": "audio-track",
+        "srcTemplate": "https://music.yandex.ru/iframe/#track/{{2}}/{{1}}",
+        "layout": {
+          "height": 180
+        }
+      }
+    },
+    {
+      "id": "album",
+      "match": {
+        "urlRegex": "^https?://(?:www\\.)?music\\.yandex\\.ru/album/(\\d+)(?:/|[?#]|$)"
+      },
+      "renderer": {
+        "type": "media",
+        "serviceKey": "yandex-music",
+        "kind": "audio-collection",
+        "srcTemplate": "https://music.yandex.ru/iframe/#album/{{1}}",
+        "layout": {
+          "height": "fill"
+        }
+      }
+    },
+    {
+      "id": "legacy-playlist",
+      "match": {
+        "urlRegex": "^https?://(?:www\\.)?music\\.yandex\\.ru/users/([^/?#]+)/playlists/(\\d+)(?:/|[?#]|$)"
+      },
+      "renderer": {
+        "type": "media",
+        "serviceKey": "yandex-music",
+        "kind": "audio-collection",
+        "srcTemplate": "https://music.yandex.ru/iframe/#playlist/{{1}}/{{2}}",
+        "layout": {
+          "height": "fill"
+        }
+      }
+    },
+    {
+      "id": "iframe",
+      "match": {
+        "urlRegex": "^https?://(?:www\\.)?music\\.yandex\\.ru/iframe/"
+      },
+      "renderer": {
+        "type": "media",
+        "serviceKey": "yandex-music",
+        "kind": "audio-collection",
+        "source": "original",
+        "layout": {
+          "height": "fill"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,85 @@
+html.app-tower-next-reserved {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  padding-right: 46px !important;
+  overflow-x: clip !important;
+}
+
+html.app-tower-next-reserved > body {
+  box-sizing: border-box !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow-x: clip !important;
+}
+
+/*
+ * A common source of overlap is a site's top-level wrapper using 100vw.
+ * Clamp those wrappers to the body's reduced content box.
+ */
+html.app-tower-next-reserved > body > * {
+  max-width: 100% !important;
+}
+
+.app-tower-next-fixed {
+  max-width: calc(
+    100vw - var(--atn-native-scrollbar-width, 0px) - 46px
+  ) !important;
+}
+
+.app-tower-next-fixed.app-tower-next-fixed-anchored {
+  right: calc(
+    var(--atn-original-fixed-right, 0px) + 46px
+  ) !important;
+}
+
+.app-tower-next-fixed.app-tower-next-fixed-shifted {
+  translate: -46px 0 !important;
+}
+
+#app-tower-next-host {
+  all: initial !important;
+  position: fixed !important;
+  top: 0 !important;
+  right: var(--atn-native-scrollbar-width, 0px) !important;
+  bottom: 0 !important;
+  z-index: 2147483647 !important;
+  display: block !important;
+  width: 46px !important;
+  height: 100vh !important;
+  color-scheme: light dark !important;
+  pointer-events: none !important;
+}
+
+#app-tower-next-host.app-tower-next-hidden {
+  display: none !important;
+}
+
+@media print {
+  #app-tower-next-host { display:none !important; }
+
+  html.app-tower-next-reserved {
+    width:100% !important;
+    max-width:100% !important;
+    padding-right:0 !important;
+    overflow:visible !important;
+  }
+
+  html.app-tower-next-reserved > body {
+    width:auto !important;
+    max-width:100% !important;
+    overflow:visible !important;
+  }
+
+  html.app-tower-next-reserved > body > * {
+    max-width:none !important;
+  }
+
+  .app-tower-next-fixed {
+    max-width:none !important;
+    right:revert !important;
+    translate:none !important;
+  }
+}

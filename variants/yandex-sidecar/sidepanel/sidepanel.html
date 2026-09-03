@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>App Tower Next</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <div class="side-shell">
+    <section class="panel-main">
+      <header class="app-header" aria-label="Управление раскладкой">
+        <div class="workspace-control">
+          <select id="workspace-select" aria-label="Workspace" title="Workspace"></select>
+        </div>
+        <div class="header-actions">
+          <button id="toggle-split" class="icon-button layout-button" title="Одна / две области" aria-label="Одна / две области" aria-pressed="true">
+            <svg class="layout-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <rect class="layout-cell layout-top" x="5" y="3.5" width="14" height="7.5" rx="1.4"/>
+              <rect class="layout-cell layout-bottom" x="5" y="13" width="14" height="7.5" rx="1.4"/>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <section id="home-view" class="home-view hidden" aria-label="Начало работы">
+        <div class="home-card">
+          <img src="../icons/icon48.png" alt="" class="home-logo">
+          <h1>App Tower Next</h1>
+          <p>Добавьте сайты, которыми хотите пользоваться в боковой панели. Готового списка по умолчанию больше нет.</p>
+          <div class="home-actions">
+            <button id="home-add-current" class="primary">Добавить текущую страницу</button>
+            <button id="home-add-custom">Добавить произвольный сайт</button>
+            <button id="home-import">Импортировать настройки</button>
+          </div>
+          <label class="switch-row home-sync-row">
+            <input id="home-sync" type="checkbox">
+            <span><b>Синхронизация браузера</b><small>Синхронизирует ярлыки между устройствами через встроенный Sync браузера.</small></span>
+          </label>
+        </div>
+      </section>
+
+      <main id="workspace" class="workspace split">
+        <section class="pane active" data-pane="top">
+          <div class="pane-toolbar">
+            <button class="pane-select" data-action="activate" title="Активная область"><span class="dot"></span></button>
+            <input class="url-input" data-role="url" spellcheck="false" aria-label="URL верхней области">
+            <button class="go" data-action="go" title="Открыть URL">↵</button>
+            <button class="reload" data-action="reload" title="Обновить">⟳</button>
+            <button class="mode-button" data-action="mode" title="Режим отображения">A</button>
+            <button class="pwa-button hidden" data-action="pwa" title="Web App Manifest" aria-label="Веб-приложение">
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <rect x="3" y="3" width="14" height="14" rx="3"></rect>
+                <path d="M6.5 10h7M10 6.5v7"></path>
+              </svg>
+            </button>
+            <button class="save-shortcut hidden" data-action="save-shortcut" title="Добавить текущий сайт в ярлыки" aria-label="Добавить текущий сайт в ярлыки">
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M5 3.5h10a1.5 1.5 0 0 1 1.5 1.5v11.5L10 13.2l-6.5 3.3V5A1.5 1.5 0 0 1 5 3.5Z"></path>
+                <path d="M10 6.2v4.4M7.8 8.4h4.4"></path>
+              </svg>
+            </button>
+            <button class="external" data-action="external" title="Открыть в обычной вкладке">↗</button>
+            <button class="focus" data-action="focus" title="Развернуть эту область">□</button>
+          </div>
+          <div class="frame-wrap">
+            <iframe name="app-tower-pane-top" data-role="frame" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; camera; clipboard-write; encrypted-media; fullscreen; gyroscope; microphone; picture-in-picture; web-share" allowfullscreen></iframe>
+
+            <div class="media-view" data-role="media-view" aria-hidden="true">
+              <iframe data-role="media-frame"
+                      referrerpolicy="strict-origin-when-cross-origin"
+                      allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+                      allowfullscreen></iframe>
+            </div>
+            <div class="pwa-view" data-role="pwa-view" aria-hidden="true">
+              <div class="pwa-card">
+                <img data-role="pwa-icon" alt="" class="pwa-icon">
+                <strong data-role="pwa-name">Web App</strong>
+                <span data-role="pwa-meta" class="pwa-meta"></span>
+                <button data-action="pwa-launch" class="primary">Открыть как приложение</button>
+                <button data-action="pwa-embed">Открывать внутри App Tower</button>
+                <div data-role="pwa-shortcuts" class="pwa-shortcuts"></div>
+              </div>
+            </div>
+
+            <div class="sleep-view" data-role="sleep-view" aria-hidden="true">
+              <div class="sleep-card">
+                <span class="sleep-mark">Zz</span>
+                <strong>Pane выгружена</strong>
+                <p data-role="sleep-reason">Не использовалась 5 минут.</p>
+                <button data-action="wake" class="primary">Разбудить</button>
+              </div>
+            </div>
+
+            <div class="real-view" data-role="real-view">
+              <div class="real-card">
+                <div class="real-mark">R</div>
+                <strong>Real Page</strong>
+                <p>Сайт будет открыт как настоящая top-level страница, без iframe и без снятия CSP.</p>
+                <button data-action="real-window" class="primary">Открыть боковым окном</button>
+                <button data-action="real-tab">Открыть вкладкой</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div id="splitter" class="splitter" role="separator" aria-orientation="horizontal" tabindex="0"></div>
+
+        <section class="pane" data-pane="bottom">
+          <div class="pane-toolbar">
+            <button class="pane-select" data-action="activate" title="Активная область"><span class="dot"></span></button>
+            <input class="url-input" data-role="url" spellcheck="false" aria-label="URL нижней области">
+            <button class="go" data-action="go" title="Открыть URL">↵</button>
+            <button class="reload" data-action="reload" title="Обновить">⟳</button>
+            <button class="mode-button" data-action="mode" title="Режим отображения">A</button>
+            <button class="pwa-button hidden" data-action="pwa" title="Web App Manifest" aria-label="Веб-приложение">
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <rect x="3" y="3" width="14" height="14" rx="3"></rect>
+                <path d="M6.5 10h7M10 6.5v7"></path>
+              </svg>
+            </button>
+            <button class="save-shortcut hidden" data-action="save-shortcut" title="Добавить текущий сайт в ярлыки" aria-label="Добавить текущий сайт в ярлыки">
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M5 3.5h10a1.5 1.5 0 0 1 1.5 1.5v11.5L10 13.2l-6.5 3.3V5A1.5 1.5 0 0 1 5 3.5Z"></path>
+                <path d="M10 6.2v4.4M7.8 8.4h4.4"></path>
+              </svg>
+            </button>
+            <button class="external" data-action="external" title="Открыть в обычной вкладке">↗</button>
+            <button class="focus" data-action="focus" title="Развернуть эту область">□</button>
+          </div>
+          <div class="frame-wrap">
+            <iframe name="app-tower-pane-bottom" data-role="frame" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; camera; clipboard-write; encrypted-media; fullscreen; gyroscope; microphone; picture-in-picture; web-share" allowfullscreen></iframe>
+
+            <div class="media-view" data-role="media-view" aria-hidden="true">
+              <iframe data-role="media-frame"
+                      referrerpolicy="strict-origin-when-cross-origin"
+                      allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+                      allowfullscreen></iframe>
+            </div>
+            <div class="pwa-view" data-role="pwa-view" aria-hidden="true">
+              <div class="pwa-card">
+                <img data-role="pwa-icon" alt="" class="pwa-icon">
+                <strong data-role="pwa-name">Web App</strong>
+                <span data-role="pwa-meta" class="pwa-meta"></span>
+                <button data-action="pwa-launch" class="primary">Открыть как приложение</button>
+                <button data-action="pwa-embed">Открывать внутри App Tower</button>
+                <div data-role="pwa-shortcuts" class="pwa-shortcuts"></div>
+              </div>
+            </div>
+
+            <div class="sleep-view" data-role="sleep-view" aria-hidden="true">
+              <div class="sleep-card">
+                <span class="sleep-mark">Zz</span>
+                <strong>Pane выгружена</strong>
+                <p data-role="sleep-reason">Не использовалась 5 минут.</p>
+                <button data-action="wake" class="primary">Разбудить</button>
+              </div>
+            </div>
+
+            <div class="real-view" data-role="real-view">
+              <div class="real-card">
+                <div class="real-mark">R</div>
+                <strong>Real Page</strong>
+                <p>Сайт будет открыт как настоящая top-level страница, без iframe и без снятия CSP.</p>
+                <button data-action="real-window" class="primary">Открыть боковым окном</button>
+                <button data-action="real-tab">Открыть вкладкой</button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </section>
+
+    <aside class="panel-rail" aria-label="App Tower">
+      <div class="rail-head">
+        <button id="collapse-panel" class="rail-tool collapse-button" title="Свернуть в App Tower" aria-label="Свернуть в App Tower">
+          <svg class="toggle-svg collapse-svg" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.75 3.5 10.25 8l-4.5 4.5"></path></svg>
+        </button>
+      </div>
+      <div class="rail-primary">
+        <button id="rail-scroll-up" class="rail-scroll-arrow hidden" type="button" title="Прокрутить ярлыки вверх" aria-label="Прокрутить ярлыки вверх">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 10.25 8 5.75l4.5 4.5"></path></svg>
+        </button>
+        <div id="panel-sites-scroll" class="rail-sites-scroll" aria-label="Ярлыки">
+          <div id="panel-sites" class="panel-sites"></div>
+        </div>
+        <button id="rail-scroll-down" class="rail-scroll-arrow hidden" type="button" title="Прокрутить ярлыки вниз" aria-label="Прокрутить ярлыки вниз">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m3.5 5.75 4.5 4.5 4.5-4.5"></path></svg>
+        </button>
+        <div class="rail-separator"></div>
+        <button id="rail-add" class="rail-tool" title="Добавить текущую страницу" aria-label="Добавить сайт"><svg class="tool-icon-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+        <button id="rail-new-group" class="rail-tool group-tool" title="Группы и шаблоны" aria-label="Группы и шаблоны">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="10" height="10" rx="2"></rect><rect x="10" y="9" width="10" height="10" rx="2"></rect></svg>
+        </button>
+      </div>
+      <div class="rail-footer">
+        <button id="rail-media" class="rail-tool media-tool hidden" title="Media" aria-label="Media"><svg class="tool-icon-svg media-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17.2V6.8l8-1.8v10.4"/><circle cx="7.6" cy="17.6" r="2.4"/><circle cx="15.6" cy="15.8" r="2.4"/></svg></button>
+        <button id="rail-search" class="rail-tool" title="Поиск" aria-label="Поиск"><svg class="tool-icon-svg" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.5"/><path d="m14.5 14.5 4.5 4.5"/></svg></button>
+        <button id="rail-settings" class="rail-tool" title="Настройки · App Tower Next v0.8.5" aria-label="Настройки"><span class="native-icon fluent-only settings-native" aria-hidden="true">&#xE713;</span><svg class="tool-icon-svg settings-svg fallback-only" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><circle cx="12" cy="12" r="7.1"/><path d="M12 2.8v2M12 19.2v2M2.8 12h2M19.2 12h2M5.5 5.5l1.4 1.4M17.1 17.1l1.4 1.4M18.5 5.5l-1.4 1.4M6.9 17.1l-1.4 1.4"/></svg></button>
+      </div>
+    </aside>
+  </div>
+
+  <dialog id="search-dialog" class="search-dialog">
+    <form method="dialog" id="search-form">
+      <div class="search-box-row"><span>⌕</span><input id="search-input" autocomplete="off" placeholder="Ярлык, группа, workspace или команда…"></div>
+      <div id="search-results" class="search-results"></div>
+      <div class="search-footer"><span>↑↓ выбор · Enter открыть</span><button type="button" id="search-close">Закрыть</button></div>
+    </form>
+  </dialog>
+
+  <div id="shortcut-menu" class="shortcut-menu hidden" role="menu"></div>
+
+  <dialog id="site-dialog">
+    <form method="dialog" id="site-form" class="site-form">
+      <div class="dialog-title-row">
+        <h2>Добавить сайт</h2>
+        <button type="button" id="clear-site" class="broom-button" title="Очистить всю форму" aria-label="Очистить всю форму">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M15.8 3.2 8.9 12.1"></path>
+            <path d="m8.7 11.7 3.8 3"></path>
+            <path d="M5.2 12.6 11.8 18"></path>
+            <path d="M4.2 13.8 3 18.7l4.8 2.2 4.1-3.1"></path>
+            <path d="m3.8 17.1 5.6 2.6"></path>
+          </svg>
+        </button>
+      </div>
+      <div id="site-source-hint" class="site-source-hint hidden"></div>
+      <div id="site-source-switch" class="site-source-switch hidden" aria-label="Источник добавляемого сайта">
+        <button type="button" data-source="top">Верхняя</button>
+        <button type="button" data-source="bottom">Нижняя</button>
+        <button type="button" data-source="browser">Вкладка</button>
+      </div>
+      <label>Название<input id="site-title" required placeholder="Название сайта"></label>
+      <label>URL<input id="site-url" required placeholder="https://example.com/"></label>
+      <div id="site-module-suggestion" class="module-suggestion hidden"></div>
+      <label>Режим по умолчанию
+        <select id="site-mode">
+          <option value="auto">Auto</option>
+          <option value="secure">Secure — обычный iframe</option>
+          <option value="compat">Compatibility — снять frame-защиту</option>
+          <option value="real">Real Page — отдельное окно/вкладка</option>
+        </select>
+      </label>
+      <label id="compat-domains-row">Compatibility domains
+        <input id="site-compat-domains" placeholder="example.com">
+        <small>Только для этих доменов будут удаляться X-Frame-Options и CSP у sub-frame ответа.</small>
+      </label>
+      <div class="dialog-actions">
+        <button type="button" id="cancel-site">Отмена</button>
+        <button id="save-site" type="submit" value="default" class="primary">Добавить</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="settings-dialog">
+    <form method="dialog" id="settings-form">
+      <h2>App Tower Next v0.8.5</h2>
+      <section class="settings-section">
+        <h3>Оформление</h3>
+        <div class="theme-grid">
+          <label>Тема
+            <select id="settings-theme-mode">
+              <option value="system">Системная</option>
+              <option value="light">Светлая</option>
+              <option value="dark">Тёмная</option>
+            </select>
+          </label>
+          <label>Акцент
+            <select id="settings-accent-mode">
+              <option value="system">Системный</option>
+              <option value="custom">Свой цвет</option>
+            </select>
+          </label>
+        </div>
+        <div class="accent-picker-row">
+          <label for="settings-accent-color">Цвет акцента</label>
+          <input id="settings-accent-color" type="color" value="#45c9bc" aria-label="Цвет акцента">
+          <button type="button" id="settings-theme-reset">Сбросить</button>
+        </div>
+        <div class="theme-preview" aria-hidden="true">
+          <span class="theme-preview-dot"></span>
+          <span>App Tower</span>
+          <span class="theme-preview-pill">Auto</span>
+        </div>
+        <p class="settings-copy">Системная тема реагирует на светлый/тёмный режим ОС. Системный акцент используется, если браузер отдаёт CSS AccentColor; иначе применяется стандартный цвет App Tower.</p>
+      </section>
+      <section class="settings-section">
+        <h3>Данные</h3>
+        <label class="switch-row">
+          <input id="settings-sync" type="checkbox">
+          <span><b>Синхронизация браузера</b><small>Синхронизируются ярлыки. Текущая раскладка и открытые страницы остаются локальными.</small></span>
+        </label>
+        <div class="settings-actions two-col">
+          <button type="button" id="settings-export">Экспортировать</button>
+          <button type="button" id="settings-import">Импортировать</button>
+        </div>
+      </section>
+      <section class="settings-section">
+        <h3>Модули</h3>
+        <p class="settings-copy">Auto-адаптеры устанавливаются отдельно. Ядро исполняет только фиксированный декларативный формат — модуль не может подгрузить JavaScript.</p>
+        <div id="settings-modules" class="module-list"></div>
+        <div class="settings-actions">
+          <button type="button" id="settings-module-import">Установить модуль из JSON…</button>
+        </div>
+      </section>
+      <section class="settings-section">
+        <h3>Веб-приложения</h3>
+        <p class="settings-copy">App Tower распознаёт стандартный Web App Manifest. Для выбранных приложений Auto может не использовать iframe, а показывать запуск top-level sidecar-окна.</p>
+        <div id="settings-pwa-list" class="pwa-settings-list"></div>
+        <div class="settings-actions">
+          <button type="button" id="settings-pwa-clear">Очистить обнаруженные Web Apps</button>
+        </div>
+      </section>
+      <section class="settings-section">
+        <h3>Раскладка</h3>
+        <div class="settings-actions">
+          <button type="button" id="settings-collapse">Свернуть в App Tower</button>
+          <button type="button" id="settings-single">Одна область</button>
+          <button type="button" id="settings-reset-split">Вернуть split 58/42</button>
+        </div>
+      </section>
+      <details class="settings-details">
+        <summary>Режимы отображения</summary>
+        <div class="mode-legend">
+          <div><b>A</b><span>Auto: специальный renderer, если он есть; обычный сайт автоматически использует совместимость.</span></div>
+          <div><b>S</b><span>Secure: сайт открывается без изменения защитных заголовков.</span></div>
+          <div><b>C</b><span>Compatibility: X-Frame-Options и CSP удаляются только для доменов этой области.</span></div>
+          <div><b>R</b><span>Real Page: настоящая browser page в отдельном окне/вкладке.</span></div>
+        </div>
+      </details>
+      <div class="dialog-actions"><button value="close" class="primary">Закрыть</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="shortcut-chooser-dialog">
+    <form method="dialog" id="shortcut-chooser-form">
+      <h2 id="shortcut-chooser-title">Выберите ярлык</h2>
+      <p id="shortcut-chooser-copy" class="settings-copy"></p>
+      <div id="shortcut-chooser-list" class="shortcut-chooser-list"></div>
+      <div class="dialog-actions"><button value="cancel">Отмена</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="organize-dialog">
+    <form method="dialog" id="organize-form">
+      <h2>Организовать ярлыки</h2>
+      <p class="settings-copy">Создайте пустую группу или двухпанельный шаблон из двух существующих сайтов.</p>
+      <div class="combine-actions">
+        <button type="button" id="organize-group" class="combine-card">
+          <span class="combine-icon group-mini">AB</span>
+          <span><b>Новая группа</b><small>Пустая группа с названием; сайты можно перетащить внутрь позже.</small></span>
+        </button>
+        <button type="button" id="organize-template" class="combine-card">
+          <span class="combine-icon template-mini"><i></i><i></i></span>
+          <span><b>Шаблон 2 панелей</b><small>Выберите верхний и нижний сайт и сохраните как один ярлык.</small></span>
+        </button>
+      </div>
+      <div class="dialog-actions"><button value="cancel">Отмена</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="combine-dialog">
+    <form method="dialog" id="combine-form">
+      <h2>Объединить ярлыки</h2>
+      <p id="combine-summary" class="settings-copy"></p>
+      <div class="combine-actions">
+        <button type="button" id="combine-template" class="combine-card">
+          <span class="combine-icon template-mini"><i></i><i></i></span>
+          <span><b>Шаблон 2 панелей</b><small>Откроет оба сайта одновременно: верхний и нижний.</small></span>
+        </button>
+        <button type="button" id="combine-group" class="combine-card">
+          <span class="combine-icon group-mini">AB</span>
+          <span><b>Группа</b><small>Соберёт ярлыки под одной иконкой.</small></span>
+        </button>
+      </div>
+      <div class="dialog-actions"><button value="cancel">Отмена</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="group-dialog">
+    <form method="dialog" id="group-form">
+      <div class="dialog-title-row">
+        <h2 id="group-dialog-title">Группа</h2>
+        <div id="group-dialog-icon" class="group-badge large">Г</div>
+      </div>
+      <label>Название группы<input id="group-name" maxlength="80" placeholder="Например, Работа"></label>
+      <div id="group-items" class="group-items"></div>
+      <div class="settings-actions two-col">
+        <button type="button" id="group-save" class="primary">Сохранить</button>
+        <button type="button" id="group-dissolve">Разгруппировать</button>
+      </div>
+      <div class="dialog-actions"><button value="close">Закрыть</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="template-dialog">
+    <form method="dialog" id="template-form">
+      <h2>Шаблон двух панелей</h2>
+      <div class="template-preview-row">
+        <div id="template-preview" class="template-stack large"></div>
+        <div class="template-order">
+          <div><b>Верх:</b> <span id="template-top-name"></span></div>
+          <div><b>Низ:</b> <span id="template-bottom-name"></span></div>
+        </div>
+      </div>
+      <label>Название<input id="template-name" maxlength="100"></label>
+      <label>Перекрытие иконок
+        <div class="overlap-row"><input id="template-overlap" type="range" min="20" max="80" step="5" value="50"><output id="template-overlap-value">50%</output></div>
+      </label>
+      <div class="settings-actions two-col">
+        <button type="button" id="template-swap">Поменять верх / низ</button>
+        <button type="button" id="template-save" class="primary">Сохранить</button>
+      </div>
+      <div class="settings-actions"><button type="button" id="template-dissolve">Разобрать шаблон</button></div>
+      <div class="dialog-actions"><button value="close">Закрыть</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="pwa-dialog">
+    <form method="dialog" id="pwa-form">
+      <div class="pwa-dialog-head">
+        <img id="pwa-dialog-icon" class="pwa-dialog-icon" alt="">
+        <div>
+          <h2 id="pwa-dialog-name">Web App</h2>
+          <p id="pwa-dialog-meta" class="settings-copy"></p>
+        </div>
+      </div>
+      <label class="switch-row">
+        <input id="pwa-sidecar-default" type="checkbox">
+        <span>
+          <b>Использовать режим приложения в Auto</b>
+          <small>Вместо iframe App Tower покажет launcher. Сам сайт откроется top-level в отдельном sidecar-окне только после нажатия «Открыть как приложение».</small>
+        </span>
+      </label>
+      <div id="pwa-dialog-shortcuts" class="pwa-dialog-shortcuts"></div>
+      <div class="settings-actions">
+        <button type="button" id="pwa-open-app" class="primary">Открыть как приложение</button>
+      </div>
+      <div class="dialog-actions"><button value="close">Закрыть</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="import-dialog">
+    <form method="dialog">
+      <h2>Импорт App Tower</h2>
+      <p id="import-summary" class="settings-copy"></p>
+      <div class="settings-actions">
+        <button type="button" id="import-merge">Объединить с текущими</button>
+        <button type="button" id="import-replace" class="primary">Заменить текущие</button>
+      </div>
+      <div class="dialog-actions"><button value="cancel">Отмена</button></div>
+    </form>
+  </dialog>
+
+  <input id="import-file" type="file" accept="application/json,.json" hidden>
+  <input id="module-file" type="file" accept="application/json,.json" hidden>
+
+  <script src="sidepanel.js" type="module"></script>
+</body>
+</html>

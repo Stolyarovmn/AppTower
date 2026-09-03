@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>App Tower Next — Настройки</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="settings-shell">
+    <aside class="nav-pane">
+      <div class="brand"><img src="../icons/icon32.png" alt=""><div><strong>App Tower Next</strong><span>v0.8.5</span></div></div>
+      <nav id="settings-nav">
+        <button data-section="general" class="active"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v9h-6v-6h-4v6H4z"/></svg></span><span>Основные</span></button>
+        <button data-section="appearance"><span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16z"/></svg></span><span>Оформление</span></button>
+        <button data-section="workspaces"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="7" height="6" rx="1"/><rect x="13" y="5" width="7" height="6" rx="1"/><rect x="4" y="13" width="7" height="6" rx="1"/><rect x="13" y="13" width="7" height="6" rx="1"/></svg></span><span>Workspaces</span></button>
+        <button data-section="shortcuts"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="m12 4 2.2 4.8 5.2.6-3.8 3.6 1 5.1-4.6-2.6-4.6 2.6 1-5.1-3.8-3.6 5.2-.6z"/></svg></span><span>Ярлыки</span></button>
+        <button data-section="recent"><span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2M5 5 3 8"/></svg></span><span>Недавние</span></button>
+        <button data-section="sites"><span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg></span><span>Сайты</span></button>
+        <button data-section="notifications"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M6 16h12l-2-3V9a4 4 0 0 0-8 0v4zM10 19h4"/></svg></span><span>Уведомления</span></button>
+        <button data-section="performance"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="m13 3-6 10h5l-1 8 6-10h-5z"/></svg></span><span>Производительность</span></button>
+        <button data-section="modules"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/><path d="M9 9h6v6H9z"/></svg></span><span>Модули</span></button>
+        <button data-section="webapps"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 4 5 8v8l7 4 7-4V8z"/><path d="m5 8 7 4 7-4"/></svg></span><span>Web Apps</span></button>
+        <button data-section="sidecars"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="11" height="14" rx="2"/><rect x="16" y="8" width="4" height="8" rx="1"/></svg></span><span>Sidecars</span></button>
+        <button data-section="media"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M10 17V7l8-2v10"/><circle cx="7" cy="18" r="2.5"/><circle cx="15" cy="16" r="2.5"/></svg></span><span>Media</span></button>
+        <button data-section="permissions"><span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v5M12 16h.01"/></svg></span><span>Разрешения</span></button>
+        <button data-section="data"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M6 8a7 7 0 1 1-1 7"/><path d="M6 4v4H2"/></svg></span><span>Sync и данные</span></button>
+      </nav>
+    </aside>
+
+    <main class="content-pane">
+      <section data-page="general" class="page active">
+        <h1>Основные</h1>
+        <div id="browser-card" class="card"></div>
+        <div class="card">
+          <h2>App Tower</h2>
+          <div class="actions-row">
+            <button id="open-tower" class="primary">Открыть App Tower</button>
+            <button id="open-search">Поиск</button>
+          </div>
+          <p class="muted">Горячая клавиша поиска по умолчанию: <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd>.</p>
+        </div>
+      </section>
+
+      <section data-page="appearance" class="page">
+        <h1>Оформление</h1>
+        <div class="card form-grid">
+          <label>Тема<select id="theme-mode"><option value="system">Системная</option><option value="light">Светлая</option><option value="dark">Тёмная</option></select></label>
+          <label>Акцент<select id="accent-mode"><option value="system">Системный</option><option value="custom">Свой цвет</option></select></label>
+          <label>Цвет<input id="accent-color" type="color" value="#45c9bc"></label>
+          <button id="theme-reset">Сбросить</button>
+        </div>
+      </section>
+
+      <section data-page="workspaces" class="page">
+        <h1>Workspaces</h1>
+        <div class="card">
+          <p id="workspace-binding" class="muted"></p>
+          <div class="actions-row"><input id="workspace-name" placeholder="Название нового workspace"><button id="workspace-create" class="primary">Создать</button></div>
+        </div>
+        <div id="workspace-list" class="list"></div>
+      </section>
+
+      <section data-page="shortcuts" class="page">
+        <h1>Ярлыки</h1>
+        <div class="card">
+          <p class="muted">Здесь не только список: ярлыки можно открыть, отправить в нижнюю pane, настроить группу/шаблон или удалить. Перетаскивание и точный порядок остаются в rail.</p>
+          <div class="actions-row"><button id="shortcut-organize" class="primary">Новая группа / шаблон</button><button id="shortcut-search">Поиск</button></div>
+        </div>
+        <div id="shortcut-tree" class="list"></div>
+      </section>
+
+      <section data-page="recent" class="page">
+        <h1>Недавние</h1>
+        <div class="card"><p class="muted">Последние сайты и шаблоны App Tower. В настройках показываются записи по всем workspace; поиск внутри панели сначала поднимает текущий workspace.</p></div>
+        <div id="recent-list" class="list"></div>
+      </section>
+
+      <section data-page="sites" class="page">
+        <h1>Сайты</h1>
+        <div class="card"><p class="muted">Per-site настройки применяются по origin ко всем ярлыкам этого сайта.</p></div>
+        <div id="site-list" class="list"></div>
+      </section>
+
+      <section data-page="notifications" class="page">
+        <h1>Уведомления</h1>
+        <div class="card"><p>Для обычных сайтов можно выбрать <b>по умолчанию / разрешить / блокировать</b>. Это браузерная настройка origin и действует не только внутри App Tower. Выбор типов уведомлений возможен только для модулей, которые сами объявляют категории.</p></div>
+        <div id="notification-list" class="list"></div>
+      </section>
+
+      <section data-page="performance" class="page">
+        <h1>Производительность</h1>
+        <div class="card form-grid">
+          <label>Усыпление неактивного web-pane<input value="5 минут" disabled></label>
+          <label>Максимум одновременно живых web-pane<select id="max-live"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option selected>6</option></select></label>
+          <p class="muted full-row">«Не усыплять» защищает сайт от таймера 5 минут, но жёсткий глобальный лимит всё равно имеет приоритет: больше выбранного количества живых web/media pane App Tower не держит.</p>
+        </div>
+        <details class="card diagnostics">
+          <summary id="resource-summary">Диагностика загруженных pane</summary>
+          <p class="muted">Это не лог. Здесь показаны iframe/media-поверхности, которые прямо сейчас считаются загруженными и участвуют в лимите.</p>
+          <div id="resource-status" class="list"></div>
+        </details>
+      </section>
+
+      <section data-page="modules" class="page"><h1>Модули</h1><div id="module-list" class="list"></div></section>
+      <section data-page="webapps" class="page"><h1>Web Apps</h1><div class="card"><p class="muted">Это сайты со стандартным Web App Manifest. Для каждого можно открыть обычную pane, запустить отдельное top-level приложение (sidecar), выбрать App-режим для Auto или забыть обнаруженную запись.</p></div><div id="webapp-list" class="list"></div></section>
+      <section data-page="sidecars" class="page"><h1>Sidecar Manager</h1><div class="card"><p class="muted"><b>Sidecar</b> — отдельное top-level окно, которое App Tower создаёт для Real Page или Web App. Обычная native Side Panel справа не является sidecar. Здесь появятся только реально открытые отдельные окна.</p></div><div id="sidecar-list" class="list"></div></section>
+      <section data-page="media" class="page"><h1>Media</h1><div class="card"><p class="muted">Core содержит единый media-contract. Управление play/pause появится только у модулей с проверенным transport API; iframe без такого API не эмулируется.</p></div><div id="media-list" class="list"></div></section>
+      <section data-page="permissions" class="page"><h1>Разрешения</h1><div id="permission-list" class="list"></div></section>
+
+      <section data-page="data" class="page">
+        <h1>Sync и данные</h1>
+        <div class="card">
+          <label class="toggle"><input id="sync-enabled" type="checkbox"><span><b>Browser Sync</b><small>Синхронизирует Workspaces (названия и ярлыки) и декларативные модули. Открытые pane, размеры окон и локальные site settings не синхронизируются.</small></span></label>
+          <div class="actions-row"><button id="export-data">Экспорт JSON</button><button id="import-data">Импорт JSON</button><input id="import-file" type="file" accept="application/json,.json" hidden></div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="options.js" type="module"></script>
+</body>
+</html>

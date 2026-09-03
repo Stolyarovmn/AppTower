@@ -1,0 +1,30 @@
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Browser/test profiles
+.profile/
+profiles/
+tmp/
+temp/
+
+# Generated release output
+dist/
+*.crx
+*.pem
+
+# Logs
+*.log
+
+# Python
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+
+# Internal dev artifacts (not for the public repo)
+prompts/
+HANDOFF_MANIFEST.sha256

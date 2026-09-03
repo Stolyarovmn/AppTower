@@ -1,0 +1,115 @@
+{
+  "manifest_version": 3,
+  "name": "App Tower Next",
+  "short_name": "App Tower",
+  "version": "0.8.5",
+  "description": "App Tower workspace layer with reliable current-page capture, native Edge rail controls, resilient collapse/expand, search, workspaces, and modules.",
+  "minimum_chrome_version": "116",
+  "permissions": [
+    "sidePanel",
+    "storage",
+    "favicon",
+    "declarativeNetRequestWithHostAccess",
+    "scripting",
+    "declarativeNetRequestFeedback",
+    "windows",
+    "alarms",
+    "contextMenus"
+  ],
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Open App Tower Next"
+  },
+  "side_panel": {
+    "default_path": "sidepanel/sidepanel.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "content/rail.js"
+      ],
+      "css": [
+        "content/rail.css"
+      ],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "all_frames": true,
+      "match_about_blank": true,
+      "js": [
+        "content/embedded-frame.js"
+      ],
+      "run_at": "document_start",
+      "match_origin_as_fallback": true
+    },
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "all_frames": true,
+      "match_about_blank": true,
+      "match_origin_as_fallback": true,
+      "js": [
+        "content/pwa-discovery.js"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "_favicon/*"
+      ],
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ]
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; frame-src http: https:"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA6g7mKC2gJm2pQXId86ZKjeCx7vob28H+f+XowMTy8/nrMFXnM6HIDyG0UFm7OoV2wYcgpHMgD0F+E6KCQV5CfCeAUtq1r7vGoAisNXutUetMw0L9wt4ZUKA0BDVRv8oht/dZZ3l1aMKZSsSx1s/M3DdWb/huWuRtaPsay2GDgr5WW6sm9yHsNXH96uG+8F5za+lEs5wenkcm51wR9ZUL04Yih3m4Nc+ytLKgun1LdW4gxtLsNRlQD+jUPd3pvpNRM4EoRUfT+YcFIzo9cBK5FwW7fmedkk2MNmSdpWOzG7LoFVtLKTTxLiUIDj5us5KDZrLceFBbgsRo/7uRYHtZuQIDAQAB",
+  "chrome_url_overrides": {
+    "newtab": "newtab/newtab.html"
+  },
+  "optional_permissions": [
+    "contentSettings",
+    "notifications"
+  ],
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": true
+  },
+  "commands": {
+    "open-search": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Space",
+        "mac": "Command+Shift+Space"
+      },
+      "description": "Open App Tower search"
+    }
+  }
+}

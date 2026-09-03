@@ -1,0 +1,63 @@
+name: Bug report
+description: Report a reproducible App Tower runtime regression
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: App Tower version
+      placeholder: 0.8.5
+    validations:
+      required: true
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser
+      options:
+        - Microsoft Edge
+        - Google Chrome
+        - Yandex Browser
+        - Other Chromium
+    validations:
+      required: true
+  - type: input
+    id: browser_version
+    attributes:
+      label: Browser version
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction steps
+      placeholder: "1. ...\n2. ...\n3. ..."
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: checkboxes
+    id: context
+    attributes:
+      label: Relevant state
+      options:
+        - label: Zero shortcuts / onboarding
+        - label: Two panes open
+        - label: After browser restart
+        - label: After extension Reload
+        - label: Dark theme
+        - label: Light theme
+        - label: PWA/Sidecar involved
+        - label: Group/template drag involved
+  - type: textarea
+    id: media
+    attributes:
+      label: Screenshots / logs / exact URLs (if safe)

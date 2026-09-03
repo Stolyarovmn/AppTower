@@ -1,0 +1,29 @@
+{
+  "format": "app-tower-module-catalog",
+  "schemaVersion": 1,
+  "modules": [
+    {
+      "id": "youtube",
+      "name": "YouTube",
+      "version": "1.2.0",
+      "category": "media",
+      "description": "Официальный embed для конкретных видео; обычные страницы YouTube открываются стандартным Auto/Compatibility renderer.",
+      "hosts": [
+        "youtube.com",
+        "youtu.be"
+      ],
+      "manifest": "modules/youtube.json"
+    },
+    {
+      "id": "yandex-music",
+      "name": "Яндекс Музыка",
+      "version": "1.0.0",
+      "category": "media",
+      "description": "Компактные плееры для треков, альбомов и legacy/public плейлистов.",
+      "hosts": [
+        "music.yandex.ru"
+      ],
+      "manifest": "modules/yandex-music.json"
+    }
+  ]
+}

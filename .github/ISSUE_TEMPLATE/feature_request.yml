@@ -1,0 +1,38 @@
+name: Feature request
+description: Propose behavior that fits the App Tower architecture
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: User problem
+      description: Describe the workflow/problem, not only the proposed button.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Desired observable behavior
+    validations:
+      required: true
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Likely subsystem
+      options:
+        - Core / Side Panel
+        - Rail / shortcuts
+        - Workspaces
+        - Search / Recent
+        - Site settings
+        - Module
+        - PWA / sidecar
+        - Media
+        - BrowserAdapter
+        - Options / UX
+        - Unsure
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Browser/service constraints
