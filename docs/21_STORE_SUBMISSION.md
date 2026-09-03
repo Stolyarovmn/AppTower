@@ -130,7 +130,7 @@ empty by default).
 > affiliated with, endorsed by, or developed by Microsoft, and it is
 > unrelated to Edge's retired "Sidebar app list (App Tower)" feature.
 >
-> Questions / data requests: `<your-contact-email>`
+> Questions / data requests: `m.stoliarov@outlook.com`
 
 Naming note (not for the published text): an unrelated extension named
 "WebTower" exists in the stores. App Tower keeps the name "App Tower" and
