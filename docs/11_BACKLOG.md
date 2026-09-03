@@ -11,40 +11,40 @@ Last competitor scan: 2026-09-04.
 - Scores are recalculated whenever a material new item is added.
 - Score = user value 25% + real pain/regression 20% + AppTower fit 15% + measurable performance/UX gain 15% + implementation risk 10% (higher = lower risk) + privacy/permissions 5% + competitor maturity 5% + automated testability 5%.
 
-Current execution gate: **CI RED** on PR #1 (`validate` run 33811327161 failed at head `148db8a170a5c2ed1e116d9090acf2da2103ba62`). No TASK may transition to `ACTIVE` until Quality Loop restores green CI.
+Current execution gate: **CI GREEN** on PR #1 (`validate` run 33816441146 succeeded at head `25ca2257dd74255a05f1e60f97c7cb9c31ed9af9`; static validation, 11/11 Chromium Playwright E2E, packaging and artifact upload all passed). No TASK is currently `ACTIVE`; the Task Executor may select the highest-ranked `READY` TASK on its next run.
 
 ## TASKS
 
 | Rank | Score | Status | TASK | Why now | Dependencies |
 |---:|---:|---|---|---|---|
-| 1 | 97 | BLOCKED | Restore deterministic Side Panel command routing and Add Current Page source resolution | Current E2E reproduces empty URL on Add Current Page and panel routing failure; both are core interaction regressions. | CI/Quality Loop |
-| 2 | 92 | BLOCKED | Serialized state coordinator for panel/rail/workspace mutations | AppTower has multiple concurrent state/event sources; serializing state mutation should reduce race-driven reload/reconnect bugs and technical debt. | Task 1 green; design spec |
-| 3 | 86 | BLOCKED | Command Palette: unified search across shortcuts, templates, workspaces and recent | Strong fit with AppTower's existing search; competitors repeatedly use command bars for fast navigation without expanding UI surface. | Tasks 1–2 green |
+| 1 | 97 | DONE | Restore deterministic Side Panel command routing and Add Current Page source resolution | Core regression suite is now deterministic: Add Current Page resolves the real browser tab; live panel intents are consumed without document recreation; rail lifecycle, restart and split isolation are covered. | Completed by Quality Loop; CI green |
+| 2 | 92 | READY | Serialized state coordinator for panel/rail/workspace mutations | AppTower has multiple concurrent state/event sources; serializing state mutation should reduce race-driven reload/reconnect bugs and technical debt. | Task 1 green; design spec |
+| 3 | 86 | BLOCKED | Command Palette: unified search across shortcuts, templates, workspaces and recent | Strong fit with AppTower's existing search; competitors repeatedly use command bars for fast navigation without expanding UI surface. | Task 2 green |
 | 4 | 84 | BLOCKED | Event-based workspace snapshots + Undo for destructive mutations | High recovery value with low steady-state energy cost if snapshots happen on meaningful mutations rather than polling. | Serialized coordinator preferred |
 | 5 | 82 | BLOCKED | Compatibility ladder UX: Auto / Embedded / Mobile / Real Page with failure-driven fallback | Directly addresses iframe/site compatibility confusion while keeping low-level S/C modes out of the normal UX. | Task 1 green; renderer telemetry |
-| 6 | 80 | BLOCKED | Duplicate shortcut detection and reuse prompt | Low-risk UX improvement validated by multiple tab managers; prevents workspace clutter. | Stable add flow |
+| 6 | 80 | READY | Duplicate shortcut detection and reuse prompt | Low-risk UX improvement validated by multiple tab managers; prevents workspace clutter. | Stable add flow |
 | 7 | 78 | BLOCKED | Native browser tab-group import/export bridge | Useful workspace interoperability without trying to fully replace Chrome/Edge tab management. | Stable groups/workspaces |
 | 8 | 76 | BLOCKED | Glance preview in temporary bottom pane | Leverages AppTower's split-pane model for link preview without spawning a new tab/window. | Stable split-pane lifecycle |
 
 ### TASK 1 — Deterministic panel command routing and Add Current Page
 
-**Rationale:** this is an observed regression, not a competitor-inspired feature. Existing Playwright runs have already reproduced an empty `#site-url` after Add Current Page and a failure path where a command attempts to open a native side panel rather than route to the already-live panel document.
+**Status:** `DONE` on 2026-09-04 after `validate` run 33816441146 passed the complete Chromium E2E suite.
+
+**Rationale:** this was an observed regression/test-hardening task, not a competitor-inspired feature. Investigation separated real product invariants from two invalid E2E assumptions: a closed Shadow DOM cannot be counted through `element.shadowRoot`, and a normal extension tab cannot be treated as a browser-owned active native Side Panel. The corrected tests now exercise the real invariants without adding a product workaround for synthetic browser state.
 
 **Acceptance criteria**
 
-- `+` from the rail and Home always pre-fills the current HTTP(S) browser tab URL/title when no pane source is selected.
-- Search, Add and Organize commands delivered to an already-live panel do not recreate/reload the panel document.
-- Empty workspace remains usable after Chromium restart.
-- No duplicate injected rail is created after reload/reconnect.
-- Existing split-pane isolation remains intact.
+- `+` from the rail and Home always pre-fills the current HTTP(S) browser tab URL/title when no pane source is selected. — covered by `ATN-E2E-000/001`.
+- Search, Add and Organize commands delivered to an already-live panel do not recreate/reload the panel document. — covered by `ATN-E2E-009` document-token invariant and live pending-action delivery.
+- Empty workspace remains usable after Chromium restart. — covered by `ATN-E2E-010`.
+- No duplicate injected rail is created after reload/reconnect. — covered by `ATN-E2E-006` using the unique light-DOM host `#app-tower-next-host`; the rail Shadow DOM is intentionally closed.
+- Existing split-pane isolation remains intact. — covered by `ATN-E2E-003`.
 
-**Automated test plan**
+**Automated test result**
 
-- Playwright persistent-context test for real current-tab resolution.
-- Document-instance token invariant across Search/Add/Organize commands.
-- Restart with zero shortcuts, then Add Current Page and save.
-- Rail uniqueness assertion after page reload.
-- Re-run all existing E2E before marking done.
+- Headed Chromium/Xvfb Playwright suite: **11/11 passed**.
+- Static source validation: passed.
+- Package rebuild and test-package artifact upload: passed.
 
 ### TASK 2 — Serialized state coordinator
 
