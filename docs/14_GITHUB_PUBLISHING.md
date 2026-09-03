@@ -1,62 +1,104 @@
 # 14 — GitHub publishing
 
-## Recommended first repository
+Repository: `Stolyarovmn/AppTower`.
 
-Start private until the live-runtime behavior and permission model are stable.
+## Public-readiness gate
 
-Example with GitHub CLI:
+Keep the repository private until:
 
-```bash
-cd AppTowerNext
-git init
-git add .
-git commit -m "Initial App Tower v0.8.5"
-git branch -M main
-git tag v0.8.5
-gh repo create app-tower --private --source=. --remote=origin --push
-```
+- the current P0 live-runtime queue is completed in real Edge/Chrome;
+- the public privacy/security/support documents are final;
+- source history has been reviewed for secrets and unintentionally published personal data;
+- the store candidate package is reproducible from the tagged source.
 
-Or create the repository in GitHub UI and add the remote manually.
+Before changing visibility to public, review Git history as well as the current tree. Deleting a secret from the latest commit is not sufficient if it remains in history.
 
 ## What belongs in Git
 
 Commit:
+
 - `app/`
 - `variants/`
 - `docs/`
 - `tools/`
 - `.github/`
-- `archive/` (historical release ZIPs + checksums/index, ~3 MB)
-- `LICENSE`, `CHANGELOG.md`, `README.md`, `AGENTS.md`, `.editorconfig`, `.gitignore`
+- `archive/` while the historical binary footprint remains small
+- `LICENSE`
+- `CHANGELOG.md`
+- `README.md`
+- `PRIVACY.md`
+- `SECURITY.md`
+- `CONTRIBUTING.md`
+- `SUPPORT.md`
+- `AGENTS.md`
+- `.editorconfig`
+- `.gitignore`
 
-Do not commit (git-ignored):
-- `prompts/` (internal agent prompts)
-- `HANDOFF_MANIFEST.sha256` (handoff archive artifact)
-- `.pem` (signing keys — never commit or distribute)
-- generated `.crx`
-- `dist/` (generated release output)
-- browser profiles, temporary pack directories
-- secrets
+Do not commit:
 
-Historical ZIPs are only a few MB total. If the project grows,
-move binary release artifacts to GitHub Releases and keep only the checksum
-index in the main branch.
+- private signing keys (`*.pem`);
+- generated `.crx` files;
+- browser profiles;
+- secrets/tokens;
+- generated `dist/` output;
+- internal temporary prompts/artifacts excluded by `.gitignore`.
+
+If historical release ZIPs become large, move binary artifacts to GitHub Releases and keep only metadata/checksums in the main branch.
+
+## Branch policy
+
+Recommended:
+
+- `main` — tested baseline;
+- `feature/<name>` — isolated feature work;
+- `fix/<name>` — regression fixes;
+- `chore/<name>` — repository/tooling/documentation maintenance;
+- release tags — `vX.Y.Z`.
+
+For a public repository, protect `main` with a GitHub ruleset/branch protection policy. At minimum:
+
+- changes through pull requests;
+- required successful validation workflow;
+- block force pushes/deletion of `main`;
+- require the branch to be up to date before merge if the workflow depends on current base state.
+
+Signed commits/tags are recommended for release provenance but are not required by App Tower runtime.
+
+## CI security
+
+GitHub Actions should use the minimum token permissions needed by each workflow. The validation workflow only needs repository contents read access.
+
+Prefer pinning third-party/reusable Actions to immutable full commit SHAs for stronger supply-chain guarantees. If human-readable major tags such as `@v4` are retained, review/update them deliberately.
 
 ## Releases
 
-For a future release:
-- source changes in `app/`
-- tag: `vX.Y.Z`
-- attach generated Edge/Chrome and Yandex fallback ZIPs to GitHub Release
-- update changelog/status
-- do not rewrite historical release files
+A public release should be created only after live verification for the release's claimed behavior.
 
-## Branch policy suggestion
+Release flow:
 
-- `main`: tested baseline
-- `feature/<name>`: isolated feature
-- `fix/<name>`: regression fixes
-- release tags: `v1.0.0`, `v1.0.1`, ...
+1. finish source changes in `app/`;
+2. update version/schema/docs;
+3. run static validation and packaging;
+4. perform live Edge/Chrome acceptance tests;
+5. commit the verified source baseline;
+6. create an immutable release tag `vX.Y.Z`;
+7. create a GitHub Release from that tag;
+8. attach generated Edge/Chrome and fallback ZIPs plus checksums;
+9. publish/store-submit the exact package built from that tag.
 
-Avoid a long-lived branch per browser; generate/maintain browser variants from
-shared source rules whenever possible.
+Do not rewrite historical release assets after publication. If a package must change, create a new version/tag.
+
+## Repository metadata before public launch
+
+Fill GitHub About metadata with a concise description and topics. Suggested topics:
+
+- `browser-extension`
+- `microsoft-edge`
+- `google-chrome`
+- `chromium`
+- `manifest-v3`
+- `side-panel`
+- `productivity`
+- `pwa`
+
+Do not use repository metadata that implies Microsoft endorsement or ownership.
