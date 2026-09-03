@@ -5,13 +5,13 @@ Last competitor scan: 2026-09-04.
 ## Rules
 
 - One functional TASK may be `ACTIVE` at a time (global WIP = 1).
-- New TASK execution is blocked while CI is red.
+- New TASK execution is blocked while CI is red or revalidation is pending after a new change.
 - `TASKS` require acceptance criteria and an automated test plan.
 - `IDEAS` are retained with a score and promotion condition.
 - Scores are recalculated whenever a material new item is added.
 - Score = user value 25% + real pain/regression 20% + AppTower fit 15% + measurable performance/UX gain 15% + implementation risk 10% (higher = lower risk) + privacy/permissions 5% + competitor maturity 5% + automated testability 5%.
 
-Current execution gate: **CI GREEN** on PR #1 (`validate` run 33816441146 succeeded at head `25ca2257dd74255a05f1e60f97c7cb9c31ed9af9`; static validation, 11/11 Chromium Playwright E2E, packaging and artifact upload all passed). No TASK is currently `ACTIVE`; the Task Executor may select the highest-ranked `READY` TASK on its next run.
+Current execution gate: **CI REVALIDATION PENDING** after adding the first performance baseline probe/documentation. The immediately preceding runtime head `b0d8f718253aba5a07bc545ba39cea3e957a960d` passed `validate` run 33816598026. No TASK is currently `ACTIVE`; the Task Executor must wait for the new head to return green before selecting a `READY` TASK.
 
 ## TASKS
 
@@ -19,12 +19,15 @@ Current execution gate: **CI GREEN** on PR #1 (`validate` run 33816441146 succee
 |---:|---:|---|---|---|---|
 | 1 | 97 | DONE | Restore deterministic Side Panel command routing and Add Current Page source resolution | Core regression suite is now deterministic: Add Current Page resolves the real browser tab; live panel intents are consumed without document recreation; rail lifecycle, restart and split isolation are covered. | Completed by Quality Loop; CI green |
 | 2 | 92 | READY | Serialized state coordinator for panel/rail/workspace mutations | AppTower has multiple concurrent state/event sources; serializing state mutation should reduce race-driven reload/reconnect bugs and technical debt. | Task 1 green; design spec |
-| 3 | 86 | BLOCKED | Command Palette: unified search across shortcuts, templates, workspaces and recent | Strong fit with AppTower's existing search; competitors repeatedly use command bars for fast navigation without expanding UI surface. | Task 2 green |
-| 4 | 84 | BLOCKED | Event-based workspace snapshots + Undo for destructive mutations | High recovery value with low steady-state energy cost if snapshots happen on meaningful mutations rather than polling. | Serialized coordinator preferred |
-| 5 | 82 | BLOCKED | Compatibility ladder UX: Auto / Embedded / Mobile / Real Page with failure-driven fallback | Directly addresses iframe/site compatibility confusion while keeping low-level S/C modes out of the normal UX. | Task 1 green; renderer telemetry |
-| 6 | 80 | READY | Duplicate shortcut detection and reuse prompt | Low-risk UX improvement validated by multiple tab managers; prevents workspace clutter. | Stable add flow |
-| 7 | 78 | BLOCKED | Native browser tab-group import/export bridge | Useful workspace interoperability without trying to fully replace Chrome/Edge tab management. | Stable groups/workspaces |
-| 8 | 76 | BLOCKED | Glance preview in temporary bottom pane | Leverages AppTower's split-pane model for link preview without spawning a new tab/window. | Stable split-pane lifecycle |
+| 3 | 85 | BLOCKED | Replace periodic resource-budget polling with event-driven nearest-deadline scheduling | Current MV3 worker creates `atn-resource-budget` every minute even when no resource lease exists; this is deterministic background wakeup waste and can be removed without changing the 5-minute sleep/max-live semantics. | Collect baseline + green performance probe |
+| 4 | 86 | BLOCKED | Command Palette: unified search across shortcuts, templates, workspaces and recent | Strong fit with AppTower's existing search; competitors repeatedly use command bars for fast navigation without expanding UI surface. | Task 2 green |
+| 5 | 84 | BLOCKED | Event-based workspace snapshots + Undo for destructive mutations | High recovery value with low steady-state energy cost if snapshots happen on meaningful mutations rather than polling. | Serialized coordinator preferred |
+| 6 | 82 | BLOCKED | Compatibility ladder UX: Auto / Embedded / Mobile / Real Page with failure-driven fallback | Directly addresses iframe/site compatibility confusion while keeping low-level S/C modes out of the normal UX. | Task 1 green; renderer telemetry |
+| 7 | 80 | READY | Duplicate shortcut detection and reuse prompt | Low-risk UX improvement validated by multiple tab managers; prevents workspace clutter. | Stable add flow |
+| 8 | 78 | BLOCKED | Native browser tab-group import/export bridge | Useful workspace interoperability without trying to fully replace Chrome/Edge tab management. | Stable groups/workspaces |
+| 9 | 76 | BLOCKED | Glance preview in temporary bottom pane | Leverages AppTower's split-pane model for link preview without spawning a new tab/window. | Stable split-pane lifecycle |
+
+> Ordering is by score; status/dependency gates can keep a higher-scored TASK blocked while a lower-scored TASK is READY. Only the Task Executor may switch a TASK to `ACTIVE`.
 
 ### TASK 1 — Deterministic panel command routing and Add Current Page
 
@@ -62,6 +65,27 @@ Current execution gate: **CI GREEN** on PR #1 (`validate` run 33816441146 succee
 - Deterministic ordering unit tests with intentionally delayed async mutations.
 - E2E rapid sequences: collapse/expand/search/add/reconnect and workspace changes.
 - Assert one persist/render phase per logical mutation where applicable.
+
+### TASK 3 — Event-driven resource budget scheduling
+
+**Rationale:** `app/background.js` creates `atn-resource-budget` with `periodInMinutes:1` on both install and browser startup. Its handler invokes `enforceResourceBudget()`, which immediately returns if `resourceLeases` is empty. This guarantees periodic AppTower-owned service-worker wakeups even when the resource-budget subsystem has no work.
+
+**Acceptance criteria**
+
+- No periodic resource-budget alarm exists while there are zero live resource leases.
+- With leases present, schedule the next check for the earliest meaningful deadline rather than fixed one-minute polling.
+- Creating/touching/removing a lease deterministically reschedules or clears the next alarm.
+- Existing `RESOURCE_IDLE_MS = 5 minutes` and `RESOURCE_MAX_LIVE = 6` semantics remain unchanged.
+- Browser restart restores the correct next resource-budget check from persisted leases.
+- Existing pane-isolation/resource-sleep E2E behavior remains green.
+
+**Automated test plan**
+
+- Test alarm scheduling with zero, one and multiple leases.
+- Assert no recurring alarm when no leases exist.
+- Assert nearest-deadline rescheduling after touch/remove.
+- E2E verify pane sleep still does not reload an unrelated pane.
+- Compare service-worker wakeup count before/after once instrumentation is available.
 
 ## IDEAS
 
