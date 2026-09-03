@@ -11,14 +11,14 @@ Last competitor scan: 2026-09-04.
 - Scores are recalculated whenever a material new item is added.
 - Score = user value 25% + real pain/regression 20% + AppTower fit 15% + measurable performance/UX gain 15% + implementation risk 10% (higher = lower risk) + privacy/permissions 5% + competitor maturity 5% + automated testability 5%.
 
-Current execution gate: **CI GREEN before this backlog-only change**. PR #1 head `46b408ce242705b661513f8ed3adb828497fe07c` passed `validate` run 33816903575. This documentation commit requires normal CI revalidation before the Task Executor may start a `READY` TASK. No TASK is currently `ACTIVE`.
+Current execution gate: **TASK 2 ACTIVE**. Global WIP lock is held by the Serialized state coordinator implementation. No other functional TASK may start until TASK 2 is DONE/BLOCKED/REJECTED and CI is green.
 
 ## TASKS
 
 | Rank | Score | Status | TASK | Why now | Dependencies |
 |---:|---:|---|---|---|---|
 | 1 | 97 | DONE | Restore deterministic Side Panel command routing and Add Current Page source resolution | Core regression suite is now deterministic: Add Current Page resolves the real browser tab; live panel intents are consumed without document recreation; rail lifecycle, restart and split isolation are covered. | Completed by Quality Loop; CI green |
-| 2 | 92 | READY | Serialized state coordinator for panel/rail/workspace mutations | AppTower has multiple concurrent state/event sources; serializing state mutation should reduce race-driven reload/reconnect bugs and technical debt. | Task 1 green; design spec |
+| 2 | 92 | ACTIVE | Serialized state coordinator for panel/rail/workspace mutations | AppTower has multiple concurrent state/event sources; serializing state mutation should reduce race-driven reload/reconnect bugs and technical debt. | Task 1 green; design spec |
 | 3 | 89 | READY | Safe pane sleep guards for unsaved input, active media and explicit keep-awake | AppTower can unload inactive iframe panes; sleeping a pane with unsaved edits or playing media can destroy user state or interrupt playback. Drowzy validates the general protection pattern for browser tab suspension; AppTower can implement it independently using its existing all-frame embedded content-script bridge. | Stable embedded-frame bridge; resource lease/sleep path |
 | 4 | 86 | BLOCKED | Command Palette: unified search across shortcuts, templates, workspaces and recent | Strong fit with AppTower's existing search; competitors repeatedly use command bars for fast navigation without expanding UI surface. | Task 2 green |
 | 5 | 85 | BLOCKED | Replace periodic resource-budget polling with event-driven nearest-deadline scheduling | Current MV3 worker creates `atn-resource-budget` every minute even when no resource lease exists; this is deterministic background wakeup waste and can be removed without changing the 5-minute sleep/max-live semantics. | Collect baseline + green performance probe |
@@ -51,6 +51,8 @@ Current execution gate: **CI GREEN before this backlog-only change**. PR #1 head
 - Package rebuild and test-package artifact upload: passed.
 
 ### TASK 2 — Serialized state coordinator
+
+**Status:** `ACTIVE` since 2026-09-04. Global WIP lock held by Task Executor.
 
 **Rationale:** Lunma (Apache-2.0) documents a strongly structured local extension architecture and automated Playwright testing. The useful pattern for AppTower is independent clean-room implementation of a single serialized mutation queue around workspace/panel lifecycle state, not code copying.
 
