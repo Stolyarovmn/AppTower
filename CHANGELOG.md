@@ -3,9 +3,24 @@
 The authoritative historical source packages are in `archive/releases/`.
 Historical README text is preserved in `archive/release-notes/`.
 
+## 1.0.0
+
+Store launch release for Microsoft Edge and Google Chrome (2026-09-03).
+
+- Renamed from "App Tower Next" to "App Tower" across the app, the
+  generated Yandex sidecar variant, docs, and tooling.
+- Version 0.8.5 -> 1.0.0 as the first public store release.
+- Store listing, privacy text, and submission checklist:
+  `docs/21_STORE_SUBMISSION.md`.
+- Product context: Microsoft is retiring Edge's legacy "Sidebar app
+  list (App Tower)"; App Tower is an independent extension with no
+  affiliation with Microsoft or that legacy feature.
+- The three v0.8.5 regression fixes carry over unchanged; live
+  Edge/Chrome verification remains pending (`docs/21` section 7).
+
 ## 0.8.5
 
-Current handoff baseline.
+Previous handoff baseline (superseded by 1.0.0).
 
 Focus:
 - current-page capture from browser tab / pane

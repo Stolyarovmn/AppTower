@@ -27,7 +27,7 @@ declarative media module, PWA/app launcher, or ordinary web compatibility path.
 
 ## What to trust
 
-- `app/` is the current Edge/Chrome source at v0.8.5.
+- `app/` is the current Edge/Chrome source at v1.0.0.
 - `variants/yandex-sidecar/` is the current fallback variant.
 - `archive/releases/` is historical evidence only.
 - `docs/01_PROJECT_STATUS.md` separates implemented code from live-verified
@@ -36,7 +36,7 @@ declarative media module, PWA/app launcher, or ordinary web compatibility path.
 
 ## Immediate live-test priority
 
-v0.8.5 was specifically built to fix three regressions that still require a
+v0.8.5 was specifically built to fix three regressions (carried into v1.0.0) that still require a
 real Edge test:
 
 1. Empty workspace -> **Add current page** must prefill the browser web tab.

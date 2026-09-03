@@ -1,4 +1,4 @@
-# AGENTS.md — App Tower Next
+# AGENTS.md — App Tower
 
 These rules are mandatory for Codex or any coding agent working in this repo.
 

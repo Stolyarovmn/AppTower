@@ -7,7 +7,7 @@ body:
     id: version
     attributes:
       label: App Tower version
-      placeholder: 0.8.5
+      placeholder: 1.0.0
     validations:
       required: true
   - type: dropdown

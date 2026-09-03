@@ -4,7 +4,7 @@ Purpose: what to submit, how to justify each permission, the privacy policy to
 publish, and the honest limitations to state. Keep this in sync with
 `docs/08_SECURITY_PRIVACY_PERMISSIONS.md` and `app/manifest.json`.
 
-Current build: **v0.8.5** (`STATE_SCHEMA_VERSION` 15).
+Current build: **v1.0.0** (`STATE_SCHEMA_VERSION` 15).
 
 ## 1. Distribution targets
 - **Microsoft Edge Add-ons** — primary (native Side Panel support).
@@ -90,9 +90,9 @@ empty by default).
 
 ## 3. Privacy policy (publish this text)
 
-> **Privacy — App Tower Next**
+> **Privacy — App Tower**
 >
-> App Tower Next is a local browser extension. It organizes the sites you choose
+> App Tower is a local browser extension. It organizes the sites you choose
 > into a persistent rail and two independent web panes.
 >
 > **What we collect: nothing that leaves your device automatically.** The
@@ -126,7 +126,15 @@ empty by default).
 > **You control everything:** you can export your data as JSON at any time and
 > remove the extension (which removes all stored data).
 >
+> **Independence:** App Tower is an independent product. It is not
+> affiliated with, endorsed by, or developed by Microsoft, and it is
+> unrelated to Edge's retired "Sidebar app list (App Tower)" feature.
+>
 > Questions / data requests: `<your-contact-email>`
+
+Naming note (not for the published text): an unrelated extension named
+"WebTower" exists in the stores. App Tower keeps the name "App Tower" and
+differentiates through the store description, not the name.
 
 ## 4. Permissions table (paste into the store form)
 
@@ -182,7 +190,7 @@ empty by default).
 - [ ] P0 live-verification queue (`docs/10`) passed in a real Edge/Chrome:
       add-page-from-empty-workspace; collapse/expand ×5 + restart (0 sites
       lost); settings glyph light/dark @100%/150%.
-- [ ] Version matches `manifest.json`, `app/README.md`, `STATUS.json` (0.8.5).
+- [ ] Version matches `manifest.json`, `app/README.md`, `STATUS.json` (1.0.0).
 - [ ] Edge and Yandex/Chrome variant kept consistent (`tools/make_yandex_variant.py`).
 
 > Status: Edge/Chrome runtime behavior is **implemented; awaiting live

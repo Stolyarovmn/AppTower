@@ -2,7 +2,7 @@
 
 ## Product statement
 
-App Tower Next is a persistent browser workspace layer for quickly opening,
+App Tower is a persistent browser workspace layer for quickly opening,
 organizing and operating web applications/sites beside the current browser tab.
 
 It is not intended to become a replacement browser. It provides a stable

@@ -1,4 +1,4 @@
-# App Tower Next v0.8.5
+# App Tower v1.0.0
 
 ## v0.8.5 — current page / collapse recovery
 
@@ -318,7 +318,7 @@ so installation does not depend on Yandex supporting that Chrome API.
 2. Open `edge://extensions` or `chrome://extensions`.
 3. Enable Developer mode if needed.
 4. Load unpacked, or replace the files of the already-loaded unpacked build.
-5. Press Reload on App Tower Next.
+5. Press Reload on App Tower.
 6. Reload already-open HTTP/HTTPS pages so the current collapsed rail/content
    scripts are injected.
 

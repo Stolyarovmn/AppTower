@@ -729,7 +729,7 @@ async function clearMediaState(windowId,pane) {
 async function initializeNativeContextMenus() {
   if (!chrome.contextMenus) return;
   try { await chrome.contextMenus.removeAll(); } catch {}
-  chrome.contextMenus.create({id:"atn-root",title:"App Tower Next",contexts:["page","link","selection"]});
+  chrome.contextMenus.create({id:"atn-root",title:"App Tower",contexts:["page","link","selection"]});
   chrome.contextMenus.create({id:"atn-open",parentId:"atn-root",title:"Открыть App Tower",contexts:["page","link","selection"]});
   chrome.contextMenus.create({id:"atn-add",parentId:"atn-root",title:"Добавить текущую страницу",contexts:["page"]});
   chrome.contextMenus.create({id:"atn-bottom",parentId:"atn-root",title:"Открыть ссылку снизу",contexts:["link"]});

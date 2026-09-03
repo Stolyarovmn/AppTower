@@ -38,7 +38,7 @@
   }
 
   const host=document.createElement("aside");
-  host.id=HOST_ID; host.className=HIDDEN_CLASS; host.setAttribute("aria-label","App Tower Next");
+  host.id=HOST_ID; host.className=HIDDEN_CLASS; host.setAttribute("aria-label","App Tower");
   const shadow=host.attachShadow({mode:"closed"});
   shadow.innerHTML=`<style>
     :host,*{box-sizing:border-box}
@@ -183,7 +183,7 @@
     }
     @media(prefers-reduced-motion:reduce){.sites-scroll{scroll-behavior:auto}}
   </style>
-  <nav class="rail" aria-label="App Tower Next sites">
+  <nav class="rail" aria-label="App Tower sites">
     <div class="rail-chrome"><div class="close-slot"></div></div>
     <div class="rail-head"><div class="expand-slot"></div></div>
     <div class="rail-primary">
@@ -382,7 +382,7 @@
     for(const item of currentShortcuts)if(item?.id)sitesHost.append(shortcutButton(item));
     addSlot.replaceChildren(toolButton("plus","Добавить текущую страницу","add"));
     groupSlot.replaceChildren(toolButton("group","Группы и шаблоны","organize"));
-    footer.replaceChildren(toolButton("search","Поиск","search"),toolButton("settings","Настройки · App Tower Next v0.8.5","settings"));
+    footer.replaceChildren(toolButton("search","Поиск","search"),toolButton("settings","Настройки · App Tower v1.0.0","settings"));
     queueMicrotask(updateScrollControls);
   }
 

@@ -10,10 +10,10 @@ Example with GitHub CLI:
 cd AppTowerNext
 git init
 git add .
-git commit -m "Initial App Tower Next v0.8.5"
+git commit -m "Initial App Tower v0.8.5"
 git branch -M main
 git tag v0.8.5
-gh repo create app-tower-next --private --source=. --remote=origin --push
+gh repo create app-tower --private --source=. --remote=origin --push
 ```
 
 Or create the repository in GitHub UI and add the remote manually.
@@ -56,7 +56,7 @@ For a future release:
 - `main`: tested baseline
 - `feature/<name>`: isolated feature
 - `fix/<name>`: regression fixes
-- release tags: `v0.8.5`, `v0.8.6`, ...
+- release tags: `v1.0.0`, `v1.0.1`, ...
 
 Avoid a long-lived branch per browser; generate/maintain browser variants from
 shared source rules whenever possible.

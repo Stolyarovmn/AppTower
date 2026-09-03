@@ -25,7 +25,7 @@ Do not add:
 
 ### YouTube
 
-v0.8.5 bundle uses YouTube module 1.2.x behavior:
+Current bundle uses YouTube module 1.2.x behavior (unchanged since v0.8.5):
 - specific video/Shorts/live URLs -> official privacy-enhanced embed
 - generic YouTube pages -> fall through to normal Auto/Compatibility path
 

@@ -33,8 +33,8 @@ manifest = json.loads((ROOT / "app" / "manifest.json").read_text(encoding="utf-8
 version = manifest["version"]
 
 DIST.mkdir(exist_ok=True)
-main_zip = DIST / f"AppTowerNext-v{version}.zip"
-yandex_zip = DIST / f"AppTowerNext-v{version}-yandex-sidecar.zip"
+main_zip = DIST / f"AppTower-v{version}.zip"
+yandex_zip = DIST / f"AppTower-v{version}-yandex-sidecar.zip"
 
 for path in [main_zip, yandex_zip]:
     if path.exists():

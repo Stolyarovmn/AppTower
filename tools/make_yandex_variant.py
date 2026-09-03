@@ -16,7 +16,7 @@ manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
 manifest["permissions"] = [p for p in manifest.get("permissions", []) if p != "sidePanel"]
 manifest.pop("side_panel", None)
 manifest["description"] = (
-    "App Tower Next with sidecar fallback for Chromium-family browsers "
+    "App Tower with sidecar fallback for Chromium-family browsers "
     "without chrome.sidePanel."
 )
 manifest_path.write_text(

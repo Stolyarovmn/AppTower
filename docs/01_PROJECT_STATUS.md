@@ -8,7 +8,7 @@ Status legend:
 - 🕒 planned or deferred
 - ⛔ not available through the browser public API / intentionally not pursued
 
-## Current baseline: v0.8.5
+## Current baseline: v1.0.0
 
 | Area | Status | Notes |
 |---|---|---|

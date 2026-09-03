@@ -7,7 +7,7 @@ Generated for the GitHub/Codex handoff on 2026-09-02.
 ```text
 app: JSON 4, JS 13, manifest/DOM/import checks OK
 variants/yandex-sidecar: JSON 4, JS 13, manifest/DOM/import checks OK
-App Tower Next validation: OK
+App Tower validation: OK
 ```
 
 Exit code: `0`

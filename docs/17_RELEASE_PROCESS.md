@@ -2,7 +2,7 @@
 
 ## Versioning
 
-Current version: `0.8.5`.
+Current version: `1.0.0`.
 
 Until 1.0, use:
 - patch: bug/regression fixes

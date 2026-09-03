@@ -2694,7 +2694,7 @@ importFile.addEventListener("change", async () => {
   if (!file) return;
   try {
     const parsed = validateImport(JSON.parse(await file.text()));
-    if (!parsed) throw new Error("Некорректный файл App Tower Next");
+    if (!parsed) throw new Error("Некорректный файл App Tower");
     pendingImport = parsed;
     importSummary.textContent = `Найдено ярлыков: ${parsed.sites.length}; модулей: ${parsed.modules.length}; PWA-настроек: ${Object.keys(parsed.pwaPreferences).length}. Можно объединить их с текущими или полностью заменить текущую конфигурацию.`;
     if (!importDialog.open) importDialog.showModal();

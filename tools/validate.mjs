@@ -107,7 +107,7 @@ function validateTree(root, {fallback=false}={}) {
 
   const readme = path.join(root,"README.md");
   if (fs.existsSync(readme)) {
-    const first = read(readme).match(/App Tower Next v(\d+\.\d+\.\d+)/);
+    const first = read(readme).match(/App Tower v(\d+\.\d+\.\d+)/);
     if (first && first[1] !== manifest.version) {
       fail(`${label}: README version ${first[1]} != manifest ${manifest.version}`);
     }
@@ -123,4 +123,4 @@ if (appManifest && fallbackManifest && appManifest.version !== fallbackManifest.
   fail(`variant version mismatch: app ${appManifest.version}, yandex ${fallbackManifest.version}`);
 }
 
-if (!process.exitCode) console.log("App Tower Next validation: OK");
+if (!process.exitCode) console.log("App Tower validation: OK");

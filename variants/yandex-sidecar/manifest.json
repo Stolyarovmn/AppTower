@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "App Tower Next",
+  "name": "App Tower",
   "short_name": "App Tower",
-  "version": "0.8.5",
-  "description": "App Tower Next with sidecar fallback for Chromium-family browsers without chrome.sidePanel.",
+  "version": "1.0.0",
+  "description": "App Tower with sidecar fallback for Chromium-family browsers without chrome.sidePanel.",
   "minimum_chrome_version": "116",
   "permissions": [
     "storage",
@@ -24,7 +24,7 @@
     "type": "module"
   },
   "action": {
-    "default_title": "Open App Tower Next"
+    "default_title": "Open App Tower"
   },
   "content_scripts": [
     {

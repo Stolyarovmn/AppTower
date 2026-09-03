@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "App Tower Next",
+  "name": "App Tower",
   "short_name": "App Tower",
-  "version": "0.8.5",
+  "version": "1.0.0",
   "description": "App Tower workspace layer with reliable current-page capture, native Edge rail controls, resilient collapse/expand, search, workspaces, and modules.",
   "minimum_chrome_version": "116",
   "permissions": [
@@ -25,7 +25,7 @@
     "type": "module"
   },
   "action": {
-    "default_title": "Open App Tower Next"
+    "default_title": "Open App Tower"
   },
   "side_panel": {
     "default_path": "sidepanel/sidepanel.html"

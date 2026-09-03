@@ -1,6 +1,6 @@
 {
-  "project": "App Tower Next",
-  "current_version": "0.8.5",
+  "project": "App Tower",
+  "current_version": "1.0.0",
   "state_schema_version": 15,
   "primary_targets": [
     "Microsoft Edge",

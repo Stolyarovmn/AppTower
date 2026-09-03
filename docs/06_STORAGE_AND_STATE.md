@@ -20,7 +20,7 @@ Current keys include:
 - `atnSyncUpdatedAt`
 - contextual/options routing keys such as `atnOptionsRoute`
 
-Current state schema version in v0.8.5: **15**.
+Current state schema version: **15** (unchanged since v0.8.5).
 
 Do not change persistent shape without migration.
 

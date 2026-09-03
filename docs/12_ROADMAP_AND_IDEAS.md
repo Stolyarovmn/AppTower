@@ -1,6 +1,6 @@
 # 12 — Roadmap and idea backlog
 
-## Stage 0 — stabilize v0.8.5 first
+## Stage 0 — stabilize v1.0.0 first
 
 Do not add major surface area until P0 lifecycle/current-page paths pass live
 Edge tests.

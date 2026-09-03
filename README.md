@@ -1,6 +1,6 @@
-# App Tower Next
+# App Tower
 
-App Tower Next — Manifest V3 расширение для Microsoft Edge и Google Chrome,
+App Tower — Manifest V3 расширение для Microsoft Edge и Google Chrome,
 которое воссоздаёт и расширяет концепт правой «башни приложений»: постоянная
 полка-рейл, нативный Side Panel (где поддерживается), две независимые web-панели,
 группы/шаблоны, воркспейсы, PWA/модули, управление ресурсами и «план управления»
@@ -62,7 +62,7 @@ python tools/make_yandex_variant.py # (пере)генерация Yandex-fallba
 ## Каталог
 
 ```text
-app/                         исходники расширения (Edge/Chrome, v0.8.5)
+app/                         исходники расширения (Edge/Chrome, v1.0.0)
 variants/yandex-sidecar/     Chromium/Yandex fallback (генерируется)
 archive/releases/            исторические релизы (ZIP)
 archive/release-notes/       исторические release notes

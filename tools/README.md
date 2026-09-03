@@ -37,8 +37,8 @@ python tools/package.py
 ```
 
 Output:
-- `dist/AppTowerNext-vX.Y.Z.zip`
-- `dist/AppTowerNext-vX.Y.Z-yandex-sidecar.zip`
+- `dist/AppTower-vX.Y.Z.zip`
+- `dist/AppTower-vX.Y.Z-yandex-sidecar.zip`
 - `dist/CHECKSUMS.sha256`
 
 All ZIPs are full replacement packages.
