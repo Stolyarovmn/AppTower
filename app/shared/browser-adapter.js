@@ -1,5 +1,7 @@
 const FALLBACK_WINDOW_KEY = "atnTowerFallbackWindowsV1";
 const DISABLED_SIDE_PANEL_TABS_KEY = "atnDisabledSidePanelTabsV1";
+const PANEL_OPEN_WINDOWS_KEY = "atnPanelOpenWindowsV025";
+const COLLAPSED_WINDOWS_KEY = "atnCollapsedWindowsV037";
 
 // Native chrome.sidePanel pages do not get our sidecar hostWindowId query
 // parameter. sidepanel.js historically did Number(params.get("hostWindowId")),
@@ -65,6 +67,17 @@ async function disabledSidePanelTabIds() {
   return new Set((data[DISABLED_SIDE_PANEL_TABS_KEY] || []).map(Number).filter(Number.isInteger));
 }
 
+async function nativePanelMarkedOpen(windowId) {
+  try {
+    const data = await chrome.storage.session.get([PANEL_OPEN_WINDOWS_KEY,COLLAPSED_WINDOWS_KEY]);
+    const open = new Set((data[PANEL_OPEN_WINDOWS_KEY] || []).map(Number).filter(Number.isInteger));
+    const collapsed = new Set((data[COLLAPSED_WINDOWS_KEY] || []).map(Number).filter(Number.isInteger));
+    return open.has(Number(windowId)) && !collapsed.has(Number(windowId));
+  } catch {
+    return false;
+  }
+}
+
 export async function openTowerContainer(windowId, {intent=null, tabId=null} = {}) {
   const numericWindowId = Number(windowId);
   const numericTabId = Number(tabId);
@@ -88,6 +101,17 @@ export async function openTowerContainer(windowId, {intent=null, tabId=null} = {
       await Promise.all([enablePromise,openPromise]);
       forgetDisabledSidePanelTab(numericTabId).catch(()=>{});
       return {kind:"sidePanel", windowId:numericWindowId, tabId:numericTabId, restored:true};
+    }
+
+    // A live App Tower Side Panel already receives intents through the shared
+    // pendingAction/storage channel. Calling sidePanel.open() again is both
+    // unnecessary and harmful: Chromium can reject it with "No active side
+    // panel for tabId", while Edge may recreate the visible panel document.
+    // The background worker owns these session markers and clears the open
+    // marker on an authoritative close/collapse event, so reuse only when the
+    // window is marked open and explicitly not collapsed.
+    if (await nativePanelMarkedOpen(numericWindowId)) {
+      return {kind:"sidePanel", windowId:numericWindowId, reused:true};
     }
 
     await chrome.sidePanel.open({windowId:numericWindowId});
