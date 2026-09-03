@@ -1,7 +1,5 @@
 const FALLBACK_WINDOW_KEY = "atnTowerFallbackWindowsV1";
 const DISABLED_SIDE_PANEL_TABS_KEY = "atnDisabledSidePanelTabsV1";
-const PANEL_OPEN_WINDOWS_KEY = "atnPanelOpenWindowsV025";
-const COLLAPSED_WINDOWS_KEY = "atnCollapsedWindowsV037";
 
 // Native chrome.sidePanel pages do not get our sidecar hostWindowId query
 // parameter. sidepanel.js historically did Number(params.get("hostWindowId")),
@@ -67,17 +65,6 @@ async function disabledSidePanelTabIds() {
   return new Set((data[DISABLED_SIDE_PANEL_TABS_KEY] || []).map(Number).filter(Number.isInteger));
 }
 
-async function nativePanelMarkedOpen(windowId) {
-  try {
-    const data = await chrome.storage.session.get([PANEL_OPEN_WINDOWS_KEY,COLLAPSED_WINDOWS_KEY]);
-    const open = new Set((data[PANEL_OPEN_WINDOWS_KEY] || []).map(Number).filter(Number.isInteger));
-    const collapsed = new Set((data[COLLAPSED_WINDOWS_KEY] || []).map(Number).filter(Number.isInteger));
-    return open.has(Number(windowId)) && !collapsed.has(Number(windowId));
-  } catch {
-    return false;
-  }
-}
-
 export async function openTowerContainer(windowId, {intent=null, tabId=null} = {}) {
   const numericWindowId = Number(windowId);
   const numericTabId = Number(tabId);
@@ -103,21 +90,8 @@ export async function openTowerContainer(windowId, {intent=null, tabId=null} = {
       return {kind:"sidePanel", windowId:numericWindowId, tabId:numericTabId, restored:true};
     }
 
-    // Start open() immediately so a genuine collapsed->open action preserves
-    // Chromium's user-gesture chain. Some Chromium builds reject a redundant
-    // open of an already-live App Tower document with "No active side panel for
-    // tabId". Only after that rejection do we consult background-owned session
-    // markers; the error is benign only when the window is still known open and
-    // explicitly not collapsed. Otherwise propagate the real open failure.
-    try {
-      await chrome.sidePanel.open({windowId:numericWindowId});
-      return {kind:"sidePanel", windowId:numericWindowId};
-    } catch (error) {
-      if (await nativePanelMarkedOpen(numericWindowId)) {
-        return {kind:"sidePanel", windowId:numericWindowId, reused:true};
-      }
-      throw error;
-    }
+    await chrome.sidePanel.open({windowId:numericWindowId});
+    return {kind:"sidePanel", windowId:numericWindowId};
   }
 
   const hostWindowId = Number.isInteger(Number(windowId)) ? Number(windowId) : null;
