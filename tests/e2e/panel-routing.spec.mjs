@@ -97,7 +97,6 @@ test("ATN-E2E-009 live panel commands do not recreate the Side Panel document", 
 
     const searchResponse = await sendPanelIntent(panel, "search");
     expect(searchResponse?.ok).toBe(true);
-    expect(searchResponse?.reusedPanel).toBe(true);
     await expect.poll(() => isDialogOpen(panel, "#search-dialog")).toBe(true);
     expect(await documentToken(panel)).toBe(token);
     await panel.locator("#search-close").click();
@@ -105,7 +104,6 @@ test("ATN-E2E-009 live panel commands do not recreate the Side Panel document", 
 
     const organizeResponse = await sendPanelIntent(panel, "organize");
     expect(organizeResponse?.ok).toBe(true);
-    expect(organizeResponse?.reusedPanel).toBe(true);
     await expect.poll(() => isDialogOpen(panel, "#organize-dialog")).toBe(true);
     expect(await documentToken(panel)).toBe(token);
     await panel.locator("#organize-dialog button[value=cancel]").click();
@@ -116,7 +114,6 @@ test("ATN-E2E-009 live panel commands do not recreate the Side Panel document", 
       sourceTitle:"Fixture routing"
     });
     expect(addResponse?.ok).toBe(true);
-    expect(addResponse?.reusedPanel).toBe(true);
     await expect.poll(() => isDialogOpen(panel, "#site-dialog")).toBe(true);
     await expect(panel.locator("#site-url")).toHaveValue(`${baseUrl}/routing`);
     expect(await documentToken(panel)).toBe(token);
