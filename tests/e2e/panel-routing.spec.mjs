@@ -124,7 +124,7 @@ test("ATN-E2E-009 live panel consumes intents without recreation and page rail s
     await expect.poll(() => isDialogOpen(panel, "#site-dialog")).toBe(true);
     await expect(panel.locator("#site-url")).toHaveValue(`${baseUrl}/routing`);
     expect(await documentToken(panel)).toBe(token);
-    await panel.locator("#site-dialog button[value=cancel]").click();
+    await panel.locator("#cancel-site").click();
     await expect.poll(() => isDialogOpen(panel, "#site-dialog")).toBe(false);
   } finally {
     await context.close().catch(() => {});
