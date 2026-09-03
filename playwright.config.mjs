@@ -6,7 +6,7 @@ export default defineConfig({
   workers:1,
   timeout:45_000,
   expect:{timeout:7_500},
-  retries:process.env.CI ? 1 : 0,
+  retries:0,
   reporter:process.env.CI
     ? [["line"],["html",{outputFolder:"playwright-report",open:"never"}]]
     : [["line"]],
