@@ -1,7 +1,16 @@
 import {createMutationCoordinator} from "./mutation-coordinator.js";
 
 export function createBackgroundStateCoordinator({onEvent = null} = {}) {
-  const queue = createMutationCoordinator({onEvent});
+  const emitLane = lane => event => {
+    try { onEvent?.({...event,lane}); } catch {}
+  };
+  // Panel lifecycle is intentionally isolated from durable data writes. A
+  // browser-owned Side Panel API can stall during open/close transitions; it
+  // must never head-of-line block shortcut/workspace persistence. Workspace
+  // and storage operations still share one FIFO lane so durable reads/writes
+  // cannot interleave.
+  const panelQueue = createMutationCoordinator({onEvent:emitLane("panel")});
+  const dataQueue = createMutationCoordinator({onEvent:emitLane("data")});
 
   const label = (scope, action) => `${scope}:${action}`;
 
@@ -11,31 +20,31 @@ export function createBackgroundStateCoordinator({onEvent = null} = {}) {
       if (!Number.isInteger(id)) {
         return Promise.reject(new TypeError("panel windowId must be an integer"));
       }
-      return queue.enqueue(label(`panel:${id}`, action), operation);
+      return panelQueue.enqueue(label(`panel:${id}`, action), operation);
     },
 
     workspace(windowId, action, operation) {
       const id = Number(windowId);
       const scope = Number.isInteger(id) ? `workspace:${id}` : "workspace:global";
-      return queue.enqueue(label(scope, action), operation);
+      return dataQueue.enqueue(label(scope, action), operation);
     },
 
     workspaceRead(windowId, action, reader) {
       const id = Number(windowId);
       const scope = Number.isInteger(id) ? `workspace:${id}` : "workspace:global";
-      return queue.enqueueRead(label(scope, action), reader);
+      return dataQueue.enqueueRead(label(scope, action), reader);
     },
 
     storage(action, operation) {
-      return queue.enqueue(label("storage", action), operation);
+      return dataQueue.enqueue(label("storage", action), operation);
     },
 
-    whenIdle() {
-      return queue.whenIdle();
+    async whenIdle() {
+      await Promise.all([panelQueue.whenIdle(),dataQueue.whenIdle()]);
     },
 
     snapshot() {
-      return queue.snapshot();
+      return {panel:panelQueue.snapshot(),data:dataQueue.snapshot()};
     }
   };
 }
