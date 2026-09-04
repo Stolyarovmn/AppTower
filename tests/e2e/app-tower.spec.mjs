@@ -164,7 +164,7 @@ test.afterEach(async ({}, testInfo) => {
 test.afterAll(async () => {
   await context?.close().catch(() => {});
   await new Promise(resolve => server?.close(resolve));
-  fs.rmSync(userDataDir, {recursive:true,force:true});
+  fs.rmSync(userDataDir, {recursive:true,force:true,maxRetries:5,retryDelay:100});
 });
 
 test("ATN-E2E-001 add current page pre-fills the real browser page", async () => {
@@ -300,10 +300,13 @@ test("ATN-E2E-008 restart preserves shortcuts/groups/templates", async () => {
   expect(beforeSites.some(item => item.kind === "group")).toBe(true);
   expect(beforeSites.some(item => item.kind === "template")).toBe(true);
 
+  // Keep the bootstrap fixture page alive until the persistent context is
+  // explicitly closed. Chromium exits a persistent context when its final tab
+  // is closed, which makes an immediate context.close() race the browser exit.
   await panel.close();
-  await webPage.close();
   await context.close();
   context = null;
+  webPage = null;
 
   await launchExtension();
   panel = await openPanelDocument();
