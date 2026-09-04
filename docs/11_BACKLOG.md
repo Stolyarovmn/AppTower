@@ -16,7 +16,7 @@ Last competitor scan: 2026-09-04.
 
 **TASK 2 remains the only ACTIVE TASK.** Global WIP lock is held by the Serialized state coordinator implementation.
 
-Latest observed PR head before this backlog commit: `58bcaaab7c79bc5ce29ca7744cf2f21144073038` (`task2: finish serialized live panel routing`). `validate` run `33848580003` completed with conclusion `action_required` and reported zero jobs. Therefore the CI gate is **not green**; no READY TASK may start. This backlog-only commit also requires normal revalidation.
+Latest observed PR head before this backlog commit: `fceccbd028acd2d116dd2e91690ac24724eaf29d` (`docs: record coordinator routing CI and performance sample`). `validate` run `33853054828` completed successfully. Therefore CI was green before this backlog-only change, but this new head requires normal revalidation before any READY TASK may start. TASK 2 remains ACTIVE regardless, so global single-WIP still blocks another implementation.
 
 ## TASKS
 
@@ -166,18 +166,31 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 | Rank | Score | IDEA | Evidence / source | Promotion condition / risk |
 |---:|---:|---|---|---|
 | 1 | 74 | Per-site sleep policy presets: default/aggressive/never sleep | Drowzy (MIT) | Promote after TASK 3 + measurable resource baseline; avoid confusing overlapping policies |
-| 2 | 73 | Favorites/pinned mini-row independent of workspace ordering | ddSideBar (MIT), Lunma, TabTree | Promote if rail overflow is a recurring UX problem |
-| 3 | 72 | Anchored Real Page/sidecar placement: remember monitor/window bounds and optionally reuse an existing sidecar window | Tab Anchor (MIT) stores `left/top/width/height`, supports reuse-existing-window and local-only state | Promote after Compatibility ladder/Real Page lifecycle is stable; must gracefully normalize missing/changed displays and never globally reroute normal browsing |
-| 4 | 72 | Workspace/session import from other managers | VertiTab, Lunma, Tabwise | Promote after TASK 4 export/import schema; avoid mandatory history permission |
-| 5 | 70 | Recently accessed smart view | VertiTab, TabDog | Promote after current Recent is stable/searchable |
-| 6 | 68 | Optional browser-context actions over selected text/link | AI Side Panel / SuperchargeNavigation-style flows | Requires concrete non-AI use case and strict optional-permission review |
-| 7 | 65 | Portable workspace export/mirror to native browser bookmarks | Mooring | `bookmarks` permission is broad; explicit optional permission only; Mooring has no verified reusable license in current backlog evidence, so pattern only |
-| 8 | 65 | Focus mode: temporarily show only one group/workspace | TabTree, Tabwise | Promote if groups/templates create rail overload |
-| 9 | 62 | Automatic domain grouping suggestions | VertiTab, TabDog, SuperchargeNavigation | AppTower must not become a general tab manager; opt-in shortcut organizer only |
-| 10 | 58 | Optional AI organizer module | Leap/VertiTab-style products | Keep out of core until privacy-preserving provider/module contract and clear demand |
-| 11 | 54 | Full vertical-tab manager | VertiTab, TabTOC, ddSideBar, TabTree, Tabwise | Deliberately low; conflicts with AppTower product boundary |
+| 2 | 73 | Resource-pressure-aware emergency eviction using coarse system-memory pressure, LRU and existing pane safety guards | TabRest (MIT) | Promote only after TASK 3 + TASK 6 baseline. `system.memory` must be justified/optional where possible; no continuous per-pane heap polling or broad host permission |
+| 3 | 73 | Favorites/pinned mini-row independent of workspace ordering | ddSideBar (MIT), Lunma, TabTree | Promote if rail overflow is a recurring UX problem |
+| 4 | 72 | Anchored Real Page/sidecar placement: remember monitor/window bounds and optionally reuse an existing sidecar window | Tab Anchor (MIT) stores `left/top/width/height`, supports reuse-existing-window and local-only state | Promote after Compatibility ladder/Real Page lifecycle is stable; must gracefully normalize missing/changed displays and never globally reroute normal browsing |
+| 5 | 72 | Workspace/session import from other managers | VertiTab, Lunma, Tabwise | Promote after TASK 4 export/import schema; avoid mandatory history permission |
+| 6 | 70 | Recently accessed smart view | VertiTab, TabDog | Promote after current Recent is stable/searchable |
+| 7 | 68 | Optional browser-context actions over selected text/link | AI Side Panel / SuperchargeNavigation-style flows | Requires concrete non-AI use case and strict optional-permission review |
+| 8 | 65 | Portable workspace export/mirror to native browser bookmarks | Mooring | `bookmarks` permission is broad; explicit optional permission only; Mooring has no verified reusable license in current backlog evidence, so pattern only |
+| 9 | 65 | Focus mode: temporarily show only one group/workspace | TabTree, Tabwise | Promote if groups/templates create rail overload |
+| 10 | 62 | Automatic domain grouping suggestions | VertiTab, TabDog, SuperchargeNavigation | AppTower must not become a general tab manager; opt-in shortcut organizer only |
+| 11 | 58 | Optional AI organizer module | Leap/VertiTab-style products | Keep out of core until privacy-preserving provider/module contract and clear demand |
+| 12 | 54 | Full vertical-tab manager | VertiTab, TabTOC, ddSideBar, TabTree, Tabwise | Deliberately low; conflicts with AppTower product boundary |
 
-### New IDEA score: Anchored Real Page/sidecar placement — 72/100
+### New IDEA score: Resource-pressure-aware emergency eviction — 73/100
+
+18/25 user value + 12/20 real pain + 14/15 AppTower fit + 13/15 measurable performance gain + 6/10 low implementation risk + 3/5 privacy/permissions + 3/5 competitor maturity + 4/5 automated testability = **73**.
+
+At the 73-point tie, pressure-aware eviction ranks above the favorites mini-row because it extends the resource/sleep architecture and can prevent pathological memory pressure, while the mini-row is primarily UI convenience.
+
+**Why this remains an IDEA:** TabRest demonstrates that a Chrome MV3 extension can combine `chrome.system.memory.getInfo()` with LRU selection and native discard, but its implementation checks system pressure every 30 seconds when enabled. Its per-tab JS-heap mode additionally depends on injected reporting and optional HTTP(S) host access. Those costs conflict with AppTower's event-driven/least-permission direction unless measurements prove the benefit.
+
+**Transferable clean-room pattern:** if AppTower eventually needs pressure-aware behavior, use only a coarse emergency signal to tighten the existing pane budget, then evict the least-recently-used pane that passes TASK 3 safety guards. Do not copy TabRest code; do not add per-pane heap instrumentation by default; do not let memory pressure bypass unsaved-input/media/keep-awake blockers.
+
+**License/permissions:** TabRest's repository contains an MIT license (including MIT attribution for portions derived from Drowzy). Its current MV3 manifest declares `tabs`, `storage`, `alarms`, `system.memory`, `contextMenus`, `tabGroups`, `scripting`, `idle`, `notifications`, `sidePanel`, a Sentry host permission, and optional `http://*/*` / `https://*/*` host permissions. AppTower should not inherit that permission set; only the independent coarse-pressure concept is considered compatible.
+
+### Previous IDEA score: Anchored Real Page/sidecar placement — 72/100
 
 18/25 user value + 10/20 real pain + 14/15 AppTower fit + 10/15 measurable UX gain + 8/10 low implementation risk + 5/5 privacy/permissions + 3/5 competitor maturity + 4/5 automated testability = **72**.
 
@@ -189,13 +202,14 @@ At the 72-point tie, anchored sidecar placement ranks above cross-manager import
 
 ## Recalculation after this scan
 
-All pre-existing TASK and IDEA numeric scores remain unchanged. The new anchored-sidecar IDEA scores 72/100, so it does **not** cross the >=75 TASK threshold. No TASK was promoted or made ACTIVE. Global WIP remains 1 with TASK 2 ACTIVE.
+All pre-existing TASK and IDEA numeric scores remain unchanged. The new pressure-aware-eviction IDEA scores 73/100, so it does **not** cross the >=75 TASK threshold. No TASK was promoted or made ACTIVE. Global WIP remains 1 with TASK 2 ACTIVE. The only ordering change is insertion of the new 73-point IDEA above the existing 73-point favorites item under the technical-debt/resource-architecture tie-break.
 
 ## Competitor evidence used in this ranking
 
 - Chromium built-in direction — BSD-style source: Split View, Split View Session Restore and persisted Side Panel width. Behavioral evidence only.
 - Lunma — Apache-2.0; local Spaces/vertical tabs, structured store, migrations, Playwright E2E.
 - Drowzy — MIT; MV3 suspension, unsaved-form protection, keep-awake.
+- TabRest — MIT; active in 2026; system-memory threshold + LRU unload, optional per-tab heap monitoring, snooze/pause controls, Side Panel UI. Used only as clean-room resource-policy evidence because its periodic memory checks and optional host-injection path are not suitable defaults for AppTower.
 - Tab Anchor — MIT; Chrome MV3 extension that stores a chosen window region (`left/top/width/height`), can reuse an existing window, supports multi-monitor placement and local-only state. Its manifest declares `storage`, `tabs`, `windows`, `webNavigation`, `contextMenus` and no host permissions. Used as sidecar-placement UX/architecture evidence only: https://github.com/Night-Owl-Labs/Tab-Anchor
 - Mooring — source-visible Side Panel workspace manager using bookmarks/tab groups/runtime session state. Treat as pattern-only until license compatibility is explicitly verified.
 - Sharp Tabs — minimum-permission/native suspension direction.
@@ -210,6 +224,7 @@ All pre-existing TASK and IDEA numeric scores remain unchanged. The new anchored
 - SidePilot — Apache-2.0; Side Panel web workspace, explicit diagnostics, optional diagnostic permissions and owner/lease-style rule management patterns.
 - Universal Split View / SplitView / Split View / SideSplit — current split/real-window/layout product evidence; closed-source items are UX evidence only.
 - VertiTab / TabTOC / ArchTabs — current workspace/search/snapshot/suspend/side-panel product evidence.
+- SidepanelFallback — MIT; tested per-browser side-panel/window fallback pattern. AppTower already has an equivalent capability-based browser adapter/sidecar path, so no duplicate backlog item was added.
 
 ## Product guardrails
 
@@ -218,6 +233,7 @@ All pre-existing TASK and IDEA numeric scores remain unchanged. The new anchored
 - Treat split arrangement/restoration and durable state as versioned, testable compatibility surfaces.
 - Never auto-sleep a pane if that can silently destroy unsaved state or interrupt active media.
 - Prefer event-driven lifecycle/snapshot/resource handling over polling.
+- System-memory pressure may only tighten eviction policy after measurement; it must never bypass pane safety guards or justify default per-pane heap polling/broad host access.
 - Prefer optional permissions for optional integrations; do not require history/bookmarks merely for onboarding.
 - Do not make native bookmarks the authoritative AppTower store.
 - Real Page/sidecar geometry must be scoped to AppTower-owned fallback windows only; never globally reroute normal tabs/pop-ups.
