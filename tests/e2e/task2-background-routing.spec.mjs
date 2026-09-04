@@ -43,6 +43,19 @@ async function isDialogOpen(page, selector) {
   return page.locator(selector).evaluate(element => element.open === true);
 }
 
+function expectCoordinatorIdle(diagnostics) {
+  expect(diagnostics?.ok).toBe(true);
+  expect(diagnostics?.pending).toBe(0);
+  for (const group of [diagnostics?.panel, diagnostics?.workspace, diagnostics?.storage]) {
+    for (const queue of Object.values(group || {})) {
+      expect(queue?.active ?? null).toBeNull();
+      expect(queue?.pending ?? 0).toBe(0);
+    }
+  }
+  expect(diagnostics?.globalWorkspace?.active ?? null).toBeNull();
+  expect(diagnostics?.globalWorkspace?.pending ?? 0).toBe(0);
+}
+
 test("ATN-E2E-013 background routes live panel actions without reopening the panel document", async () => {
   const {server,baseUrl} = await startFixtureServer();
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), "app-tower-task2-routing-"));
@@ -97,9 +110,7 @@ test("ATN-E2E-013 background routes live panel actions without reopening the pan
     const diagnostics = await panel.evaluate(() =>
       chrome.runtime.sendMessage({type:"GET_STATE_COORDINATOR_DIAGNOSTICS"})
     );
-    expect(diagnostics?.ok).toBe(true);
-    expect(diagnostics?.pending).toBe(0);
-    expect(diagnostics?.active).toBeNull();
+    expectCoordinatorIdle(diagnostics);
   } finally {
     await context.close().catch(() => {});
     await new Promise(resolve => server.close(resolve));
