@@ -1,0 +1,61 @@
+--- a/app/background.js
++++ b/app/background.js
+@@ -1162,17 +1282,21 @@
+ 
+   if (message.type === "SET_DEFAULT_WORKSPACE") {
+     (async () => {
+-      const {workspaces} = await ensureWorkspaceSystem();
+-      const id = String(message.workspaceId || "");
+-      if (!workspaces.some(w => w.id === id)) throw new Error("Workspace not found");
+-      await chrome.storage.local.set({[DEFAULT_WORKSPACE_KEY]:id});
++      const id = await serializeWorkspaceMutation(null,"set-default-workspace",async () => {
++        const {workspaces} = await ensureWorkspaceSystem();
++        const nextId = String(message.workspaceId || "");
++        if (!workspaces.some(w => w.id === nextId)) throw new Error("Workspace not found");
++        await chrome.storage.local.set({[DEFAULT_WORKSPACE_KEY]:nextId});
++        return nextId;
++      });
+       sendResponse({ok:true,defaultWorkspaceId:id});
+     })().catch(error => sendResponse({ok:false,error:String(error?.message || error)}));
+     return true;
+   }
+ 
+   if (message.type === "GET_RECENT") {
+-    getRecent(messageWindowId(message,sender),{all:message.all === true})
++    const windowId = messageWindowId(message,sender);
++    serializeWorkspaceRead(windowId,"get-recent",() => getRecent(windowId,{all:message.all === true}))
+       .then(recent => sendResponse({ok:true,recent}))
+       .catch(error => sendResponse({ok:false,error:String(error?.message || error)}));
+     return true;
+@@ -1181,8 +1305,10 @@
+   if (message.type === "RECORD_RECENT") {
+     (async () => {
+       const windowId = messageWindowId(message,sender);
+-      const state = await getWindowWorkspaceState(windowId);
+-      await recordRecent({...message,windowId,workspaceId:state.activeWorkspaceId});
++      await serializeWorkspaceMutation(windowId,"record-recent",async () => {
++        const state = await getWindowWorkspaceState(windowId);
++        await recordRecent({...message,windowId,workspaceId:state.activeWorkspaceId});
++      });
+       sendResponse({ok:true});
+     })().catch(error => sendResponse({ok:false,error:String(error?.message || error)}));
+     return true;
+@@ -1194,12 +1320,16 @@
+   }
+ 
+   if (message.type === "SET_SITE_SETTINGS") {
+-    setSiteSettings(message.url,message.patch || {}).then(settings => sendResponse({ok:true,settings})).catch(error => sendResponse({ok:false,error:String(error?.message || error)}));
++    serializeStorageMutation("set-site-settings",() => setSiteSettings(message.url,message.patch || {}))
++      .then(settings => sendResponse({ok:true,settings}))
++      .catch(error => sendResponse({ok:false,error:String(error?.message || error)}));
+     return true;
+   }
+ 
+   if (message.type === "APPLY_NOTIFICATION_SETTING") {
+-    applyNotificationSetting(message.url,message.setting).then(settings => sendResponse({ok:true,settings})).catch(error => sendResponse({ok:false,error:String(error?.message || error)}));
++    serializeStorageMutation("apply-notification-setting",() => applyNotificationSetting(message.url,message.setting))
++      .then(settings => sendResponse({ok:true,settings}))
++      .catch(error => sendResponse({ok:false,error:String(error?.message || error)}));
+     return true;
+   }
+ 

@@ -1,0 +1,124 @@
+--- a/app/background.js
++++ b/app/background.js
+@@ -335,54 +384,72 @@
+     if (!Number.isInteger(windowId)) return;
+ 
+     globallyEnabled = true;
++    let intent = null;
++    if (info.menuItemId === "atn-add") intent = "add";
++    const action = intent ? panelActionFromMessage({
++      intent,
++      sourceUrl:tab?.url,
++      sourceTitle:tab?.title
++    },windowId) : null;
++
++    // Native context-menu handlers carry a user gesture. Start the browser
++    // container operation before awaiting our own storage/state work.
++    const alreadyLive = hasLivePanel(windowId);
++    const openPromise = ["atn-open","atn-bottom","atn-add"].includes(info.menuItemId) && !alreadyLive
++      ? openTowerContainer(windowId,{intent,tabId:tab?.id})
++      : Promise.resolve();
++    void markPanelOpen(windowId,{authoritative:true}).catch(() => {});
+     await chrome.storage.local.set({[GLOBAL_ENABLED_KEY]:true});
+-    collapsedWindows.delete(windowId);
+-    persistCollapsedWindows();
+-    markPanelOpen(windowId);
+ 
+     if (info.menuItemId === "atn-open") {
+-      await openTowerContainer(windowId);
++      await openPromise;
+       return;
+     }
+ 
+     if (info.menuItemId === "atn-bottom" && info.linkUrl) {
+-      const state = await getWindowWorkspaceState(windowId);
+-      const url = normalizeUrl(info.linkUrl);
+-      if (!url) return;
+-      state.workspace.panes.bottom = {
+-        url,title:url,mode:"auto",compatDomains:[],sourceSiteId:null
+-      };
+-      state.workspace.layout.split = true;
+-      state.workspace.layout.activePane = "bottom";
+-      await saveWindowWorkspaceState(windowId,{
+-        panes:state.workspace.panes,
+-        layout:state.workspace.layout
+-      });
+-      await recordRecent({
+-        windowId,
+-        workspaceId:state.workspace.id,
+-        url,
+-        title:url,
+-        kind:"site"
++      await serializeWorkspaceMutation(windowId,"context-open-bottom",async () => {
++        const state = await getWindowWorkspaceState(windowId);
++        const url = normalizeUrl(info.linkUrl);
++        if (!url) return;
++        state.workspace.panes.bottom = {
++          url,title:url,mode:"auto",compatDomains:[],sourceSiteId:null
++        };
++        state.workspace.layout.split = true;
++        state.workspace.layout.activePane = "bottom";
++        await saveWindowWorkspaceState(windowId,{
++          panes:state.workspace.panes,
++          layout:state.workspace.layout
++        });
++        await recordRecent({
++          windowId,
++          workspaceId:state.workspace.id,
++          url,
++          title:url,
++          kind:"site"
++        });
++        await syncCompatibilityRules(state.workspace.panes);
+       });
+-      await syncCompatibilityRules(state.workspace.panes);
+-      await openTowerContainer(windowId);
++      await openPromise;
+       return;
+     }
+ 
+-    if (info.menuItemId === "atn-add" && tab?.url) {
+-      await chrome.storage.local.set({
+-        pendingAction:{intent:"add",windowId,nonce:Date.now()}
+-      });
+-      await openTowerContainer(windowId,{intent:"add"});
++    if (info.menuItemId === "atn-add" && action) {
++      if (hasLivePanel(windowId) && postPanelAction(windowId,action)) {
++        await openPromise.catch(() => {});
++        return;
++      }
++      await serializeStorageMutation("pending-panel-action",() =>
++        chrome.storage.local.set({pendingAction:action})
++      );
++      await openPromise;
+       return;
+     }
+ 
+     // A native context-menu item that did not result in an App Tower action
+     // must not leave the rail hidden.
+-    markPanelClosed(windowId,{collapsed:true});
++    await markPanelClosed(windowId,{collapsed:true});
+   } catch {
+-    if (Number.isInteger(windowId)) markPanelClosed(windowId,{collapsed:true});
++    if (Number.isInteger(windowId)) await markPanelClosed(windowId,{collapsed:true}).catch(() => {});
+   }
+ });
+ 
+@@ -393,11 +460,15 @@
+       void enforceResourceBudget();
+     }
+     if (changes[SYNC_ENABLED_KEY]) syncEnabled = changes[SYNC_ENABLED_KEY].newValue === true;
+-    if ((changes[WORKSPACES_KEY] || changes[MODULE_STORAGE_KEY]) && syncEnabled && !applyingRemoteSync) void pushSyncPayload();
++    if ((changes[WORKSPACES_KEY] || changes[MODULE_STORAGE_KEY]) && syncEnabled && !applyingRemoteSync) {
++      void serializeStorageMutation("push-sync",() => pushSyncPayload()).catch(() => {});
++    }
+   }
+ 
+   if (area === "sync" && changes[SYNC_PAYLOAD_KEY] && syncEnabled) {
+-    void applyRemoteSyncPayload(changes[SYNC_PAYLOAD_KEY].newValue);
++    void serializeStorageMutation("apply-remote-sync",() =>
++      applyRemoteSyncPayload(changes[SYNC_PAYLOAD_KEY].newValue)
++    ).catch(() => {});
+   }
+ });
+ 

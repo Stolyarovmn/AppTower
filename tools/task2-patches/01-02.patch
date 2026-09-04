@@ -1,0 +1,141 @@
+--- a/app/background.js
++++ b/app/background.js
+@@ -254,55 +287,66 @@
+       }))
+   )).catch(() => {});
+ }
+-function persistPanelWindows() {
+-  chrome.storage.session.set({ [PANEL_SESSION_KEY]: [...openWindows] }).catch(() => {});
+-}
+-function persistCollapsedWindows() {
+-  chrome.storage.session.set({ [COLLAPSED_SESSION_KEY]: [...collapsedWindows] }).catch(() => {});
+-}
+ function markPanelOpen(windowId, { authoritative=false } = {}) {
+-  if (authoritative) {
+-    panelClosedAt.delete(windowId);
+-    if (collapsedWindows.delete(windowId)) persistCollapsedWindows();
+-  } else if (collapsedWindows.has(windowId)) {
+-    return;
+-  }
++  if (!Number.isInteger(Number(windowId))) return Promise.resolve({changed:false,reason:"invalid-window"});
++  if (authoritative) panelClosedAt.delete(Number(windowId));
+ 
+-  const pending = panelDisconnectTimers.get(windowId);
++  const pending = panelDisconnectTimers.get(Number(windowId));
+   if (pending) {
+     clearTimeout(pending);
+-    panelDisconnectTimers.delete(windowId);
++    panelDisconnectTimers.delete(Number(windowId));
+   }
+ 
+-  openWindows.add(windowId);
+-  persistPanelWindows();
+-  broadcastRail(windowId, false);
++  return Promise.all([panelSessionReady,collapsedSessionReady]).then(() =>
++    panelStateStore.open(Number(windowId),{authoritative})
++  );
+ }
+ 
+ function markPanelClosed(windowId, { collapsed=true } = {}) {
+-  panelClosedAt.set(windowId,Date.now());
+-  const pending = panelDisconnectTimers.get(windowId);
++  if (!Number.isInteger(Number(windowId))) return Promise.resolve({changed:false,reason:"invalid-window"});
++  panelClosedAt.set(Number(windowId),Date.now());
++  const pending = panelDisconnectTimers.get(Number(windowId));
+   if (pending) {
+     clearTimeout(pending);
+-    panelDisconnectTimers.delete(windowId);
++    panelDisconnectTimers.delete(Number(windowId));
+   }
+ 
+-  openWindows.delete(windowId);
+-  if (collapsed) collapsedWindows.add(windowId);
+-  clearWindowResources(windowId);
+-  persistPanelWindows();
+-  persistCollapsedWindows();
+-  broadcastRail(windowId, true);
++  return Promise.all([panelSessionReady,collapsedSessionReady]).then(() =>
++    panelStateStore.close(Number(windowId),{collapsed})
++  );
++}
++
++function panelActionFromMessage(message, windowId) {
++  if (!["add","new-group","organize","group","combine","edit-template","search"].includes(message?.intent)) return null;
++  return {
++    intent:message.intent,
++    groupId:message.groupId ? String(message.groupId) : null,
++    sourceId:message.sourceId ? String(message.sourceId) : null,
++    targetId:message.targetId ? String(message.targetId) : null,
++    templateId:message.templateId ? String(message.templateId) : null,
++    sourceUrl:normalizeUrl(message.sourceUrl) || null,
++    sourceTitle:message.sourceTitle ? String(message.sourceTitle).slice(0,240) : null,
++    windowId:Number.isInteger(Number(windowId)) ? Number(windowId) : null,
++    nonce:Date.now()
++  };
++}
++
++function hasLivePanel(windowId) {
++  return Number.isInteger(Number(windowId)) && Boolean(panelPorts.get(Number(windowId))?.size);
++}
++
++function postPanelAction(windowId, action) {
++  if (!action || !Number.isInteger(Number(windowId))) return false;
++  const ports = [...(panelPorts.get(Number(windowId)) || [])];
++  if (!ports.length) return false;
++  for (const port of ports) safePost(port,{type:"ATN_PANEL_ACTION",action});
++  return true;
+ }
+ function matchesPanelPath(path) {
+   return !path || String(path).endsWith(SIDE_PANEL_PATH);
+ }
+ 
+ chrome.windows.onRemoved.addListener((windowId) => {
+-  collapsedWindows.delete(windowId);
+-  persistCollapsedWindows();
+-  openWindows.delete(windowId);
+-  persistPanelWindows();
+   railPorts.delete(windowId);
+   panelPorts.delete(windowId);
+   panelClosedAt.delete(windowId);
+@@ -310,22 +354,27 @@
+   if (disconnectTimer) clearTimeout(disconnectTimer);
+   panelDisconnectTimers.delete(windowId);
+ 
+-  let changed = false;
+-  for (const [origin, id] of pwaSidecars.entries()) {
+-    if (id === windowId) {
+-      pwaSidecars.delete(origin);
+-      changed = true;
++  void (async () => {
++    await Promise.all([panelSessionReady,collapsedSessionReady]);
++    await panelStateStore.removeWindow(windowId);
++
++    let changed = false;
++    for (const [origin, id] of pwaSidecars.entries()) {
++      if (id === windowId) {
++        pwaSidecars.delete(origin);
++        changed = true;
++      }
+     }
+-  }
+-  if (changed) persistPwaSidecars();
+-  clearWindowResources(windowId);
+-  removeSidecar(windowId).catch(() => {});
+-  windowWorkspaceMap().then(map => {
+-    if (map[windowId]) {
++    if (changed) persistPwaSidecars();
++    await removeSidecar(windowId).catch(() => {});
++
++    await serializeWorkspaceMutation(windowId,"remove-window-binding",async () => {
++      const map = await windowWorkspaceMap();
++      if (!map[windowId]) return;
+       delete map[windowId];
+-      chrome.storage.session.set({[WINDOW_WORKSPACES_KEY]:map}).catch(() => {});
+-    }
+-  }).catch(() => {});
++      await chrome.storage.session.set({[WINDOW_WORKSPACES_KEY]:map});
++    });
++  })().catch(() => {});
+ });
+ 
+ chrome.contextMenus?.onClicked?.addListener(async (info, tab) => {

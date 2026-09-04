@@ -1,0 +1,113 @@
+--- a/app/background.js
++++ b/app/background.js
+@@ -1053,9 +1150,11 @@
+   if (message.type === "SET_SYNC_ENABLED") {
+     (async () => {
+       const enabled = message.enabled === true;
+-      syncEnabled = enabled;
+-      await chrome.storage.local.set({ [SYNC_ENABLED_KEY]: enabled });
+-      if (enabled) await enableBrowserSync();
++      await serializeStorageMutation("set-sync-enabled",async () => {
++        syncEnabled = enabled;
++        await chrome.storage.local.set({ [SYNC_ENABLED_KEY]: enabled });
++        if (enabled) await enableBrowserSync();
++      });
+       sendResponse({ ok:true, enabled });
+     })().catch(error => sendResponse({ok:false, error:String(error?.message || error)}));
+     return true;
+@@ -1088,11 +1187,20 @@
+     return false;
+   }
+ 
++  if (message.type === "GET_STATE_COORDINATOR_DIAGNOSTICS") {
++    sendResponse({ok:true,...backgroundStateCoordinator.snapshot()});
++    return false;
++  }
++
+   if (message.type === "GET_WINDOW_STATE" || message.type === "GET_SHORTCUTS") {
+     (async () => {
+       const windowId = messageWindowId(message,sender);
+-      const state = await getWindowWorkspaceState(windowId);
+-      const extra = await chrome.storage.local.get([SYNC_ENABLED_KEY]);
++      const result = await serializeWorkspaceRead(windowId,"get-window-state",async () => {
++        const state = await getWindowWorkspaceState(windowId);
++        const extra = await chrome.storage.local.get([SYNC_ENABLED_KEY]);
++        return {state,extra};
++      });
++      const {state,extra} = result;
+       sendResponse({
+         ok:true,
+         sites:state.workspace.sites,
+@@ -1111,12 +1219,15 @@
+   if (message.type === "UPDATE_WORKSPACE_STATE") {
+     (async () => {
+       const windowId = messageWindowId(message,sender);
+-      const workspace = await saveWindowWorkspaceState(windowId,{
+-        sites:message.sites,
+-        panes:message.panes,
+-        layout:message.layout
++      const workspace = await serializeWorkspaceMutation(windowId,"update-workspace-state",async () => {
++        const saved = await saveWindowWorkspaceState(windowId,{
++          sites:message.sites,
++          panes:message.panes,
++          layout:message.layout
++        });
++        if (message.panes) await syncCompatibilityRules(saved.panes);
++        return saved;
+       });
+-      if (message.panes) await syncCompatibilityRules(workspace.panes);
+       sendResponse({ok:true,workspace});
+     })().catch(error => sendResponse({ok:false,error:String(error?.message || error)}));
+     return true;
+@@ -1125,7 +1236,7 @@
+   if (message.type === "LIST_WORKSPACES") {
+     (async () => {
+       const windowId = messageWindowId(message,sender);
+-      const state = await getWindowWorkspaceState(windowId);
++      const state = await serializeWorkspaceRead(windowId,"list-workspaces",() => getWindowWorkspaceState(windowId));
+       sendResponse({ok:true,workspaces:state.workspaces,activeWorkspaceId:state.activeWorkspaceId,defaultWorkspaceId:state.defaultWorkspaceId,nativeWorkspaceBinding:false,binding:"browser-window"});
+     })().catch(error => sendResponse({ok:false,error:String(error?.message || error)}));
+     return true;
+@@ -1134,27 +1245,36 @@
+   if (message.type === "CREATE_WORKSPACE") {
+     (async () => {
+       const windowId = messageWindowId(message,sender);
+-      const workspace = await createWorkspace(message.name,{copyFromWindowId:message.copyCurrent === true ? windowId : null});
+-      if (message.activate !== false && Number.isInteger(windowId)) await setWindowWorkspace(windowId,workspace.id);
+-      sendResponse({ok:true,workspace,state:await getWindowWorkspaceState(windowId)});
++      const result = await serializeWorkspaceMutation(windowId,"create-workspace",async () => {
++        const workspace = await createWorkspace(message.name,{copyFromWindowId:message.copyCurrent === true ? windowId : null});
++        if (message.activate !== false && Number.isInteger(windowId)) await setWindowWorkspace(windowId,workspace.id);
++        return {workspace,state:await getWindowWorkspaceState(windowId)};
++      });
++      sendResponse({ok:true,...result});
+     })().catch(error => sendResponse({ok:false,error:String(error?.message || error)}));
+     return true;
+   }
+ 
+   if (message.type === "RENAME_WORKSPACE") {
+-    renameWorkspace(message.workspaceId,message.name).then(workspace => sendResponse({ok:true,workspace})).catch(error => sendResponse({ok:false,error:String(error?.message || error)}));
++    serializeWorkspaceMutation(null,"rename-workspace",() => renameWorkspace(message.workspaceId,message.name))
++      .then(workspace => sendResponse({ok:true,workspace}))
++      .catch(error => sendResponse({ok:false,error:String(error?.message || error)}));
+     return true;
+   }
+ 
+   if (message.type === "DELETE_WORKSPACE") {
+-    deleteWorkspace(message.workspaceId).then(result => sendResponse({ok:true,...result})).catch(error => sendResponse({ok:false,error:String(error?.message || error)}));
++    serializeWorkspaceMutation(null,"delete-workspace",() => deleteWorkspace(message.workspaceId))
++      .then(result => sendResponse({ok:true,...result}))
++      .catch(error => sendResponse({ok:false,error:String(error?.message || error)}));
+     return true;
+   }
+ 
+   if (message.type === "SET_ACTIVE_WORKSPACE") {
+     (async () => {
+       const windowId = messageWindowId(message,sender);
+-      const state = await setWindowWorkspace(windowId,message.workspaceId);
++      const state = await serializeWorkspaceMutation(windowId,"set-active-workspace",() =>
++        setWindowWorkspace(windowId,message.workspaceId)
++      );
+       sendResponse({ok:true,...state});
+     })().catch(error => sendResponse({ok:false,error:String(error?.message || error)}));
+     return true;
