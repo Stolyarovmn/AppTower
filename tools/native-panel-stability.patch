@@ -1,0 +1,410 @@
+--- a/app/background.js
++++ b/app/background.js
+@@ -77,6 +77,7 @@
+ const railPorts = new Map();
+ const panelPorts = new Map();
+ const panelDisconnectTimers = new Map();
++const openingWindows = new Map();
+ let panelLifecycleController = null;
+ 
+ // All shared panel/workspace mutations pass through one FIFO coordinator.
+@@ -155,8 +156,7 @@
+ 
+   // Keep sidePanel.open() in the command user-activation chain; persistence is
+   // deliberately not awaited before starting the browser-owned open.
+-  const openPromise = openTowerContainer(windowId,{intent:"search"});
+-  void markPanelOpen(windowId,{authoritative:true}).catch(() => {});
++  const openPromise = openPanelContainer(windowId,{intent:"search"});
+   await chrome.storage.local.set({
+     [GLOBAL_ENABLED_KEY]:true,
+     pendingAction:action
+@@ -179,9 +179,14 @@
+ 
+   if (!Number.isInteger(windowId)) return;
+ 
+-  // The browser-action click is a direct user gesture, so open immediately.
+-  void markPanelOpen(windowId,{authoritative:true}).catch(() => {});
+-  openTowerContainer(windowId).catch(() => {
++  // A live Port is the source of truth. Do not pre-mark the panel open: a
++  // failed browser-owned open would leave a stale session flag that suppresses
++  // the next rail click.
++  if (hasLivePanel(windowId)) {
++    broadcastRail(windowId,false);
++    return;
++  }
++  openPanelContainer(windowId,{tabId:tab?.id}).catch(() => {
+     void markPanelClosed(windowId,{collapsed:true}).catch(() => {});
+   });
+ });
+@@ -222,7 +227,7 @@
+     Promise.all([panelSessionReady, collapsedSessionReady, globalEnabledReady]).then(() => {
+       safePost(port, {
+         type:"ATN_RAIL_VISIBILITY",
+-        visible:globallyEnabled && !openWindows.has(windowId)
++        visible:globallyEnabled && !hasLivePanel(windowId) && !openingWindows.has(windowId)
+       });
+     });
+     return;
+@@ -299,6 +304,20 @@
+   return Number.isInteger(Number(windowId)) && Boolean(panelPorts.get(Number(windowId))?.size);
+ }
+ 
++function openPanelContainer(windowId, options={}) {
++  const id = Number(windowId);
++  if (!Number.isInteger(id)) return Promise.reject(new Error("Invalid windowId"));
++  if (hasLivePanel(id)) return Promise.resolve({kind:"live",reused:true});
++  const pending = openingWindows.get(id);
++  if (pending) return pending;
++
++  const promise = Promise.resolve(openTowerContainer(id,options)).finally(() => {
++    if (openingWindows.get(id) === promise) openingWindows.delete(id);
++  });
++  openingWindows.set(id,promise);
++  return promise;
++}
++
+ function matchesPanelPath(path) {
+   return !path || String(path).endsWith(SIDE_PANEL_PATH);
+ }
+@@ -349,9 +368,9 @@
+     // container operation before awaiting our own storage/state work.
+     const alreadyLive = hasLivePanel(windowId);
+     const openPromise = ["atn-open","atn-bottom","atn-add"].includes(info.menuItemId) && !alreadyLive
+-      ? openTowerContainer(windowId,{intent,tabId:tab?.id})
++      ? openPanelContainer(windowId,{intent,tabId:tab?.id})
+       : Promise.resolve();
+-    void markPanelOpen(windowId,{authoritative:true}).catch(() => {});
++    if (alreadyLive) broadcastRail(windowId,false);
+     await chrome.storage.local.set({[GLOBAL_ENABLED_KEY]:true});
+ 
+     if (info.menuItemId === "atn-open") {
+@@ -800,9 +819,8 @@
+     const windowId = messageWindowId(message, sender);
+     let openPromise = Promise.resolve();
+     if (Number.isInteger(windowId)) {
+-      void markPanelOpen(windowId,{authoritative:true}).catch(() => {});
+-      if (message.containerOpened !== true) {
+-        openPromise = openTowerContainer(windowId,{tabId:sender?.tab?.id});
++      if (message.containerOpened !== true && !hasLivePanel(windowId)) {
++        openPromise = openPanelContainer(windowId,{tabId:sender?.tab?.id});
+       }
+     }
+     (async () => {
+@@ -847,9 +865,8 @@
+     const windowId = messageWindowId(message, sender);
+     let openPromise = Promise.resolve();
+     if (Number.isInteger(windowId)) {
+-      void markPanelOpen(windowId,{authoritative:true}).catch(() => {});
+-      if (message.containerOpened !== true) {
+-        openPromise = openTowerContainer(windowId,{tabId:sender?.tab?.id});
++      if (message.containerOpened !== true && !hasLivePanel(windowId)) {
++        openPromise = openPanelContainer(windowId,{tabId:sender?.tab?.id});
+       }
+     }
+     (async () => {
+@@ -905,13 +922,14 @@
+       return true;
+     }
+ 
+-    const panelLikelyOpen = Number.isInteger(windowId) && (
+-      hasLivePanel(windowId) ||
+-      (openWindows.has(windowId) && !collapsedWindows.has(windowId))
+-    );
++    // Only a live Side Panel Port proves that a panel document is currently
++    // open. Persisted session flags are recovery metadata, never an authority
++    // for suppressing an explicit user open.
++    const panelIsLive = Number.isInteger(windowId) && hasLivePanel(windowId);
+ 
+-    if (panelLikelyOpen) {
++    if (panelIsLive) {
+       void markPanelOpen(windowId,{authoritative:true}).catch(() => {});
++      broadcastRail(windowId,false);
+       (async () => {
+         try {
+           if (action) {
+@@ -929,11 +947,8 @@
+     }
+ 
+     const openPromise = Number.isInteger(windowId)
+-      ? openTowerContainer(windowId,{intent:message.intent,tabId:sender?.tab?.id})
++      ? openPanelContainer(windowId,{intent:message.intent,tabId:sender?.tab?.id})
+       : Promise.resolve();
+-    if (Number.isInteger(windowId)) {
+-      void markPanelOpen(windowId,{authoritative:true}).catch(() => {});
+-    }
+     const pendingPromise = action
+       ? serializeStorageMutation("pending-panel-action",() =>
+           chrome.storage.local.set({pendingAction:action})
+@@ -953,7 +968,7 @@
+   }
+ 
+   if (message.type === "COLLAPSE_PANEL") {
+-    const windowId = Number(message.windowId);
++    const windowId = messageWindowId(message,sender);
+     (async () => {
+       try {
+         if (!Number.isInteger(windowId)) throw new Error("Invalid windowId");
+@@ -1073,7 +1088,9 @@
+     Promise.all([panelSessionReady, globalEnabledReady]).then(() => {
+       sendResponse({
+         visible:globallyEnabled &&
+-          (Number.isInteger(windowId) ? !openWindows.has(windowId) : true),
++          (Number.isInteger(windowId)
++            ? !hasLivePanel(windowId) && !openingWindows.has(windowId)
++            : true),
+         enabled:globallyEnabled
+       });
+     });
+@@ -1669,10 +1686,13 @@
+ 
+ 
+ function messageWindowId(message, sender) {
+-  const explicit = Number(message?.windowId);
+-  if (Number.isInteger(explicit)) return explicit;
++  const raw = message?.windowId;
++  if (raw !== null && raw !== undefined && String(raw).trim() !== "") {
++    const explicit = Number(raw);
++    if (Number.isInteger(explicit) && explicit >= 0) return explicit;
++  }
+   const senderWindow = Number(sender?.tab?.windowId);
+-  return Number.isInteger(senderWindow) ? senderWindow : null;
++  return Number.isInteger(senderWindow) && senderWindow >= 0 ? senderWindow : null;
+ }
+ 
+ async function ensureWorkspaceSystem() {
+--- a/app/content/rail.js
++++ b/app/content/rail.js
+@@ -122,10 +122,11 @@
+     .rail-footer{width:100%;display:flex;flex-direction:column;align-items:center;gap:8px;flex:0 0 auto}
+     .site,.tool{
+       width:36px;height:36px;flex:0 0 36px;display:grid;place-items:center;
++      border:0;padding:5px;background:transparent;
+       border-radius:8px;cursor:pointer;color:var(--atn-text)
+     }
+     .site:hover,.tool:hover,.site:focus-visible,.tool:focus-visible{background:var(--atn-hover)}
+-    .site:focus-visible,.tool:focus-visible{outline:2px solid var(--atn-accent);outline-offset:1px}
++    .site:focus-visible,.tool:focus-visible{outline:none;box-shadow:inset 0 0 0 2px var(--atn-accent)}
+     .site img{width:25px;height:25px;object-fit:contain;border-radius:6px}
+     .fallback{
+       width:25px;height:25px;display:grid;place-items:center;border-radius:50%;
+@@ -308,6 +309,28 @@
+     if(isTemplate(item))return templateStack(item);
+     const img=document.createElement("img");img.alt="";img.draggable=false;img.src=faviconURL(item.url);img.addEventListener("error",()=>img.replaceWith(fallback(item.title)),{once:true});return img;
+   }
++
++  async function reconcileVisibility() {
++    try {
++      const result = await chrome.runtime.sendMessage({type:"GET_RAIL_VISIBILITY"});
++      if (!disposed) setVisible(result?.visible === true);
++    } catch {}
++  }
++
++  async function requestPanelOpen(payload) {
++    // Optimistically remove the injected surface before asking Edge/Chromium to
++    // open the browser-owned panel. This prevents a clickable duplicate during
++    // the transition. If the open fails, authoritative background state restores
++    // the rail.
++    setVisible(false);
++    try {
++      const result = await chrome.runtime.sendMessage(payload);
++      if (!result?.ok) throw new Error(result?.error || "App Tower panel did not open");
++    } catch {
++      await reconcileVisibility();
++    }
++  }
++
+   function shortcutButton(item){
+     const b=document.createElement("button");b.type="button";b.className="site";b.dataset.shortcutId=item.id;b.dataset.shortcutKind=shortcutKind(item);
+     b.title=isGroup(item)?`${item.title}\nГруппа · ${item.items.length} ярл.`:isTemplate(item)?`${item.title}\nШаблон двух панелей\nClick → открыть · Right click → настроить`:`${item.title}\nClick → active pane\nShift+Click → bottom pane`;
+@@ -316,17 +339,17 @@
+       e.preventDefault();e.stopPropagation();
+       if(Date.now()<suppressShortcutClickUntil)return;
+       if(isGroup(item)){
+-        chrome.runtime.sendMessage({type:"OPEN_PANEL",intent:"group",groupId:item.id}).catch(()=>{});return;
++        void requestPanelOpen({type:"OPEN_PANEL",intent:"group",groupId:item.id});return;
+       }
+       if(isTemplate(item)){
+-        chrome.runtime.sendMessage({type:"OPEN_TEMPLATE",template:item}).catch(()=>{});return;
++        void requestPanelOpen({type:"OPEN_TEMPLATE",template:item});return;
+       }
+-      chrome.runtime.sendMessage({type:"OPEN_SITE",url:item.url,title:item.title,mode:item.mode,compatDomains:item.compatDomains,siteId:item.id,targetPane:e.shiftKey?"bottom":undefined}).catch(()=>{});
++      void requestPanelOpen({type:"OPEN_SITE",url:item.url,title:item.title,mode:item.mode,compatDomains:item.compatDomains,siteId:item.id,targetPane:e.shiftKey?"bottom":undefined});
+     });
+     b.addEventListener("contextmenu",e=>{
+       e.preventDefault();e.stopPropagation();
+-      if(isTemplate(item))chrome.runtime.sendMessage({type:"OPEN_PANEL",intent:"edit-template",templateId:item.id}).catch(()=>{});
+-      else if(isGroup(item))chrome.runtime.sendMessage({type:"OPEN_PANEL",intent:"group",groupId:item.id}).catch(()=>{});
++      if(isTemplate(item))void requestPanelOpen({type:"OPEN_PANEL",intent:"edit-template",templateId:item.id});
++      else if(isGroup(item))void requestPanelOpen({type:"OPEN_PANEL",intent:"group",groupId:item.id});
+     });
+     return b;
+   }
+@@ -353,7 +376,7 @@
+         payload.sourceUrl=location.href;
+         payload.sourceTitle=document.title || location.hostname;
+       }
+-      chrome.runtime.sendMessage(payload).catch(()=>{});
++      void requestPanelOpen(payload);
+     });
+     return b;
+   }
+@@ -423,8 +446,8 @@
+     if(!current.target){
+       if(current.pointerType!=="mouse"){
+         const source=currentShortcuts.find(x=>x?.id===current.sourceId);
+-        if(isTemplate(source))await chrome.runtime.sendMessage({type:"OPEN_PANEL",intent:"edit-template",templateId:source.id});
+-        else if(isGroup(source))await chrome.runtime.sendMessage({type:"OPEN_PANEL",intent:"group",groupId:source.id});
++        if(isTemplate(source))await requestPanelOpen({type:"OPEN_PANEL",intent:"edit-template",templateId:source.id});
++        else if(isGroup(source))await requestPanelOpen({type:"OPEN_PANEL",intent:"group",groupId:source.id});
+       }
+       return;
+     }
+@@ -435,7 +458,7 @@
+     if(isGroup(target)){
+       await chrome.runtime.sendMessage({type:"MUTATE_SHORTCUTS",action:"add-to-group",sourceId:current.sourceId,groupId:targetId});return;
+     }
+-    await chrome.runtime.sendMessage({type:"OPEN_PANEL",intent:"combine",sourceId:current.sourceId,targetId});
++    await requestPanelOpen({type:"OPEN_PANEL",intent:"combine",sourceId:current.sourceId,targetId});
+   }
+   window.addEventListener("pointerup",event=>{finishDrag(event).catch(()=>{})});
+   window.addEventListener("pointercancel",event=>{
+@@ -579,7 +602,8 @@
+       loadRailTheme().catch(()=>{});
+     }
+     if(changes.atnEnabled){
+-      setVisible(changes.atnEnabled.newValue!==false);
++      if(changes.atnEnabled.newValue===false) setVisible(false);
++      else void reconcileVisibility();
+     }
+   });
+   chrome.runtime.onMessage.addListener(message=>{
+@@ -630,25 +654,17 @@
+     host.remove();
+   }};
+ 
+-  // Fast path: static document_start is the earliest extension hook Chromium
+-  // exposes for normal pages. Paint/reserve the rail immediately, then reconcile
+-  // the persistent global X state asynchronously.
++  // Start hidden. The background owns visibility and replies with the state for
++  // this exact browser window; showing first and reconciling later caused the
++  // injected rail to overlap a live native Side Panel.
+   document.documentElement.style.setProperty(
+     NATIVE_SCROLLBAR_VAR,
+     `${nativeScrollbarWidth()}px`
+   );
+-  setVisible(true);
+-
+-  chrome.storage.local.get("atnEnabled").then(({atnEnabled}) => {
+-    if(disposed) return;
+-    if(atnEnabled === false) setVisible(false);
+-  }).catch(()=>{});
++  setVisible(false);
+ 
+   loadRailTheme().catch(()=>{});
+   renderSites().catch(()=>{});
+   connectPort();
+-
+-  chrome.runtime.sendMessage({type:"GET_RAIL_VISIBILITY"}).then(r=>{
+-    if(!disposed) setVisible(r?.visible!==false);
+-  }).catch(()=>{});
++  void reconcileVisibility();
+ })();
+--- a/app/sidepanel/sidepanel.js
++++ b/app/sidepanel/sidepanel.js
+@@ -1,4 +1,5 @@
+ import { applyBrowserSkin } from "../shared/browser-adapter.js";
++import { resolvePanelHostWindowId } from "../shared/panel-host.js";
+ 
+ import {
+   THEME_MODE_KEY,
+@@ -44,14 +45,24 @@
+ applyBrowserSkin(document);
+ const __atnWindow = await chrome.windows.getCurrent();
+ const __atnParams = new URLSearchParams(location.search);
+-const __atnHostWindowId = Number.isInteger(Number(__atnParams.get("hostWindowId")))
+-  ? Number(__atnParams.get("hostWindowId"))
+-  : __atnWindow.id;
++const __atnHostWindowId = resolvePanelHostWindowId({
++  search:location.search,
++  currentWindowId:__atnWindow.id
++});
++if (!Number.isInteger(__atnHostWindowId)) {
++  throw new Error("App Tower could not resolve the host browser window");
++}
+ let __atnPanelPort = null;
+ let __atnPanelReconnectTimer = null;
++let __atnPanelDisposed = false;
++function __atnSchedulePanelReconnect(delay=250) {
++  clearTimeout(__atnPanelReconnectTimer);
++  if (__atnPanelDisposed || document.visibilityState === "hidden") return;
++  __atnPanelReconnectTimer = setTimeout(__atnConnectPanelPort, delay);
++}
+ function __atnConnectPanelPort() {
+   clearTimeout(__atnPanelReconnectTimer);
+-  if (__atnPanelPort) return;
++  if (__atnPanelDisposed || document.visibilityState === "hidden" || __atnPanelPort) return;
+   try {
+     const port = chrome.runtime.connect({ name: `ATN_SIDE_PANEL:${__atnHostWindowId}` });
+     __atnPanelPort = port;
+@@ -69,12 +80,28 @@
+     });
+     port.onDisconnect.addListener(() => {
+       if (__atnPanelPort === port) __atnPanelPort = null;
+-      __atnPanelReconnectTimer = setTimeout(__atnConnectPanelPort, 120);
++      __atnSchedulePanelReconnect(120);
+     });
+   } catch {
+-    __atnPanelReconnectTimer = setTimeout(__atnConnectPanelPort, 300);
++    __atnSchedulePanelReconnect(300);
+   }
+ }
++document.addEventListener("visibilitychange", () => {
++  if (__atnPanelDisposed) return;
++  if (document.visibilityState === "hidden") {
++    clearTimeout(__atnPanelReconnectTimer);
++    try { __atnPanelPort?.disconnect(); } catch {}
++    __atnPanelPort = null;
++  } else {
++    __atnConnectPanelPort();
++  }
++});
++window.addEventListener("pagehide", () => {
++  __atnPanelDisposed = true;
++  clearTimeout(__atnPanelReconnectTimer);
++  try { __atnPanelPort?.disconnect(); } catch {}
++  __atnPanelPort = null;
++},{once:true});
+ __atnConnectPanelPort();
+ 
+ const MODE_ORDER = ["auto", "secure", "compat", "real"];
+@@ -1434,7 +1461,17 @@
+ });
+ 
+ async function mutateShortcutState(payload) {
+-  const response = await chrome.runtime.sendMessage({type:"MUTATE_SHORTCUTS", windowId:__atnHostWindowId, ...payload});
++  const request = chrome.runtime.sendMessage({type:"MUTATE_SHORTCUTS", windowId:__atnHostWindowId, ...payload});
++  let timer = null;
++  const timeout = new Promise((_,reject) => {
++    timer = setTimeout(() => reject(new Error(`Превышено время ожидания: ${payload?.action || "сохранение ярлыков"}`)),5000);
++  });
++  let response;
++  try {
++    response = await Promise.race([request,timeout]);
++  } finally {
++    if (timer) clearTimeout(timer);
++  }
+   if (!response?.ok) throw new Error(response?.error || "Не удалось изменить ярлыки");
+   state.sites = normalizeShortcutList(response.sites || []);
+   renderAll(false);
+--- a/app/sidepanel/sidepanel.css
++++ b/app/sidepanel/sidepanel.css
+@@ -20,7 +20,8 @@
+ .panel-sites { display:flex; width:100%; flex:0 0 auto; flex-direction:column; align-items:center; gap:8px; }
+ .rail-site,.rail-tool { width:36px; height:36px; min-height:36px; border:0; border-radius:8px; display:grid; place-items:center; padding:5px; background:transparent; }
+ .rail-site:hover,.rail-tool:hover,.rail-site:focus-visible,.rail-tool:focus-visible { background:var(--hover); }
+-.rail-site:focus-visible,.rail-tool:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
++.rail-site:focus-visible,.rail-tool:focus-visible { outline:none; box-shadow:inset 0 0 0 2px var(--accent); }
++.rail-site.active:focus-visible { box-shadow:inset 0 0 0 2px var(--accent), inset 2px 0 0 var(--accent); }
+ .rail-site.active { background:rgba(69,201,188,.13); box-shadow:inset 2px 0 0 var(--accent); }
+ .rail-site img { width:25px; height:25px; object-fit:contain; border-radius:6px; }
+ .rail-fallback { width:25px;height:25px;border-radius:50%;display:grid;place-items:center;background:var(--accent-strong);color:var(--accent-contrast);font-weight:700;font-size:12px; }
