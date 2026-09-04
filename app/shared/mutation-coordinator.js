@@ -11,13 +11,13 @@ export function createMutationCoordinator({onEvent = null} = {}) {
         id:entry.id,
         label:entry.label,
         pending,
+        queued:Math.max(0, pending - (active ? 1 : 0)),
         ...extra
       });
     } catch {}
   };
 
   async function run(entry) {
-    pending += 1;
     active = {id:entry.id,label:entry.label,startedAt:Date.now()};
     emit("start",entry,{active:{...active}});
     try {
@@ -45,6 +45,11 @@ export function createMutationCoordinator({onEvent = null} = {}) {
       mutation
     };
 
+    // Count work when it enters the queue, not only when it starts. This makes
+    // diagnostics and test gates reflect the real amount of outstanding work.
+    pending += 1;
+    emit("enqueue",entry);
+
     // Use the same continuation for fulfilled/rejected tails so one failed
     // mutation cannot permanently poison the queue.
     const result = tail.then(() => run(entry), () => run(entry));
@@ -60,6 +65,7 @@ export function createMutationCoordinator({onEvent = null} = {}) {
     return {
       sequence,
       pending,
+      queued:Math.max(0, pending - (active ? 1 : 0)),
       active:active ? {...active} : null
     };
   }
