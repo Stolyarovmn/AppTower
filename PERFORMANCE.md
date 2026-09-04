@@ -28,9 +28,9 @@ This document tracks runtime performance and energy budgets for AppTower. Runtim
 
 The benchmark deliberately does not enforce tight absolute timing thresholds yet. The first several green CI runs establish a reproducible baseline before budgets are promoted to regression gates.
 
-### Collected green CI samples
+### Initial green timing samples
 
-Two independent GitHub Actions jobs on commit `a11a8f5c1daae45adf7833a58b7664f79dcae546` produced comparable Chromium 140 measurements:
+Two independent GitHub Actions jobs on commit `a11a8f5c1daae45adf7833a58b7664f79dcae546` produced comparable Chromium 140 timing/heap measurements:
 
 | Metric | Run 76 | Run 77 | Two-run observation |
 |---|---:|---:|---:|
@@ -44,24 +44,42 @@ Two independent GitHub Actions jobs on commit `a11a8f5c1daae45adf7833a58b7664f79
 | visible iframe count | 0 | 0 | invariant in this fixture |
 | long tasks >50 ms | 0 | 0 | none observed |
 
-These two runs are useful evidence but are still insufficient for tight CI budgets. Continue collecting comparable samples before turning latency/heap values into regression gates.
+The original idle CPU readings from these two runs were invalid because the two ends of the interval were read through separate CDP sessions. They are intentionally excluded from the idle baseline.
 
-The original idle CPU readings from these two runs were invalid (`TaskDuration`/`ScriptDuration` deltas could be slightly negative) because the two ends of the interval were read through separate CDP sessions. The benchmark was corrected on 2026-09-04 to keep both reads on one CDP session and now explicitly rejects negative deltas. Idle CPU baseline remains pending until corrected green samples exist.
+### Corrected green samples
+
+The corrected probe keeps both idle-counter reads on one CDP session and rejects negative deltas. Two independent green jobs on commit `694d498cbeb34c1c13ed4ff32f900a9105b0e419` produced these Chromium `140.0.7339.16` samples:
+
+| Metric | Run 88 | Run 89 | Current corrected observation |
+|---|---:|---:|---:|
+| Startup median | 129.20 ms | 123.31 ms | 126.26 ms median-of-runs |
+| Startup p95 | 188.63 ms | 172.74 ms | 188.63 ms worst observed |
+| Search median | 52.43 ms | 52.25 ms | 52.34 ms median-of-runs |
+| Search p95 | 82.03 ms | 75.35 ms | 82.03 ms worst observed |
+| Add dialog | 59.60 ms | 63.07 ms | 61.34 ms median-of-runs |
+| Idle renderer TaskDuration / 1 s | 7.010 ms | 5.700 ms | 6.355 ms median-of-runs |
+| Idle renderer ScriptDuration / 1 s | 0.049 ms | 0.026 ms | 0.038 ms median-of-runs |
+| JS heap used | 4.720 MiB | 6.188 MiB | 4.720–6.188 MiB observed range |
+| iframe count | 4 | 4 | invariant in this fixture |
+| visible iframe count | 0 | 0 | invariant in this fixture |
+| long tasks >50 ms | 0 | 0 | none observed |
+
+The corrected samples are now the preferred idle-CPU baseline evidence. Timing/heap budgets remain provisional because hosted-runner variance is still based on too few independent corrected jobs. The next promotion point is at least five comparable corrected green jobs on the same benchmark semantics; then use a relative regression threshold rather than a brittle single-number limit.
 
 ## Baseline table
 
 | Metric | Current baseline | Budget | Collection status |
 |---|---:|---:|---|
-| Side Panel startup median | 135.04–136.65 ms across 2 green jobs | pending | automated; more samples needed |
-| Side Panel startup p95 | 179.05–196.49 ms across 2 green jobs | safety guard < 5000 ms | automated; more samples needed |
-| Search dialog median | 50.91–52.18 ms across 2 green jobs | pending | automated; more samples needed |
-| Search dialog p95 | 87.25–88.89 ms across 2 green jobs | safety guard < 2000 ms | automated; more samples needed |
-| Add dialog latency | 62.68–64.70 ms across 2 green jobs | safety guard < 3000 ms | automated; more samples needed |
-| Idle renderer TaskDuration / 1 s | pending corrected samples | pending | automated; measurement fixed |
-| Idle renderer ScriptDuration / 1 s | pending corrected samples | pending | automated; measurement fixed |
-| Side Panel JS heap used | 4.745–6.503 MiB across 2 green jobs | pending | automated; more samples needed |
+| Side Panel startup median | 123.31–129.20 ms across 2 corrected green jobs | pending relative budget | automated; target >=5 corrected jobs |
+| Side Panel startup p95 | 172.74–188.63 ms across 2 corrected green jobs | safety guard < 5000 ms | automated; target >=5 corrected jobs |
+| Search dialog median | 52.25–52.43 ms across 2 corrected green jobs | pending relative budget | automated; target >=5 corrected jobs |
+| Search dialog p95 | 75.35–82.03 ms across 2 corrected green jobs | safety guard < 2000 ms | automated; target >=5 corrected jobs |
+| Add dialog latency | 59.60–63.07 ms across 2 corrected green jobs | safety guard < 3000 ms | automated; target >=5 corrected jobs |
+| Idle renderer TaskDuration / 1 s | 5.700–7.010 ms | pending relative budget | corrected automated measurement |
+| Idle renderer ScriptDuration / 1 s | 0.026–0.049 ms | pending relative budget | corrected automated measurement |
+| Side Panel JS heap used | 4.720–6.188 MiB across 2 corrected green jobs | pending relative budget | automated; target >=5 corrected jobs |
 | Live iframe count | 4 total / 0 visible in baseline fixture | scenario-specific invariant | automated |
-| Long tasks >50 ms | 0 in 2 green jobs | pending | automated |
+| Long tasks >50 ms | 0 in 2 corrected green jobs | pending | automated |
 | Runtime/storage messages per minute | not instrumented | pending | planned |
 | Storage writes per minute | not instrumented | pending | planned |
 | Service-worker wakeups | static source evidence available; runtime counter pending | pending | planned |
