@@ -1,0 +1,65 @@
+name: task2-finalize
+
+on:
+  push:
+    branches:
+      - chore/store-readiness-audit-fixes
+    paths:
+      - .github/workflows/task2-finalize.yml
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: chore/store-readiness-audit-fixes
+          fetch-depth: 0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          package-manager-cache: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Apply TASK2 runtime patches
+        run: |
+          set -euo pipefail
+          for patch in \
+            tools/task2-patches/01-01.patch \
+            tools/task2-patches/01-02.patch \
+            tools/task2-patches/01-03.patch \
+            tools/task2-patches/01-06.patch \
+            tools/task2-patches/01-07.patch; do
+            echo "Checking $patch"
+            git apply --check "$patch"
+            git apply "$patch"
+          done
+
+      - name: Validate source
+        run: node tools/validate.mjs
+      - name: Install E2E dependencies
+        run: npm install --no-audit --no-fund
+      - name: Unit tests
+        run: npm run test:unit
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Chromium extension E2E
+        run: xvfb-run -a npm run test:e2e
+      - name: Rebuild fallback and package
+        run: python tools/package.py
+
+      - name: Commit finalized TASK2 runtime
+        run: |
+          set -euo pipefail
+          git rm -r tools/task2-patches
+          git rm .github/workflows/task2-finalize.yml
+          git add app variants
+          git config user.name "AppTower Automation"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "task2: wire serialized state coordinator runtime"
+          git push origin HEAD:chore/store-readiness-audit-fixes
