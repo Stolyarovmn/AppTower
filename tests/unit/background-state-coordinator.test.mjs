@@ -4,7 +4,7 @@ import {createBackgroundStateCoordinator} from "../../app/shared/background-stat
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-test("panel and workspace mutations share one FIFO queue", async () => {
+test("panel and workspace mutations for the same window share FIFO ordering", async () => {
   const coordinator = createBackgroundStateCoordinator();
   const trace = [];
 
@@ -22,7 +22,7 @@ test("panel and workspace mutations share one FIFO queue", async () => {
   assert.deepEqual(trace,["panel:start","panel:end","workspace:start","workspace:end"]);
 });
 
-test("workspace reads wait for earlier writes", async () => {
+test("workspace reads wait for earlier writes in the same window", async () => {
   const coordinator = createBackgroundStateCoordinator();
   let state = "old";
 
@@ -36,36 +36,70 @@ test("workspace reads wait for earlier writes", async () => {
   await write;
 });
 
-test("different windows still serialize through the global coordinator", async () => {
+test("a stalled browser window cannot freeze another window", async () => {
   const coordinator = createBackgroundStateCoordinator();
-  const trace = [];
+  let release;
+  const stalled = new Promise(resolve => { release = resolve; });
 
-  const first = coordinator.workspace(1,"save",async () => {
-    trace.push("w1:start");
-    await delay(15);
-    trace.push("w1:end");
-  });
+  const first = coordinator.workspace(1,"stalled-save",async () => stalled);
+  let windowTwoFinished = false;
   const second = coordinator.workspace(2,"save",async () => {
-    trace.push("w2:start");
-    trace.push("w2:end");
+    windowTwoFinished = true;
+    return "ok";
   });
 
-  await Promise.all([first,second]);
-  assert.deepEqual(trace,["w1:start","w1:end","w2:start","w2:end"]);
+  assert.equal(await Promise.race([second,delay(100).then(() => "timeout")]),"ok");
+  assert.equal(windowTwoFinished,true);
+  release();
+  await first;
 });
 
-test("diagnostics expose scoped labels for future background wiring", async () => {
+test("stalled bootstrap work cannot block shortcut state or panel actions", async () => {
+  const coordinator = createBackgroundStateCoordinator();
+  let release;
+  const stalled = new Promise(resolve => { release = resolve; });
+
+  const bootstrap = coordinator.storage("initialize-startup",async () => stalled);
+  const shortcutSave = coordinator.workspace(9,"mutate-shortcuts",async () => "saved");
+  const pendingAction = coordinator.storage("pending-panel-action",async () => "delivered");
+
+  assert.equal(await Promise.race([shortcutSave,delay(100).then(() => "timeout")]),"saved");
+  assert.equal(await Promise.race([pendingAction,delay(100).then(() => "timeout")]),"delivered");
+  release();
+  await bootstrap;
+});
+
+test("sync storage remains FIFO within its own conflict lane", async () => {
+  const coordinator = createBackgroundStateCoordinator();
+  const trace=[];
+  const first=coordinator.storage("push-sync",async()=>{
+    trace.push("push:start");
+    await delay(10);
+    trace.push("push:end");
+  });
+  const second=coordinator.storage("apply-remote-sync",async()=>{
+    trace.push("apply");
+  });
+  await Promise.all([first,second]);
+  assert.deepEqual(trace,["push:start","push:end","apply"]);
+});
+
+test("diagnostics expose scoped labels and lane snapshots", async () => {
   const events = [];
   const coordinator = createBackgroundStateCoordinator({onEvent:event => events.push(event)});
 
   await coordinator.panel(11,"open",async () => undefined);
   await coordinator.workspaceRead(11,"get-state",async () => undefined);
-  await coordinator.storage("remote-sync",async () => undefined);
+  await coordinator.storage("pending-panel-action",async () => undefined);
 
   const starts = events.filter(event => event.phase === "start");
   assert.deepEqual(starts.map(event => [event.label,event.kind]),[
     ["panel:11:open","mutation"],
     ["workspace:11:get-state","read"],
-    ["storage:remote-sync","mutation"]
+    ["storage:panel-action:pending-panel-action","mutation"]
   ]);
+  const snapshot=coordinator.snapshot();
+  assert.equal(snapshot.pending,0);
+  assert.ok(snapshot.windows[11]);
+  assert.ok(snapshot.storage["panel-action"]);
 });
