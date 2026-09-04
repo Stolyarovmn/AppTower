@@ -26,6 +26,43 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Normalize staged patch hunk counts
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          for path in sorted(Path("tools/task2-patches").glob("*.patch")):
+              lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
+              out = []
+              i = 0
+              while i < len(lines):
+                  line = lines[i]
+                  m = re.match(r"^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@(.*?)(\r?\n)?$", line)
+                  if not m:
+                      out.append(line)
+                      i += 1
+                      continue
+                  start_old, start_new, suffix, newline = m.group(1), m.group(2), m.group(3), m.group(4) or ""
+                  j = i + 1
+                  old_count = new_count = 0
+                  while j < len(lines) and not lines[j].startswith("@@ "):
+                      h = lines[j]
+                      if h.startswith(("--- ", "+++ ", "diff --git ")):
+                          break
+                      if not h.startswith("\\ No newline"):
+                          if h.startswith((" ", "-")):
+                              old_count += 1
+                          if h.startswith((" ", "+")):
+                              new_count += 1
+                      j += 1
+                  out.append(f"@@ -{start_old},{old_count} +{start_new},{new_count} @@{suffix}{newline}")
+                  out.extend(lines[i+1:j])
+                  i = j
+              path.write_text("".join(out), encoding="utf-8")
+              print(f"normalized {path}")
+          PY
+
       - name: Apply TASK2 runtime patches
         run: |
           set -euo pipefail
