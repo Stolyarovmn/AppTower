@@ -34,9 +34,43 @@ This document tracks runtime performance and energy budgets for AppTower. Runtim
 
 `tests/e2e/performance-newtab.spec.mjs` measures AppTower New Tab first-interactive latency in headed Chromium/Xvfb. Readiness requires the App Tower rail to be visible and the search control to be enabled. Seven samples are recorded to a dedicated JSON artifact.
 
-## Latest verified CI sample — validate run 119
+## Latest verified CI sample — validate run 131
 
-Run 119 completed successfully on head `1f2e219c5c6124e07918e2625bae7947ddbb6ef9` using Chromium `140.0.7339.16`. Validation, unit tests, Chromium extension E2E, package rebuild and diagnostic artifact upload all passed.
+Run 131 completed successfully on head `0b564b0190abb32cb02d8f9846461d8e32a43db3` using Chromium `140.0.7339.16`. The headed Chromium performance probes and the rest of the validation workflow completed successfully.
+
+Side Panel:
+
+| Metric | Run 131 |
+|---|---:|
+| Startup minimum | 125.97 ms |
+| Startup median | 132.22 ms |
+| Startup p95/max | 199.52 ms |
+| Search median | 52.74 ms |
+| Search p95/max | 85.39 ms |
+| Add dialog | 62.33 ms |
+| Idle `TaskDuration` / 1 s | 6.425 ms |
+| Idle `ScriptDuration` / 1 s | 0.120 ms |
+| JS heap used | 4.384 MiB |
+| JS heap total | 19.031 MiB |
+| iframe count | 4 |
+| visible iframe count | 0 |
+| Long Tasks >50 ms | 0 |
+
+New Tab:
+
+| Metric | Run 131 |
+|---|---:|
+| First-interactive minimum | 93.53 ms |
+| First-interactive median | 116.72 ms |
+| First-interactive p95/max | 162.76 ms |
+
+Run 131 remains inside every currently documented latency/CPU regression budget: Side Panel startup median 132.22 < 172.52 ms, startup p95 199.52 < 253.89 ms, Search median 52.74 < 72.90 ms, Search p95 85.39 < 112.04 ms, Add 62.33 < 82.31 ms, idle `TaskDuration` 6.425 < 9.090 ms/s, New Tab median 116.72 < 118.58 ms and New Tab p95 162.76 < 184.07 ms. Structural invariants also remain unchanged at 4 iframes, 0 visible iframes in the fixture and 0 Long Tasks.
+
+The New Tab median is close to its provisional threshold, but this is one hosted-runner sample while TASK 2 is still `ACTIVE`; treat it as a watch signal rather than a regression. Do not rebase the established baseline until TASK 2 completes and multiple post-TASK-2 jobs agree.
+
+## Previous candidate sample — validate run 119
+
+Run 119 completed successfully on head `1f2e219c5c6124e07918e2625bae7947ddbb6ef9` using Chromium `140.0.7339.16`.
 
 Side Panel:
 
@@ -84,7 +118,7 @@ The idle-counter bug in the original probe was corrected by reading both ends of
 | visible iframe count | **0** | invariant |
 | Long Tasks >50 ms | **0** | invariant |
 
-Run 119 is retained as a candidate post-change sample rather than folded into this baseline while TASK 2 owns the WIP lock.
+Runs 119 and 131 are retained as candidate post-change samples rather than folded into this baseline while TASK 2 owns the WIP lock.
 
 ### ScriptDuration noise finding
 
@@ -102,7 +136,7 @@ Five green jobs now exist with the same benchmark semantics and Chromium version
 | First-interactive median | 92.17 ms | 84.35 ms | 87.84 ms | 90.72 ms | 58.16 ms | **87.84 ms** | 58.16–92.17 ms |
 | First-interactive p95/max | 155.13 ms | 114.87 ms | 136.35 ms | 142.90 ms | 135.05 ms | **136.35 ms** | 114.87–155.13 ms |
 
-Five samples are enough to promote a provisional relative New Tab budget. The budget remains deliberately loose because the hosted-runner spread is still material.
+Five samples are enough to promote a provisional relative New Tab budget. The budget remains deliberately loose because the hosted-runner spread is still material. Run 131 is tracked separately as a post-change/watch sample while TASK 2 is active.
 
 ## Baselines and provisional budgets
 
@@ -118,8 +152,8 @@ Five samples are enough to promote a provisional relative New Tab budget. The bu
 | Side Panel JS heap used | 4.723 MiB median-of-runs; observed 4.367–6.530 MiB | no tight gate yet | scenario variance too large |
 | Live iframe count | 4 total / 0 visible in fixture | no increase in identical fixture | structural invariant |
 | Long Tasks >50 ms | 0 | no repeated Long Task in idle/command fixture | safety signal |
-| New Tab first-interactive median | 87.84 ms median-of-runs, 5 green jobs | +35% = **118.58 ms** | documented provisional budget |
-| New Tab first-interactive p95 | 136.35 ms median-of-runs, 5 green jobs | +35% = **184.07 ms** | documented provisional budget |
+| New Tab first-interactive median | 87.84 ms median-of-runs, 5 green jobs | +35% = **118.58 ms** | documented provisional budget; run 131 watch sample = 116.72 ms |
+| New Tab first-interactive p95 | 136.35 ms median-of-runs, 5 green jobs | +35% = **184.07 ms** | documented provisional budget; run 131 = 162.76 ms |
 | Runtime/storage messages per minute | not instrumented | pending | planned |
 | Storage writes per minute | not instrumented | pending | planned |
 | Service-worker wakeups | static source evidence available; runtime counter pending | pending | planned |
