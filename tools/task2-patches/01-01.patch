@@ -1,0 +1,153 @@
+--- a/app/background.js
++++ b/app/background.js
+@@ -2,6 +2,8 @@
+ import { browserCapabilities, openTowerContainer, closeTowerContainer, openOptions, repairNativeSidePanelOptions } from "./shared/browser-adapter.js";
+ import { WORKSPACES_KEY, DEFAULT_WORKSPACE_KEY, WINDOW_WORKSPACES_KEY, normalizeWorkspace, workspaceSummary } from "./shared/workspaces.js";
+ import { MEDIA_STATE_KEY, normalizeMediaState } from "./shared/media-contract.js";
++import { createBackgroundStateCoordinator } from "./shared/background-state-coordinator.js";
++import { createPanelStateStore } from "./shared/panel-state-store.js";
+ import {
+   SHORTCUT_SITE, SHORTCUT_GROUP, SHORTCUT_TEMPLATE,
+   normalizeShortcut, normalizeShortcutList, firstLaunchableSite,
+@@ -76,6 +78,35 @@
+ const panelDisconnectTimers = new Map();
+ const panelClosedAt = new Map();
+ 
++// All shared panel/workspace mutations pass through one FIFO coordinator.
++// User-activation-sensitive browser APIs (sidePanel.open/close) are still
++// started immediately by their callers; only our own state mutation/persist
++// phases are serialized here.
++const backgroundStateCoordinator = createBackgroundStateCoordinator();
++const panelStateStore = createPanelStateStore({
++  coordinator:backgroundStateCoordinator,
++  openWindows,
++  collapsedWindows,
++  persistOpen:async () => {
++    try { await chrome.storage.session.set({[PANEL_SESSION_KEY]:[...openWindows]}); } catch {}
++  },
++  persistCollapsed:async () => {
++    try { await chrome.storage.session.set({[COLLAPSED_SESSION_KEY]:[...collapsedWindows]}); } catch {}
++  },
++  broadcastRail:async (windowId,visible) => { broadcastRail(windowId,visible); },
++  clearWindowResources
++});
++
++function serializeWorkspaceMutation(windowId, action, operation) {
++  return backgroundStateCoordinator.workspace(windowId,action,operation);
++}
++function serializeWorkspaceRead(windowId, action, reader) {
++  return backgroundStateCoordinator.workspaceRead(windowId,action,reader);
++}
++function serializeStorageMutation(action, operation) {
++  return backgroundStateCoordinator.storage(action,operation);
++}
++
+ const pwaSidecars = new Map();
+ const pwaSidecarsReady = chrome.storage.session.get(PWA_SIDECARS_KEY).then(data => {
+   const raw = data[PWA_SIDECARS_KEY];
+@@ -89,14 +120,14 @@
+ const pwaFetches = new Map();
+ 
+ chrome.runtime.onInstalled.addListener(() => {
+-  void initialize(true);
++  void serializeStorageMutation("initialize-install",() => initialize(true)).catch(() => {});
+   void initializeNativeContextMenus();
+   chrome.alarms?.create?.(RESOURCE_ALARM,{periodInMinutes:1});
+ });
+ chrome.runtime.onStartup.addListener(() => {
+   // Static document_start content scripts are the primary path. This recovery
+   // pass covers tabs restored before the MV3 worker finished waking up.
+-  void initialize(true);
++  void serializeStorageMutation("initialize-startup",() => initialize(true)).catch(() => {});
+   void initializeNativeContextMenus();
+   chrome.alarms?.create?.(RESOURCE_ALARM,{periodInMinutes:1});
+ });
+@@ -111,18 +142,26 @@
+   if (!Number.isInteger(windowId)) return;
+ 
+   globallyEnabled = true;
++  const action = panelActionFromMessage({intent:"search"},windowId);
++  if (hasLivePanel(windowId) && postPanelAction(windowId,action)) {
++    void markPanelOpen(windowId,{authoritative:true}).catch(() => {});
++    await chrome.storage.local.set({[GLOBAL_ENABLED_KEY]:true});
++    return;
++  }
++
++  // Keep sidePanel.open() in the command user-activation chain; persistence is
++  // deliberately not awaited before starting the browser-owned open.
++  const openPromise = openTowerContainer(windowId,{intent:"search"});
++  void markPanelOpen(windowId,{authoritative:true}).catch(() => {});
+   await chrome.storage.local.set({
+     [GLOBAL_ENABLED_KEY]:true,
+-    pendingAction:{intent:"search",windowId,nonce:Date.now()}
++    pendingAction:action
+   });
+-  collapsedWindows.delete(windowId);
+-  persistCollapsedWindows();
+-  markPanelOpen(windowId);
+ 
+   try {
+-    await openTowerContainer(windowId,{intent:"search"});
++    await openPromise;
+   } catch {
+-    markPanelClosed(windowId,{collapsed:true});
++    await markPanelClosed(windowId,{collapsed:true}).catch(() => {});
+   }
+ });
+ if (browserCapabilities().nativeSidePanel) {
+@@ -137,15 +176,9 @@
+   if (!Number.isInteger(windowId)) return;
+ 
+   // The browser-action click is a direct user gesture, so open immediately.
+-  collapsedWindows.delete(windowId);
+-  persistCollapsedWindows();
+-  openWindows.add(windowId);
+-  persistPanelWindows();
+-  broadcastRail(windowId, false);
++  void markPanelOpen(windowId,{authoritative:true}).catch(() => {});
+   openTowerContainer(windowId).catch(() => {
+-    openWindows.delete(windowId);
+-    persistPanelWindows();
+-    broadcastRail(windowId, true);
++    void markPanelClosed(windowId,{collapsed:true}).catch(() => {});
+   });
+ });
+ 
+@@ -160,14 +193,14 @@
+   chrome.sidePanel.onOpened.addListener(({path, windowId}) => {
+     if (!Number.isInteger(windowId) || !matchesPanelPath(path)) return;
+     // Browser event is authoritative: the panel is visibly open right now.
+-    markPanelOpen(windowId, { authoritative:true });
++    void markPanelOpen(windowId, { authoritative:true }).catch(() => {});
+   });
+ }
+ if (hasNativePanelClosedEvent) {
+   chrome.sidePanel.onClosed.addListener(({path, windowId}) => {
+     if (!Number.isInteger(windowId) || !matchesPanelPath(path)) return;
+     // Browser event is authoritative: only now may the collapsed rail appear.
+-    markPanelClosed(windowId, { collapsed:true });
++    void markPanelClosed(windowId, { collapsed:true }).catch(() => {});
+   });
+ }
+ 
+@@ -204,9 +237,9 @@
+     // the rail state by reconnecting.
+     if (hasNativePanelClosedEvent) {
+       const closedAgo = Date.now() - Number(panelClosedAt.get(windowId) || 0);
+-      if (closedAgo > 1200) markPanelOpen(windowId,{authoritative:true});
++      if (closedAgo > 1200) void markPanelOpen(windowId,{authoritative:true}).catch(() => {});
+     } else if (!collapsedWindows.has(windowId)) {
+-      markPanelOpen(windowId);
++      void markPanelOpen(windowId).catch(() => {});
+     }
+ 
+     port.onDisconnect.addListener(() => {
+@@ -222,7 +255,7 @@
+       const timer = setTimeout(() => {
+         panelDisconnectTimers.delete(windowId);
+         if (!panelPorts.get(windowId)?.size) {
+-          markPanelClosed(windowId, { collapsed:true });
++          void markPanelClosed(windowId, { collapsed:true }).catch(() => {});
+         }
+       }, 900);
+       panelDisconnectTimers.set(windowId, timer);
