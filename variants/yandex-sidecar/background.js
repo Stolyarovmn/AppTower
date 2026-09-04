@@ -143,9 +143,11 @@ chrome.commands?.onCommand?.addListener(async command => {
 
   globallyEnabled = true;
   const action = panelActionFromMessage({intent:"search"},windowId);
-  if (hasLivePanel(windowId) && postPanelAction(windowId,action)) {
+  if (hasLivePanel(windowId)) {
     void markPanelOpen(windowId,{authoritative:true}).catch(() => {});
-    await chrome.storage.local.set({[GLOBAL_ENABLED_KEY]:true});
+    await serializeStorageMutation("pending-panel-action",() =>
+      chrome.storage.local.set({[GLOBAL_ENABLED_KEY]:true,pendingAction:action})
+    );
     return;
   }
 
@@ -335,13 +337,6 @@ function hasLivePanel(windowId) {
   return Number.isInteger(Number(windowId)) && Boolean(panelPorts.get(Number(windowId))?.size);
 }
 
-function postPanelAction(windowId, action) {
-  if (!action || !Number.isInteger(Number(windowId))) return false;
-  const ports = [...(panelPorts.get(Number(windowId)) || [])];
-  if (!ports.length) return false;
-  for (const port of ports) safePost(port,{type:"ATN_PANEL_ACTION",action});
-  return true;
-}
 function matchesPanelPath(path) {
   return !path || String(path).endsWith(SIDE_PANEL_PATH);
 }
@@ -434,10 +429,6 @@ chrome.contextMenus?.onClicked?.addListener(async (info, tab) => {
     }
 
     if (info.menuItemId === "atn-add" && action) {
-      if (hasLivePanel(windowId) && postPanelAction(windowId,action)) {
-        await openPromise.catch(() => {});
-        return;
-      }
       await serializeStorageMutation("pending-panel-action",() =>
         chrome.storage.local.set({pendingAction:action})
       );
