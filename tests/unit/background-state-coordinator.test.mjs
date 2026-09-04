@@ -4,65 +4,60 @@ import {createBackgroundStateCoordinator} from "../../app/shared/background-stat
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-test("panel and workspace mutations for the same window share FIFO ordering", async () => {
+test("workspace operations remain FIFO within one window", async () => {
   const coordinator = createBackgroundStateCoordinator();
   const trace = [];
-
-  const panel = coordinator.panel(7,"close",async () => {
-    trace.push("panel:start");
+  const first = coordinator.workspace(7,"first",async () => {
+    trace.push("first:start");
     await delay(20);
-    trace.push("panel:end");
+    trace.push("first:end");
   });
-  const workspace = coordinator.workspace(7,"save",async () => {
-    trace.push("workspace:start");
-    trace.push("workspace:end");
-  });
-
-  await Promise.all([panel,workspace]);
-  assert.deepEqual(trace,["panel:start","panel:end","workspace:start","workspace:end"]);
+  const second = coordinator.workspace(7,"second",async () => trace.push("second"));
+  await Promise.all([first,second]);
+  assert.deepEqual(trace,["first:start","first:end","second"]);
 });
 
 test("workspace reads wait for earlier writes in the same window", async () => {
   const coordinator = createBackgroundStateCoordinator();
   let state = "old";
-
   const write = coordinator.workspace(3,"update",async () => {
     await delay(15);
     state = "new";
   });
   const read = coordinator.workspaceRead(3,"get-state",async () => state);
-
   assert.equal(await read,"new");
   await write;
+});
+
+test("a stalled workspace save cannot freeze panel collapse in the same window", async () => {
+  const coordinator = createBackgroundStateCoordinator();
+  let release;
+  const stalled = new Promise(resolve => { release = resolve; });
+  const save = coordinator.workspace(5,"mutate-shortcuts",async () => stalled);
+  const collapse = coordinator.panel(5,"close",async () => "closed");
+  assert.equal(await Promise.race([collapse,delay(100).then(() => "timeout")]),"closed");
+  release();
+  await save;
 });
 
 test("a stalled browser window cannot freeze another window", async () => {
   const coordinator = createBackgroundStateCoordinator();
   let release;
   const stalled = new Promise(resolve => { release = resolve; });
-
   const first = coordinator.workspace(1,"stalled-save",async () => stalled);
-  let windowTwoFinished = false;
-  const second = coordinator.workspace(2,"save",async () => {
-    windowTwoFinished = true;
-    return "ok";
-  });
-
+  const second = coordinator.workspace(2,"save",async () => "ok");
   assert.equal(await Promise.race([second,delay(100).then(() => "timeout")]),"ok");
-  assert.equal(windowTwoFinished,true);
   release();
   await first;
 });
 
-test("stalled bootstrap work cannot block shortcut state or panel actions", async () => {
+test("stalled bootstrap work cannot block shortcut saves or panel actions", async () => {
   const coordinator = createBackgroundStateCoordinator();
   let release;
   const stalled = new Promise(resolve => { release = resolve; });
-
   const bootstrap = coordinator.storage("initialize-startup",async () => stalled);
   const shortcutSave = coordinator.workspace(9,"mutate-shortcuts",async () => "saved");
   const pendingAction = coordinator.storage("pending-panel-action",async () => "delivered");
-
   assert.equal(await Promise.race([shortcutSave,delay(100).then(() => "timeout")]),"saved");
   assert.equal(await Promise.race([pendingAction,delay(100).then(() => "timeout")]),"delivered");
   release();
@@ -77,21 +72,17 @@ test("sync storage remains FIFO within its own conflict lane", async () => {
     await delay(10);
     trace.push("push:end");
   });
-  const second=coordinator.storage("apply-remote-sync",async()=>{
-    trace.push("apply");
-  });
+  const second=coordinator.storage("apply-remote-sync",async()=>trace.push("apply"));
   await Promise.all([first,second]);
   assert.deepEqual(trace,["push:start","push:end","apply"]);
 });
 
-test("diagnostics expose scoped labels and lane snapshots", async () => {
+test("diagnostics expose separate panel/workspace/storage lanes", async () => {
   const events = [];
   const coordinator = createBackgroundStateCoordinator({onEvent:event => events.push(event)});
-
   await coordinator.panel(11,"open",async () => undefined);
   await coordinator.workspaceRead(11,"get-state",async () => undefined);
   await coordinator.storage("pending-panel-action",async () => undefined);
-
   const starts = events.filter(event => event.phase === "start");
   assert.deepEqual(starts.map(event => [event.label,event.kind]),[
     ["panel:11:open","mutation"],
@@ -100,6 +91,7 @@ test("diagnostics expose scoped labels and lane snapshots", async () => {
   ]);
   const snapshot=coordinator.snapshot();
   assert.equal(snapshot.pending,0);
-  assert.ok(snapshot.windows[11]);
+  assert.ok(snapshot.panel[11]);
+  assert.ok(snapshot.workspace[11]);
   assert.ok(snapshot.storage["panel-action"]);
 });
