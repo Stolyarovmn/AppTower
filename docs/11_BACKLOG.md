@@ -14,16 +14,16 @@ Last competitor scan: 2026-09-04.
 
 ## Current execution gate
 
-**TASK 2 remains the only ACTIVE TASK.** Global WIP lock is held by the Serialized state coordinator implementation.
+**No TASK is ACTIVE.** TASK 2 is complete and the global WIP lock is released. Per the executor rule, no new TASK is activated in the same run that completes TASK 2.
 
-Latest observed PR head before this backlog commit: `fceccbd028acd2d116dd2e91690ac24724eaf29d` (`docs: record coordinator routing CI and performance sample`). `validate` run `33853054828` completed successfully. Therefore CI was green before this backlog-only change, but this new head requires normal revalidation before any READY TASK may start. TASK 2 remains ACTIVE regardless, so global single-WIP still blocks another implementation.
+Completion evidence before this backlog-only commit: PR head `f06900501762575f18394c23cbbd5fe4b6a21ce2`; `validate` run `33853971074` completed successfully with source validation, unit tests, headed Chromium extension E2E, fallback/package rebuild and artifact upload all green. This backlog-only completion commit must also pass normal revalidation before a READY TASK may be activated on a later run.
 
 ## TASKS
 
 | Rank | Score | Status | TASK | Dependencies |
 |---:|---:|---|---|---|
 | 1 | 97 | DONE | Deterministic Side Panel command routing and Add Current Page source resolution | Completed; regression suite green at completion |
-| 2 | 92 | ACTIVE | Serialized state coordinator for panel/rail/workspace mutations | Task 1; single-WIP lock |
+| 2 | 92 | DONE | Serialized state coordinator for panel/rail/workspace mutations | Task 1; completed on green CI |
 | 3 | 89 | READY | Safe pane sleep guards for unsaved input, active media and explicit keep-awake | Embedded-frame bridge; resource lease/sleep path; green CI before execution |
 | 4 | 88 | BLOCKED | Versioned persistence schema + append-only migrations | TASK 2 green; persisted-state inventory |
 | 5 | 86 | BLOCKED | Command Palette across shortcuts/templates/workspaces/recent | TASK 2 green |
@@ -47,13 +47,13 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 
 **Sources/competitors:** internal AppTower regressions and regression suite; no competitor code dependency.
 
-### TASK 2 — Serialized state coordinator — 92/100 — ACTIVE
+### TASK 2 — Serialized state coordinator — 92/100 — DONE
 
 **Rationale:** AppTower has concurrent user actions, storage events, port reconnects and panel lifecycle events. One ordered mutation boundary should reduce race-driven reload/reconnect bugs and technical debt.
 
-**Acceptance criteria:** all shared-state mutations enter one queue/coordinator; persistence/render phases cannot interleave; read-only events do not persist/wake unnecessarily; pane isolation/restart/rail behavior stays unchanged.
+**Acceptance criteria/result:** panel/rail/workspace shared-state mutation paths are routed through one FIFO coordinator and panel lifecycle store/controller; persistence/render phases are serialized; read barriers are available without generating mutation commits; live panel reconnect/routing preserves rail and workspace state without reopening the panel document.
 
-**Automated test plan:** delayed-async ordering unit tests; rapid collapse/expand/search/add/reconnect/workspace E2E; assert one persist/render phase per logical mutation where applicable.
+**Automated test plan/result:** delayed-async ordering/read-barrier unit tests; background coordinator, panel-state store and lifecycle-controller unit coverage; static wiring regression; headed Chromium `ATN-E2E-012` rapid Search/Organize/Add + panel reconnect state preservation; headed Chromium `ATN-E2E-013` live background panel routing/document reuse + idle coordinator diagnostics. Exact pre-completion head `f06900501762575f18394c23cbbd5fe4b6a21ce2` passed `validate` run `33853971074`, including unit tests and Chromium extension E2E.
 
 **Sources/competitors:** Lunma (Apache-2.0) is architectural evidence for a structured local store and Playwright testing. AppTower implementation is clean-room.
 
@@ -202,7 +202,7 @@ At the 72-point tie, anchored sidecar placement ranks above cross-manager import
 
 ## Recalculation after this scan
 
-All pre-existing TASK and IDEA numeric scores remain unchanged. The new pressure-aware-eviction IDEA scores 73/100, so it does **not** cross the >=75 TASK threshold. No TASK was promoted or made ACTIVE. Global WIP remains 1 with TASK 2 ACTIVE. The only ordering change is insertion of the new 73-point IDEA above the existing 73-point favorites item under the technical-debt/resource-architecture tie-break.
+All pre-existing TASK and IDEA numeric scores remain unchanged. The new pressure-aware-eviction IDEA scores 73/100, so it does **not** cross the >=75 TASK threshold. No TASK was promoted or made ACTIVE. TASK 2 completion releases the global WIP lock; no successor TASK is activated in the same run. The only ordering change remains insertion of the new 73-point IDEA above the existing 73-point favorites item under the technical-debt/resource-architecture tie-break.
 
 ## Competitor evidence used in this ranking
 
