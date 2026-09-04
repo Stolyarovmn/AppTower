@@ -64,10 +64,41 @@ test("whenIdle waits for the complete queued mutation set", async () => {
     completed += 1;
   });
 
+  assert.equal(coordinator.snapshot().pending, 2);
+  assert.equal(coordinator.snapshot().queued, 2);
   await coordinator.whenIdle();
   assert.equal(completed, 2);
   assert.equal(coordinator.snapshot().pending, 0);
+  assert.equal(coordinator.snapshot().queued, 0);
   assert.equal(coordinator.snapshot().active, null);
+});
+
+test("queue diagnostics include waiting work while one mutation is active", async () => {
+  const events = [];
+  const coordinator = createMutationCoordinator({onEvent:event => events.push(event)});
+  let releaseFirst;
+  const firstGate = new Promise(resolve => { releaseFirst = resolve; });
+
+  const first = coordinator.enqueue("first", async () => {
+    await firstGate;
+  });
+  const second = coordinator.enqueue("second", async () => undefined);
+
+  await delay(5);
+  const snapshot = coordinator.snapshot();
+  assert.equal(snapshot.pending, 2);
+  assert.equal(snapshot.queued, 1);
+  assert.equal(snapshot.active?.label, "first");
+
+  releaseFirst();
+  await Promise.all([first, second]);
+
+  const enqueues = events.filter(event => event.phase === "enqueue");
+  assert.deepEqual(enqueues.map(event => [event.label,event.pending]), [
+    ["first",1],
+    ["second",2]
+  ]);
+  assert.ok(events.some(event => event.phase === "start" && event.label === "first" && event.queued === 1));
 });
 
 test("diagnostic events preserve mutation sequence", async () => {
