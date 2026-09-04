@@ -118,14 +118,15 @@ Current execution gate: **TASK 2 ACTIVE**. Global WIP lock is held by the Serial
 | Rank | Score | IDEA | Evidence / source | Risks / promotion condition |
 |---:|---:|---|---|---|
 | 1 | 74 | Per-site sleep policy presets (default / aggressive / never sleep) | Drowzy exposes configurable suspension and keep-awake/whitelist behavior; AppTower has a different iframe sleep model but the preference concept transfers cleanly. | Partly covered by TASK 3's explicit keep-awake. Promote broader presets only after resource budgets are measurable and users need per-site tuning. |
-| 2 | 73 | Favorites/pinned mini-row independent of workspace ordering | `ddx-510/dd-sidebar` (MIT) uses a compact bottom/quick-access layer. | Promote if shortcut overflow becomes a frequent UX problem and it can reuse existing storage schema. |
-| 3 | 72 | Workspace/session import from other managers | VertiTab advertises Session Buddy/Toby import; Leap and Workona-like products emphasize reusable contexts. | Promote when AppTower export schema is versioned and stable. |
-| 4 | 70 | Recently accessed smart view | VertiTab exposes Active/Recently Accessed panels; TabDog includes recently closed. | Promote after current Recent is proven stable and searchable. |
-| 5 | 68 | Optional browser-context actions over selected text/link | AI Side Panel/SuperchargeNavigation-style context actions make side tools accessible without opening UI first. | Requires strict permission review and a concrete non-AI use case. |
-| 6 | 65 | Focus mode: temporarily show only one group/workspace | Common in workspace/tab managers. | Promote if users report rail overload after groups/templates mature. |
-| 7 | 62 | Automatic domain grouping suggestions | VertiTab, TabDog and SuperchargeNavigation expose domain grouping. | AppTower should not become a tab manager; promote only as an opt-in shortcut organizer. |
-| 8 | 58 | Optional AI organizer module | Leap/VertiTab expose AI organization. | Keep out of core until there is a privacy-preserving provider/module contract and clear demand. |
-| 9 | 54 | Full vertical-tab manager | Many competitors focus here (VertiTab, TabTOC, Leap, ddSideBar). | Deliberately low: conflicts with AppTower's product boundary; reconsider only if product scope changes. |
+| 2 | 74 | Template layout metadata: saved split ratio/orientation with rebalance/reset | Current Split View and SideSplit both treat reusable split layouts and width ratios as first-class workflow data. AppTower already has two-pane templates, so the transferable idea is to persist layout metadata with a template rather than add more panes or copy window-management code. | Closed-source/store evidence only; clean-room implementation required. Promote after split lifecycle is stable and user value of restoring 30/70, 50/50 or horizontal/vertical layouts is demonstrated. |
+| 3 | 73 | Favorites/pinned mini-row independent of workspace ordering | `ddx-510/dd-sidebar` (MIT) uses a compact bottom/quick-access layer. | Promote if shortcut overflow becomes a frequent UX problem and it can reuse existing storage schema. |
+| 4 | 72 | Workspace/session import from other managers | VertiTab advertises Session Buddy/Toby import; Leap and Workona-like products emphasize reusable contexts. | Promote when AppTower export schema is versioned and stable. |
+| 5 | 70 | Recently accessed smart view | VertiTab exposes Active/Recently Accessed panels; TabDog includes recently closed. | Promote after current Recent is proven stable and searchable. |
+| 6 | 68 | Optional browser-context actions over selected text/link | AI Side Panel/SuperchargeNavigation-style context actions make side tools accessible without opening UI first. | Requires strict permission review and a concrete non-AI use case. |
+| 7 | 65 | Focus mode: temporarily show only one group/workspace | Common in workspace/tab managers. | Promote if users report rail overload after groups/templates mature. |
+| 8 | 62 | Automatic domain grouping suggestions | VertiTab, TabDog and SuperchargeNavigation expose domain grouping. | AppTower should not become a tab manager; promote only as an opt-in shortcut organizer. |
+| 9 | 58 | Optional AI organizer module | Leap/VertiTab expose AI organization. | Keep out of core until there is a privacy-preserving provider/module contract and clear demand. |
+| 10 | 54 | Full vertical-tab manager | Many competitors focus here (VertiTab, TabTOC, Leap, ddSideBar). | Deliberately low: conflicts with AppTower's product boundary; reconsider only if product scope changes. |
 
 ## Competitor evidence used in this ranking
 
@@ -138,6 +139,8 @@ Current execution gate: **TASK 2 ACTIVE**. Global WIP lock is held by the Serial
 - AI Sidebar (`randgua/ai-sidebar`) — MIT, Side Panel + custom sites + selection bridge + DNR-based cross-domain embedding. Its DOM-selector fragility reinforces keeping site-specific automation in optional modules, not AppTower core: https://github.com/randgua/ai-sidebar
 - Universal Split View — current Chrome Web Store listing (v1.0.0, updated 2026-04-26) demonstrates a minimal persistent arbitrary-URL Side Panel and explicitly treats blocked embedding as a compatibility/permission problem: https://chromewebstore.google.com/detail/universal-split-view/gobpljfpndmgomngdgchmmmaaigbjljp
 - SplitView — current Chrome Web Store listing uses real browser windows instead of iframes to avoid embed restrictions, supporting AppTower's existing Real Page/sidecar fallback direction: https://chromewebstore.google.com/detail/splitview-%E2%80%94-split-screen/mjgdhcclienjmjmhbodeikfmgmhabhnk
+- Split View — current Chrome Web Store listing (updated 2026) supports 2/3/4-pane real-window layouts, saved layouts, multiple ratios, undo and link-to-pane actions. It is closed-source, so only the product pattern is relevant: https://chromewebstore.google.com/detail/split-view/cefhclcgocfoinfghjfihclcahbplagh
+- SideSplit — Chrome Web Store listing (v1.0, updated 2025-12-29) manages named URL workspaces and explicit width ratios from a persistent Side Panel. It is not treated as a code source: https://chromewebstore.google.com/detail/sidesplit-split-screen-la/gagifnhcbbnglagibgmgaocifdapmfac
 - VertiTab — current Chrome Web Store listing advertises workspaces, snapshots, suspend, universal search, split view and rich context actions: https://chromewebstore.google.com/detail/vertitab-%E2%80%93-vertical-tab-m/chejfhdknideagdnddjpgamkchefjhoi
 - TabTOC — current Chrome Web Store listing advertises native side panel/overlay/new-tab modes, tab-group sync and auto suspend: https://chromewebstore.google.com/detail/tabtoc-vertical-tab-sideb/gpoeknemdldoghgbljpgndafaieffalj
 - ArchTabs — current Chrome Web Store listing advertises Spaces, command bar, snapshots and optional permissions for history/bookmarks: https://chromewebstore.google.com/detail/archtabs-%E2%80%94-ultra-compact/iibohhagdapncaofncjmphehlaajoecd
@@ -145,6 +148,7 @@ Current execution gate: **TASK 2 ACTIVE**. Global WIP lock is held by the Serial
 ## Product guardrails from this scan
 
 - Do not turn AppTower into a general vertical-tab manager while the differentiator remains persistent web applications/panes beside the current page.
+- Do not expand AppTower beyond two panes merely because window tilers support larger grids; template layout metadata should improve repeatability without scope creep.
 - Never auto-sleep a pane in a way that can silently destroy unsaved user state or interrupt active media; resource saving must be correctness-safe first.
 - Prefer event-driven snapshots and lifecycle handling over periodic polling.
 - Prefer optional permissions for optional integrations.
