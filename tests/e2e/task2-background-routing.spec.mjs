@@ -88,7 +88,7 @@ test("ATN-E2E-013 background routes live panel actions without reopening the pan
     expect(searchResponse?.reusedPanel).toBe(true);
     await expect.poll(() => isDialogOpen(panel,"#search-dialog")).toBe(true);
     expect(await panel.evaluate(() => window.__atnTask2DocumentToken)).toBe(token);
-    await panel.locator("#search-close").click();
+    await panel.locator("#search-dialog .dialog-close").click();
 
     const addResponse = await panel.evaluate(async ({url}) => {
       const currentWindow = await chrome.windows.getCurrent();
