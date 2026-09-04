@@ -185,10 +185,10 @@ test("ATN-E2E-001 add current page pre-fills the real browser page", async () =>
   await expect(panel.locator("#panel-sites .rail-site")).toHaveCount(1);
 });
 
-test("ATN-E2E-002 search closes by button and mouse-click result works", async () => {
+test("ATN-E2E-002 search closes by top-right icon and mouse-click result works", async () => {
   await panel.locator("#rail-search").click();
   await expect.poll(() => isDialogOpen(panel, "#search-dialog")).toBe(true);
-  await panel.locator("#search-close").click();
+  await panel.locator("#search-dialog .dialog-close").click();
   await expect.poll(() => isDialogOpen(panel, "#search-dialog")).toBe(false);
 
   await panel.locator("#rail-search").click();
