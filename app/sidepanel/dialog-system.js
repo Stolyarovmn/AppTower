@@ -74,9 +74,17 @@ dialogObserver.observe(document.documentElement, {childList:true, subtree:true})
  * state and can never change shortcut state by itself. */
 let dragFeedback = null;
 let dragProxy = null;
+let dragProxyFrame = 0;
 let lastPointer = {x:0,y:0};
 
+function cancelDragProxyFrame() {
+  if (!dragProxyFrame) return;
+  cancelAnimationFrame(dragProxyFrame);
+  dragProxyFrame = 0;
+}
+
 function removeDragProxy() {
+  cancelDragProxyFrame();
   dragProxy?.remove();
   dragProxy = null;
   dragFeedback = null;
@@ -106,6 +114,7 @@ function createDragProxy(source) {
 }
 
 function syncDragProxy() {
+  dragProxyFrame = 0;
   if (!dragFeedback?.source?.isConnected) {
     removeDragProxy();
     return;
@@ -114,6 +123,15 @@ function syncDragProxy() {
     createDragProxy(dragFeedback.source);
     positionDragProxy(lastPointer.x,lastPointer.y);
   }
+}
+
+function scheduleDragProxySync() {
+  if (dragProxyFrame) return;
+  // sidepanel.js owns the actual drag state and sets .dragging from a window
+  // pointermove listener later in the same event dispatch. An animation-frame
+  // callback runs after that dispatch has completed, so feedback observes the
+  // authoritative drag state instead of racing it.
+  dragProxyFrame = requestAnimationFrame(syncDragProxy);
 }
 
 document.addEventListener("pointerdown", event => {
@@ -129,10 +147,7 @@ document.addEventListener("pointermove", event => {
   if (!dragFeedback || dragFeedback.pointerId !== event.pointerId) return;
   lastPointer = {x:event.clientX,y:event.clientY};
   if (dragProxy) positionDragProxy(event.clientX,event.clientY);
-  // sidepanel.js marks the source as .dragging from its window-level pointermove
-  // listener later in the same event dispatch. Check again in a microtask so
-  // the proxy appears on the exact movement that begins the drag.
-  queueMicrotask(syncDragProxy);
+  scheduleDragProxySync();
 }, {passive:true});
 
 for (const type of ["pointerup","pointercancel"]) {
