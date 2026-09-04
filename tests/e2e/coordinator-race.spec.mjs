@@ -67,12 +67,18 @@ async function documentToken(panel) {
 }
 
 async function deliverIntent(panel, intent, extra={}) {
-  await panel.evaluate(async ({intent,extra}) => {
+  const response = await panel.evaluate(async ({intent,extra}) => {
     const currentWindow = await chrome.windows.getCurrent();
-    await chrome.storage.local.set({
-      pendingAction:{intent,windowId:currentWindow.id,nonce:Date.now(),...extra}
+    return chrome.runtime.sendMessage({
+      type:"OPEN_PANEL",
+      windowId:currentWindow.id,
+      intent,
+      ...extra
     });
   }, {intent,extra});
+  expect(response?.ok).toBe(true);
+  expect(response?.reusedPanel).toBe(true);
+  return response;
 }
 
 async function railHidden(web) {
@@ -127,6 +133,7 @@ test("ATN-E2E-012 rapid intents and panel reconnect keep one logical state", asy
     await panel.waitForLoadState("domcontentloaded");
     await expect(panel.locator("#panel-sites")).toBeAttached();
     await expect.poll(() => railHidden(web)).toBe(true);
+    await panel.waitForTimeout(200);
     const tokenAfterReconnect = await documentToken(panel);
     expect(tokenAfterReconnect).not.toBe(tokenBeforeReconnect);
     await expect(panel.locator("#panel-sites .rail-site")).toHaveCount(1);
