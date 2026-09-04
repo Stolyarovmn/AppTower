@@ -46,9 +46,6 @@ function installDialogShell(dialog) {
   form.prepend(makeCloseButton(dialog));
   markLegacyCloseOnlyRows(form);
 
-  // Search keeps its keyboard-hint footer, but the redundant text Close button
-  // is hidden by the shared stylesheet.
-
   dialog.addEventListener("pointerdown", event => {
     // Chromium targets the <dialog> itself for a click on ::backdrop. Treat it
     // as cancellation only; never synthesize Save/OK/destructive actions.
@@ -69,6 +66,82 @@ const dialogObserver = new MutationObserver(records => {
   }
 });
 dialogObserver.observe(document.documentElement, {childList:true, subtree:true});
+
+/* Manual rail drag feedback -------------------------------------------------
+ * sidepanel.js intentionally uses Pointer Events instead of HTML5 drag/drop.
+ * The source therefore needs its own visual proxy. Keep this feedback layer
+ * independent from mutation/drop logic: it observes the existing .dragging
+ * state and can never change shortcut state by itself. */
+let dragFeedback = null;
+let dragProxy = null;
+let lastPointer = {x:0,y:0};
+
+function removeDragProxy() {
+  dragProxy?.remove();
+  dragProxy = null;
+  dragFeedback = null;
+}
+
+function positionDragProxy(x, y) {
+  if (!dragProxy) return;
+  dragProxy.style.left = `${Math.round(x)}px`;
+  dragProxy.style.top = `${Math.round(y)}px`;
+}
+
+function createDragProxy(source) {
+  if (!source || dragProxy) return;
+  const proxy = document.createElement("div");
+  proxy.className = "atn-drag-proxy";
+  proxy.setAttribute("aria-hidden", "true");
+  proxy.dataset.shortcutId = source.dataset.shortcutId || "";
+  proxy.dataset.shortcutKind = source.dataset.shortcutKind || "";
+
+  const visual = source.firstElementChild?.cloneNode(true);
+  if (visual) proxy.append(visual);
+  else proxy.textContent = (source.title || "?").trim().slice(0,1).toUpperCase();
+
+  document.body.append(proxy);
+  dragProxy = proxy;
+  positionDragProxy(lastPointer.x,lastPointer.y);
+}
+
+function syncDragProxy() {
+  if (!dragFeedback?.source?.isConnected) {
+    removeDragProxy();
+    return;
+  }
+  if (dragFeedback.source.classList.contains("dragging")) {
+    createDragProxy(dragFeedback.source);
+    positionDragProxy(lastPointer.x,lastPointer.y);
+  }
+}
+
+document.addEventListener("pointerdown", event => {
+  if (event.button !== 0) return;
+  const source = event.target?.closest?.(".rail-site[data-shortcut-id]");
+  if (!source) return;
+  removeDragProxy();
+  dragFeedback = {pointerId:event.pointerId,source};
+  lastPointer = {x:event.clientX,y:event.clientY};
+}, true);
+
+document.addEventListener("pointermove", event => {
+  if (!dragFeedback || dragFeedback.pointerId !== event.pointerId) return;
+  lastPointer = {x:event.clientX,y:event.clientY};
+  if (dragProxy) positionDragProxy(event.clientX,event.clientY);
+  // sidepanel.js marks the source as .dragging from its window-level pointermove
+  // listener later in the same event dispatch. Check again in a microtask so
+  // the proxy appears on the exact movement that begins the drag.
+  queueMicrotask(syncDragProxy);
+}, {passive:true});
+
+for (const type of ["pointerup","pointercancel"]) {
+  window.addEventListener(type, event => {
+    if (!dragFeedback || dragFeedback.pointerId !== event.pointerId) return;
+    removeDragProxy();
+  }, true);
+}
+window.addEventListener("blur", removeDragProxy);
 
 /* Context-menu parity: groups already expose Dissolve directly; templates must
  * not require opening the editor just to perform the equivalent action. */
