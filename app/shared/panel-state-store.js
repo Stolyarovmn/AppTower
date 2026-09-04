@@ -6,6 +6,7 @@ export function createPanelStateStore({
   persistCollapsed,
   broadcastRail,
   clearWindowResources = () => {},
+  cancelPendingDisconnect = () => {},
   now = () => Date.now()
 }) {
   if (!coordinator) throw new TypeError("coordinator is required");
@@ -25,6 +26,7 @@ export function createPanelStateStore({
         return {changed:false, reason:"collapsed"};
       }
 
+      await cancelPendingDisconnect(windowId);
       const changed = !openWindows.has(windowId);
       openWindows.add(windowId);
       if (changed) await persistOpen();
@@ -36,6 +38,7 @@ export function createPanelStateStore({
   async function close(windowId, {collapsed = true} = {}) {
     return coordinator.panel(windowId, "close", async () => {
       closedAt.set(windowId, now());
+      await cancelPendingDisconnect(windowId);
       const openChanged = openWindows.delete(windowId);
       const collapsedChanged = collapsed
         ? !collapsedWindows.has(windowId)
@@ -52,6 +55,7 @@ export function createPanelStateStore({
 
   async function removeWindow(windowId) {
     return coordinator.panel(windowId, "remove-window", async () => {
+      await cancelPendingDisconnect(windowId);
       const openChanged = openWindows.delete(windowId);
       const collapsedChanged = collapsedWindows.delete(windowId);
       closedAt.delete(windowId);
