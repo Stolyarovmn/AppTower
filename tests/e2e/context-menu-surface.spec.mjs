@@ -64,6 +64,8 @@ test("ATN-E2E-020 shortcut context menu uses the shared floating-surface style a
     await expect(menu).toBeVisible();
     const rename = menu.getByRole("button",{name:"Переименовать / содержимое"});
     await expect(rename).toBeVisible();
+    await expect.poll(() => menu.evaluate(element => innerWidth-element.getBoundingClientRect().right))
+      .toBeGreaterThanOrEqual(7);
 
     const menuMetrics = await menu.evaluate(element => {
       const rect = element.getBoundingClientRect();
@@ -80,20 +82,24 @@ test("ATN-E2E-020 shortcut context menu uses the shared floating-surface style a
         borderRadius:style.borderRadius,
         width:rect.width,
         maxAllowedWidth:innerWidth - 16,
+        rightGutter:innerWidth - rect.right,
         contentInset:buttonRect.left - rect.left,
         buttonPaddingLeft:buttonStyle.paddingLeft,
         buttonWhiteSpace:buttonStyle.whiteSpace,
         buttonScrollWidth:button.scrollWidth,
         buttonClientWidth:button.clientWidth,
         menuPaddingToken:rootStyle.getPropertyValue("--atn-menu-padding").trim(),
-        surfaceRadiusToken:rootStyle.getPropertyValue("--atn-surface-radius").trim()
+        surfaceRadiusToken:rootStyle.getPropertyValue("--atn-surface-radius").trim(),
+        surfaceGutterToken:rootStyle.getPropertyValue("--atn-surface-gutter").trim()
       };
     });
 
     expect(menuMetrics.menuPaddingToken).toBe("6px");
     expect(menuMetrics.surfaceRadiusToken).toBe("8px");
+    expect(menuMetrics.surfaceGutterToken).toBe("8px");
     expect(menuMetrics.width).toBeGreaterThanOrEqual(209);
     expect(menuMetrics.width).toBeLessThanOrEqual(menuMetrics.maxAllowedWidth + 1);
+    expect(menuMetrics.rightGutter).toBeGreaterThanOrEqual(7);
     expect(menuMetrics.contentInset).toBeGreaterThanOrEqual(5);
     expect(parseFloat(menuMetrics.buttonPaddingLeft)).toBeGreaterThanOrEqual(8);
     expect(menuMetrics.buttonWhiteSpace).toBe("nowrap");

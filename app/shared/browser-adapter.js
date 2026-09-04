@@ -53,10 +53,59 @@ export function browserCapabilities() {
   };
 }
 
+function installFloatingSurfaceGuard(documentRef) {
+  const install = () => {
+    const view = documentRef?.defaultView;
+    const menu = documentRef?.getElementById?.("shortcut-menu");
+    if (!view || !menu || menu.dataset.atnSurfaceGuard === "1") return false;
+    menu.dataset.atnSurfaceGuard = "1";
+
+    let frame = 0;
+    const clamp = () => {
+      frame = 0;
+      if (!menu.isConnected || menu.classList.contains("hidden")) return;
+
+      const style = view.getComputedStyle(documentRef.documentElement);
+      const parsedGutter = Number.parseFloat(style.getPropertyValue("--atn-surface-gutter"));
+      const gutter = Number.isFinite(parsedGutter) ? Math.max(0,parsedGutter) : 8;
+      const rect = menu.getBoundingClientRect();
+      const maxLeft = Math.max(gutter, view.innerWidth - rect.width - gutter);
+      const maxTop = Math.max(gutter, view.innerHeight - rect.height - gutter);
+      const left = Math.max(gutter, Math.min(rect.left,maxLeft));
+      const top = Math.max(gutter, Math.min(rect.top,maxTop));
+
+      if (Math.abs(rect.left-left) > .5) menu.style.left = `${Math.round(left)}px`;
+      if (Math.abs(rect.top-top) > .5) menu.style.top = `${Math.round(top)}px`;
+    };
+    const schedule = () => {
+      if (frame) return;
+      if (typeof view.requestAnimationFrame === "function") {
+        frame = view.requestAnimationFrame(clamp);
+      } else {
+        view.setTimeout(clamp,0);
+      }
+    };
+
+    const Observer = view.MutationObserver;
+    if (Observer) {
+      const observer = new Observer(schedule);
+      observer.observe(menu,{attributes:true,attributeFilter:["class"],childList:true});
+    }
+    view.addEventListener?.("resize",schedule,{passive:true});
+    return true;
+  };
+
+  if (install()) return;
+  if (documentRef?.readyState === "loading") {
+    documentRef.addEventListener?.("DOMContentLoaded",install,{once:true});
+  }
+}
+
 export function applyBrowserSkin(documentRef = document) {
   const browser = detectBrowser();
   documentRef.documentElement.dataset.browser = browser.id;
   documentRef.documentElement.dataset.uiStyle = browser.style;
+  installFloatingSurfaceGuard(documentRef);
   return browser;
 }
 
