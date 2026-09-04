@@ -2,6 +2,8 @@ import { MODULE_STORAGE_KEY, loadInstalledModules, installBundledModule, resolve
 import { browserCapabilities, openTowerContainer, closeTowerContainer, openOptions, repairNativeSidePanelOptions } from "./shared/browser-adapter.js";
 import { WORKSPACES_KEY, DEFAULT_WORKSPACE_KEY, WINDOW_WORKSPACES_KEY, normalizeWorkspace, workspaceSummary } from "./shared/workspaces.js";
 import { MEDIA_STATE_KEY, normalizeMediaState } from "./shared/media-contract.js";
+import { createBackgroundStateCoordinator } from "./shared/background-state-coordinator.js";
+import { createPanelStateStore } from "./shared/panel-state-store.js";
 import {
   SHORTCUT_SITE, SHORTCUT_GROUP, SHORTCUT_TEMPLATE,
   normalizeShortcut, normalizeShortcutList, firstLaunchableSite,
@@ -76,6 +78,35 @@ const panelPorts = new Map();
 const panelDisconnectTimers = new Map();
 const panelClosedAt = new Map();
 
+// All shared panel/workspace mutations pass through one FIFO coordinator.
+// User-activation-sensitive browser APIs (sidePanel.open/close) are still
+// started immediately by their callers; only our own state mutation/persist
+// phases are serialized here.
+const backgroundStateCoordinator = createBackgroundStateCoordinator();
+const panelStateStore = createPanelStateStore({
+  coordinator:backgroundStateCoordinator,
+  openWindows,
+  collapsedWindows,
+  persistOpen:async () => {
+    try { await chrome.storage.session.set({[PANEL_SESSION_KEY]:[...openWindows]}); } catch {}
+  },
+  persistCollapsed:async () => {
+    try { await chrome.storage.session.set({[COLLAPSED_SESSION_KEY]:[...collapsedWindows]}); } catch {}
+  },
+  broadcastRail:async (windowId,visible) => { broadcastRail(windowId,visible); },
+  clearWindowResources
+});
+
+function serializeWorkspaceMutation(windowId, action, operation) {
+  return backgroundStateCoordinator.workspace(windowId,action,operation);
+}
+function serializeWorkspaceRead(windowId, action, reader) {
+  return backgroundStateCoordinator.workspaceRead(windowId,action,reader);
+}
+function serializeStorageMutation(action, operation) {
+  return backgroundStateCoordinator.storage(action,operation);
+}
+
 const pwaSidecars = new Map();
 const pwaSidecarsReady = chrome.storage.session.get(PWA_SIDECARS_KEY).then(data => {
   const raw = data[PWA_SIDECARS_KEY];
@@ -89,14 +120,14 @@ const pwaSidecarsReady = chrome.storage.session.get(PWA_SIDECARS_KEY).then(data 
 const pwaFetches = new Map();
 
 chrome.runtime.onInstalled.addListener(() => {
-  void initialize(true);
+  void serializeStorageMutation("initialize-install",() => initialize(true)).catch(() => {});
   void initializeNativeContextMenus();
   chrome.alarms?.create?.(RESOURCE_ALARM,{periodInMinutes:1});
 });
 chrome.runtime.onStartup.addListener(() => {
   // Static document_start content scripts are the primary path. This recovery
   // pass covers tabs restored before the MV3 worker finished waking up.
-  void initialize(true);
+  void serializeStorageMutation("initialize-startup",() => initialize(true)).catch(() => {});
   void initializeNativeContextMenus();
   chrome.alarms?.create?.(RESOURCE_ALARM,{periodInMinutes:1});
 });
@@ -111,18 +142,26 @@ chrome.commands?.onCommand?.addListener(async command => {
   if (!Number.isInteger(windowId)) return;
 
   globallyEnabled = true;
+  const action = panelActionFromMessage({intent:"search"},windowId);
+  if (hasLivePanel(windowId) && postPanelAction(windowId,action)) {
+    void markPanelOpen(windowId,{authoritative:true}).catch(() => {});
+    await chrome.storage.local.set({[GLOBAL_ENABLED_KEY]:true});
+    return;
+  }
+
+  // Keep sidePanel.open() in the command user-activation chain; persistence is
+  // deliberately not awaited before starting the browser-owned open.
+  const openPromise = openTowerContainer(windowId,{intent:"search"});
+  void markPanelOpen(windowId,{authoritative:true}).catch(() => {});
   await chrome.storage.local.set({
     [GLOBAL_ENABLED_KEY]:true,
-    pendingAction:{intent:"search",windowId,nonce:Date.now()}
+    pendingAction:action
   });
-  collapsedWindows.delete(windowId);
-  persistCollapsedWindows();
-  markPanelOpen(windowId);
 
   try {
-    await openTowerContainer(windowId,{intent:"search"});
+    await openPromise;
   } catch {
-    markPanelClosed(windowId,{collapsed:true});
+    await markPanelClosed(windowId,{collapsed:true}).catch(() => {});
   }
 });
 if (browserCapabilities().nativeSidePanel) {
@@ -137,15 +176,9 @@ chrome.action.onClicked.addListener((tab) => {
   if (!Number.isInteger(windowId)) return;
 
   // The browser-action click is a direct user gesture, so open immediately.
-  collapsedWindows.delete(windowId);
-  persistCollapsedWindows();
-  openWindows.add(windowId);
-  persistPanelWindows();
-  broadcastRail(windowId, false);
+  void markPanelOpen(windowId,{authoritative:true}).catch(() => {});
   openTowerContainer(windowId).catch(() => {
-    openWindows.delete(windowId);
-    persistPanelWindows();
-    broadcastRail(windowId, true);
+    void markPanelClosed(windowId,{collapsed:true}).catch(() => {});
   });
 });
 
@@ -160,14 +193,14 @@ if (hasNativePanelOpenedEvent) {
   chrome.sidePanel.onOpened.addListener(({path, windowId}) => {
     if (!Number.isInteger(windowId) || !matchesPanelPath(path)) return;
     // Browser event is authoritative: the panel is visibly open right now.
-    markPanelOpen(windowId, { authoritative:true });
+    void markPanelOpen(windowId, { authoritative:true }).catch(() => {});
   });
 }
 if (hasNativePanelClosedEvent) {
   chrome.sidePanel.onClosed.addListener(({path, windowId}) => {
     if (!Number.isInteger(windowId) || !matchesPanelPath(path)) return;
     // Browser event is authoritative: only now may the collapsed rail appear.
-    markPanelClosed(windowId, { collapsed:true });
+    void markPanelClosed(windowId, { collapsed:true }).catch(() => {});
   });
 }
 
@@ -204,9 +237,9 @@ chrome.runtime.onConnect.addListener((port) => {
     // the rail state by reconnecting.
     if (hasNativePanelClosedEvent) {
       const closedAgo = Date.now() - Number(panelClosedAt.get(windowId) || 0);
-      if (closedAgo > 1200) markPanelOpen(windowId,{authoritative:true});
+      if (closedAgo > 1200) void markPanelOpen(windowId,{authoritative:true}).catch(() => {});
     } else if (!collapsedWindows.has(windowId)) {
-      markPanelOpen(windowId);
+      void markPanelOpen(windowId).catch(() => {});
     }
 
     port.onDisconnect.addListener(() => {
@@ -222,7 +255,7 @@ chrome.runtime.onConnect.addListener((port) => {
       const timer = setTimeout(() => {
         panelDisconnectTimers.delete(windowId);
         if (!panelPorts.get(windowId)?.size) {
-          markPanelClosed(windowId, { collapsed:true });
+          void markPanelClosed(windowId, { collapsed:true }).catch(() => {});
         }
       }, 900);
       panelDisconnectTimers.set(windowId, timer);
@@ -254,55 +287,66 @@ function broadcastRail(windowId, visible) {
       }))
   )).catch(() => {});
 }
-function persistPanelWindows() {
-  chrome.storage.session.set({ [PANEL_SESSION_KEY]: [...openWindows] }).catch(() => {});
-}
-function persistCollapsedWindows() {
-  chrome.storage.session.set({ [COLLAPSED_SESSION_KEY]: [...collapsedWindows] }).catch(() => {});
-}
 function markPanelOpen(windowId, { authoritative=false } = {}) {
-  if (authoritative) {
-    panelClosedAt.delete(windowId);
-    if (collapsedWindows.delete(windowId)) persistCollapsedWindows();
-  } else if (collapsedWindows.has(windowId)) {
-    return;
-  }
+  if (!Number.isInteger(Number(windowId))) return Promise.resolve({changed:false,reason:"invalid-window"});
+  if (authoritative) panelClosedAt.delete(Number(windowId));
 
-  const pending = panelDisconnectTimers.get(windowId);
+  const pending = panelDisconnectTimers.get(Number(windowId));
   if (pending) {
     clearTimeout(pending);
-    panelDisconnectTimers.delete(windowId);
+    panelDisconnectTimers.delete(Number(windowId));
   }
 
-  openWindows.add(windowId);
-  persistPanelWindows();
-  broadcastRail(windowId, false);
+  return Promise.all([panelSessionReady,collapsedSessionReady]).then(() =>
+    panelStateStore.open(Number(windowId),{authoritative})
+  );
 }
 
 function markPanelClosed(windowId, { collapsed=true } = {}) {
-  panelClosedAt.set(windowId,Date.now());
-  const pending = panelDisconnectTimers.get(windowId);
+  if (!Number.isInteger(Number(windowId))) return Promise.resolve({changed:false,reason:"invalid-window"});
+  panelClosedAt.set(Number(windowId),Date.now());
+  const pending = panelDisconnectTimers.get(Number(windowId));
   if (pending) {
     clearTimeout(pending);
-    panelDisconnectTimers.delete(windowId);
+    panelDisconnectTimers.delete(Number(windowId));
   }
 
-  openWindows.delete(windowId);
-  if (collapsed) collapsedWindows.add(windowId);
-  clearWindowResources(windowId);
-  persistPanelWindows();
-  persistCollapsedWindows();
-  broadcastRail(windowId, true);
+  return Promise.all([panelSessionReady,collapsedSessionReady]).then(() =>
+    panelStateStore.close(Number(windowId),{collapsed})
+  );
+}
+
+function panelActionFromMessage(message, windowId) {
+  if (!["add","new-group","organize","group","combine","edit-template","search"].includes(message?.intent)) return null;
+  return {
+    intent:message.intent,
+    groupId:message.groupId ? String(message.groupId) : null,
+    sourceId:message.sourceId ? String(message.sourceId) : null,
+    targetId:message.targetId ? String(message.targetId) : null,
+    templateId:message.templateId ? String(message.templateId) : null,
+    sourceUrl:normalizeUrl(message.sourceUrl) || null,
+    sourceTitle:message.sourceTitle ? String(message.sourceTitle).slice(0,240) : null,
+    windowId:Number.isInteger(Number(windowId)) ? Number(windowId) : null,
+    nonce:Date.now()
+  };
+}
+
+function hasLivePanel(windowId) {
+  return Number.isInteger(Number(windowId)) && Boolean(panelPorts.get(Number(windowId))?.size);
+}
+
+function postPanelAction(windowId, action) {
+  if (!action || !Number.isInteger(Number(windowId))) return false;
+  const ports = [...(panelPorts.get(Number(windowId)) || [])];
+  if (!ports.length) return false;
+  for (const port of ports) safePost(port,{type:"ATN_PANEL_ACTION",action});
+  return true;
 }
 function matchesPanelPath(path) {
   return !path || String(path).endsWith(SIDE_PANEL_PATH);
 }
 
 chrome.windows.onRemoved.addListener((windowId) => {
-  collapsedWindows.delete(windowId);
-  persistCollapsedWindows();
-  openWindows.delete(windowId);
-  persistPanelWindows();
   railPorts.delete(windowId);
   panelPorts.delete(windowId);
   panelClosedAt.delete(windowId);
@@ -310,22 +354,27 @@ chrome.windows.onRemoved.addListener((windowId) => {
   if (disconnectTimer) clearTimeout(disconnectTimer);
   panelDisconnectTimers.delete(windowId);
 
-  let changed = false;
-  for (const [origin, id] of pwaSidecars.entries()) {
-    if (id === windowId) {
-      pwaSidecars.delete(origin);
-      changed = true;
+  void (async () => {
+    await Promise.all([panelSessionReady,collapsedSessionReady]);
+    await panelStateStore.removeWindow(windowId);
+
+    let changed = false;
+    for (const [origin, id] of pwaSidecars.entries()) {
+      if (id === windowId) {
+        pwaSidecars.delete(origin);
+        changed = true;
+      }
     }
-  }
-  if (changed) persistPwaSidecars();
-  clearWindowResources(windowId);
-  removeSidecar(windowId).catch(() => {});
-  windowWorkspaceMap().then(map => {
-    if (map[windowId]) {
+    if (changed) persistPwaSidecars();
+    await removeSidecar(windowId).catch(() => {});
+
+    await serializeWorkspaceMutation(windowId,"remove-window-binding",async () => {
+      const map = await windowWorkspaceMap();
+      if (!map[windowId]) return;
       delete map[windowId];
-      chrome.storage.session.set({[WINDOW_WORKSPACES_KEY]:map}).catch(() => {});
-    }
-  }).catch(() => {});
+      await chrome.storage.session.set({[WINDOW_WORKSPACES_KEY]:map});
+    });
+  })().catch(() => {});
 });
 
 chrome.contextMenus?.onClicked?.addListener(async (info, tab) => {
@@ -335,54 +384,72 @@ chrome.contextMenus?.onClicked?.addListener(async (info, tab) => {
     if (!Number.isInteger(windowId)) return;
 
     globallyEnabled = true;
+    let intent = null;
+    if (info.menuItemId === "atn-add") intent = "add";
+    const action = intent ? panelActionFromMessage({
+      intent,
+      sourceUrl:tab?.url,
+      sourceTitle:tab?.title
+    },windowId) : null;
+
+    // Native context-menu handlers carry a user gesture. Start the browser
+    // container operation before awaiting our own storage/state work.
+    const alreadyLive = hasLivePanel(windowId);
+    const openPromise = ["atn-open","atn-bottom","atn-add"].includes(info.menuItemId) && !alreadyLive
+      ? openTowerContainer(windowId,{intent,tabId:tab?.id})
+      : Promise.resolve();
+    void markPanelOpen(windowId,{authoritative:true}).catch(() => {});
     await chrome.storage.local.set({[GLOBAL_ENABLED_KEY]:true});
-    collapsedWindows.delete(windowId);
-    persistCollapsedWindows();
-    markPanelOpen(windowId);
 
     if (info.menuItemId === "atn-open") {
-      await openTowerContainer(windowId);
+      await openPromise;
       return;
     }
 
     if (info.menuItemId === "atn-bottom" && info.linkUrl) {
-      const state = await getWindowWorkspaceState(windowId);
-      const url = normalizeUrl(info.linkUrl);
-      if (!url) return;
-      state.workspace.panes.bottom = {
-        url,title:url,mode:"auto",compatDomains:[],sourceSiteId:null
-      };
-      state.workspace.layout.split = true;
-      state.workspace.layout.activePane = "bottom";
-      await saveWindowWorkspaceState(windowId,{
-        panes:state.workspace.panes,
-        layout:state.workspace.layout
+      await serializeWorkspaceMutation(windowId,"context-open-bottom",async () => {
+        const state = await getWindowWorkspaceState(windowId);
+        const url = normalizeUrl(info.linkUrl);
+        if (!url) return;
+        state.workspace.panes.bottom = {
+          url,title:url,mode:"auto",compatDomains:[],sourceSiteId:null
+        };
+        state.workspace.layout.split = true;
+        state.workspace.layout.activePane = "bottom";
+        await saveWindowWorkspaceState(windowId,{
+          panes:state.workspace.panes,
+          layout:state.workspace.layout
+        });
+        await recordRecent({
+          windowId,
+          workspaceId:state.workspace.id,
+          url,
+          title:url,
+          kind:"site"
+        });
+        await syncCompatibilityRules(state.workspace.panes);
       });
-      await recordRecent({
-        windowId,
-        workspaceId:state.workspace.id,
-        url,
-        title:url,
-        kind:"site"
-      });
-      await syncCompatibilityRules(state.workspace.panes);
-      await openTowerContainer(windowId);
+      await openPromise;
       return;
     }
 
-    if (info.menuItemId === "atn-add" && tab?.url) {
-      await chrome.storage.local.set({
-        pendingAction:{intent:"add",windowId,nonce:Date.now()}
-      });
-      await openTowerContainer(windowId,{intent:"add"});
+    if (info.menuItemId === "atn-add" && action) {
+      if (hasLivePanel(windowId) && postPanelAction(windowId,action)) {
+        await openPromise.catch(() => {});
+        return;
+      }
+      await serializeStorageMutation("pending-panel-action",() =>
+        chrome.storage.local.set({pendingAction:action})
+      );
+      await openPromise;
       return;
     }
 
     // A native context-menu item that did not result in an App Tower action
     // must not leave the rail hidden.
-    markPanelClosed(windowId,{collapsed:true});
+    await markPanelClosed(windowId,{collapsed:true});
   } catch {
-    if (Number.isInteger(windowId)) markPanelClosed(windowId,{collapsed:true});
+    if (Number.isInteger(windowId)) await markPanelClosed(windowId,{collapsed:true}).catch(() => {});
   }
 });
 
@@ -393,11 +460,15 @@ chrome.storage.onChanged.addListener((changes, area) => {
       void enforceResourceBudget();
     }
     if (changes[SYNC_ENABLED_KEY]) syncEnabled = changes[SYNC_ENABLED_KEY].newValue === true;
-    if ((changes[WORKSPACES_KEY] || changes[MODULE_STORAGE_KEY]) && syncEnabled && !applyingRemoteSync) void pushSyncPayload();
+    if ((changes[WORKSPACES_KEY] || changes[MODULE_STORAGE_KEY]) && syncEnabled && !applyingRemoteSync) {
+      void serializeStorageMutation("push-sync",() => pushSyncPayload()).catch(() => {});
+    }
   }
 
   if (area === "sync" && changes[SYNC_PAYLOAD_KEY] && syncEnabled) {
-    void applyRemoteSyncPayload(changes[SYNC_PAYLOAD_KEY].newValue);
+    void serializeStorageMutation("apply-remote-sync",() =>
+      applyRemoteSyncPayload(changes[SYNC_PAYLOAD_KEY].newValue)
+    ).catch(() => {});
   }
 });
 
@@ -780,42 +851,41 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const windowId = messageWindowId(message, sender);
     let openPromise = Promise.resolve();
     if (Number.isInteger(windowId)) {
-      collapsedWindows.delete(windowId);
-      persistCollapsedWindows();
-      openWindows.add(windowId);
-      broadcastRail(windowId, false);
+      void markPanelOpen(windowId,{authoritative:true}).catch(() => {});
       if (message.containerOpened !== true) {
-        openPromise = openTowerContainer(windowId,{tabId:sender?.tab?.id}).catch(error => { throw error; });
+        openPromise = openTowerContainer(windowId,{tabId:sender?.tab?.id});
       }
     }
     (async () => {
       try {
-        const state = await getWindowWorkspaceState(windowId);
-        const current = state.workspace;
-        const url = normalizeUrl(message.url);
-        if (!url) throw new Error("Invalid URL");
-        const explicitBottom = message.targetPane === "bottom";
-        const existingPane = explicitBottom ? null : findPaneForUrl(current.panes, url);
-        const targetPane = explicitBottom ? "bottom" : (existingPane || current.layout.activePane);
-        if (!existingPane || explicitBottom) {
-          const inferred = inferDefaultsForUrl(url);
-          current.panes[targetPane] = {
-            url,
-            title:String(message.title || url),
-            mode:resolveAutoMode(url, normalizeMode(message.mode || inferred.mode)),
-            compatDomains:normalizeCompatDomains(Array.isArray(message.compatDomains) && message.compatDomains.length ? message.compatDomains : inferred.compatDomains),
-            sourceSiteId:message.siteId ? String(message.siteId) : null
-          };
-        }
-        if (explicitBottom) current.layout.split = true;
-        current.layout.activePane = targetPane;
-        await saveWindowWorkspaceState(windowId,{panes:current.panes,layout:current.layout});
-        await recordRecent({windowId,workspaceId:current.id,url,title:String(message.title || url),kind:"site"});
-        await syncCompatibilityRules(current.panes);
+        await serializeWorkspaceMutation(windowId,"open-site",async () => {
+          const state = await getWindowWorkspaceState(windowId);
+          const current = state.workspace;
+          const url = normalizeUrl(message.url);
+          if (!url) throw new Error("Invalid URL");
+          const explicitBottom = message.targetPane === "bottom";
+          const existingPane = explicitBottom ? null : findPaneForUrl(current.panes, url);
+          const targetPane = explicitBottom ? "bottom" : (existingPane || current.layout.activePane);
+          if (!existingPane || explicitBottom) {
+            const inferred = inferDefaultsForUrl(url);
+            current.panes[targetPane] = {
+              url,
+              title:String(message.title || url),
+              mode:resolveAutoMode(url, normalizeMode(message.mode || inferred.mode)),
+              compatDomains:normalizeCompatDomains(Array.isArray(message.compatDomains) && message.compatDomains.length ? message.compatDomains : inferred.compatDomains),
+              sourceSiteId:message.siteId ? String(message.siteId) : null
+            };
+          }
+          if (explicitBottom) current.layout.split = true;
+          current.layout.activePane = targetPane;
+          await saveWindowWorkspaceState(windowId,{panes:current.panes,layout:current.layout});
+          await recordRecent({windowId,workspaceId:current.id,url,title:String(message.title || url),kind:"site"});
+          await syncCompatibilityRules(current.panes);
+        });
         await openPromise;
         sendResponse({ok:true});
       } catch (error) {
-        if (Number.isInteger(windowId)) markPanelClosed(windowId);
+        if (Number.isInteger(windowId)) await markPanelClosed(windowId,{collapsed:true}).catch(() => {});
         sendResponse({ok:false, error:String(error?.message || error)});
       }
     })();
@@ -828,32 +898,30 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const windowId = messageWindowId(message, sender);
     let openPromise = Promise.resolve();
     if (Number.isInteger(windowId)) {
-      collapsedWindows.delete(windowId);
-      persistCollapsedWindows();
-      openWindows.add(windowId);
-      broadcastRail(windowId, false);
+      void markPanelOpen(windowId,{authoritative:true}).catch(() => {});
       if (message.containerOpened !== true) {
         openPromise = openTowerContainer(windowId,{tabId:sender?.tab?.id});
       }
     }
-
     (async () => {
       try {
-        const template = upgradeShortcut(message.template);
-        if (!isTemplate(template)) throw new Error("Invalid two-pane template");
-        const state = await getWindowWorkspaceState(windowId);
-        const current = state.workspace;
-        current.panes.top = paneFromSite(template.top, template.id);
-        current.panes.bottom = paneFromSite(template.bottom, template.id);
-        current.layout.split = true;
-        current.layout.activePane = "top";
-        await saveWindowWorkspaceState(windowId,{panes:current.panes,layout:current.layout});
-        await recordRecent({windowId,workspaceId:current.id,url:template.top.url,title:template.title,kind:"template",template});
-        await syncCompatibilityRules(current.panes);
+        await serializeWorkspaceMutation(windowId,"open-template",async () => {
+          const template = upgradeShortcut(message.template);
+          if (!isTemplate(template)) throw new Error("Invalid two-pane template");
+          const state = await getWindowWorkspaceState(windowId);
+          const current = state.workspace;
+          current.panes.top = paneFromSite(template.top, template.id);
+          current.panes.bottom = paneFromSite(template.bottom, template.id);
+          current.layout.split = true;
+          current.layout.activePane = "top";
+          await saveWindowWorkspaceState(windowId,{panes:current.panes,layout:current.layout});
+          await recordRecent({windowId,workspaceId:current.id,url:template.top.url,title:template.title,kind:"template",template});
+          await syncCompatibilityRules(current.panes);
+        });
         await openPromise;
         sendResponse({ok:true});
       } catch (error) {
-        if (Number.isInteger(windowId)) markPanelClosed(windowId);
+        if (Number.isInteger(windowId)) await markPanelClosed(windowId,{collapsed:true}).catch(() => {});
         sendResponse({ok:false, error:String(error?.message || error)});
       }
     })();
@@ -863,7 +931,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "MUTATE_SHORTCUTS") {
     (async () => {
       try {
-        const result = await mutateShortcuts(message, messageWindowId(message, sender));
+        const windowId = messageWindowId(message, sender);
+        const result = await serializeWorkspaceMutation(windowId,"mutate-shortcuts",() =>
+          mutateShortcuts(message, windowId)
+        );
         sendResponse({ok:true, ...result});
       } catch (error) {
         sendResponse({ok:false, error:String(error?.message || error)});
@@ -876,44 +947,56 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     globallyEnabled = true;
     chrome.storage.local.set({ [GLOBAL_ENABLED_KEY]: true }).catch(() => {});
     const windowId = messageWindowId(message, sender);
+    const action = panelActionFromMessage(message,windowId);
 
-    // sidePanel.open() must be invoked while the browser still considers this
-    // message chain part of the original user gesture. Start opening
-    // immediately, before any storage/workspace awaits.
-    let openPromise = Promise.resolve();
-    if (Number.isInteger(windowId)) {
-      collapsedWindows.delete(windowId);
-      persistCollapsedWindows();
-      openWindows.add(windowId);
-      broadcastRail(windowId,false);
-      openPromise = openTowerContainer(windowId,{intent:message.intent,tabId:sender?.tab?.id});
+    if (message.intent === "settings") {
+      openOptions()
+        .then(() => sendResponse({ok:true,options:true}))
+        .catch(error => sendResponse({ok:false,error:String(error?.message || error)}));
+      return true;
     }
 
-    const pendingPromise = ["add","new-group","organize","group","combine","edit-template","search"].includes(message.intent)
-      ? chrome.storage.local.set({pendingAction:{
-          intent:message.intent,
-          groupId:message.groupId ? String(message.groupId) : null,
-          sourceId:message.sourceId ? String(message.sourceId) : null,
-          targetId:message.targetId ? String(message.targetId) : null,
-          templateId:message.templateId ? String(message.templateId) : null,
-          sourceUrl:normalizeUrl(message.sourceUrl) || null,
-          sourceTitle:message.sourceTitle ? String(message.sourceTitle).slice(0,240) : null,
-          windowId:Number.isInteger(windowId) ? windowId : null,
-          nonce:Date.now()
-        }})
+    const panelLikelyOpen = Number.isInteger(windowId) && (
+      hasLivePanel(windowId) ||
+      (openWindows.has(windowId) && !collapsedWindows.has(windowId))
+    );
+
+    if (panelLikelyOpen) {
+      void markPanelOpen(windowId,{authoritative:true}).catch(() => {});
+      (async () => {
+        try {
+          if (action) {
+            await serializeStorageMutation("pending-panel-action",() =>
+              chrome.storage.local.set({pendingAction:action})
+            );
+          }
+          await ensureWorkspaceSystem();
+          sendResponse({ok:true,reusedPanel:true});
+        } catch (error) {
+          sendResponse({ok:false,error:String(error?.message || error)});
+        }
+      })();
+      return true;
+    }
+
+    const openPromise = Number.isInteger(windowId)
+      ? openTowerContainer(windowId,{intent:message.intent,tabId:sender?.tab?.id})
+      : Promise.resolve();
+    if (Number.isInteger(windowId)) {
+      void markPanelOpen(windowId,{authoritative:true}).catch(() => {});
+    }
+    const pendingPromise = action
+      ? serializeStorageMutation("pending-panel-action",() =>
+          chrome.storage.local.set({pendingAction:action})
+        )
       : Promise.resolve();
 
     (async () => {
       try {
-        if (message.intent === "settings") {
-          await openOptions();
-          sendResponse({ok:true,options:true});
-          return;
-        }
         await Promise.all([ensureWorkspaceSystem(),pendingPromise,openPromise]);
         sendResponse({ok:true});
       } catch (error) {
-        if (Number.isInteger(windowId)) markPanelClosed(windowId);
+        if (Number.isInteger(windowId)) await markPanelClosed(windowId,{collapsed:true}).catch(() => {});
         sendResponse({ok:false,error:String(error?.message || error)});
       }
     })();
@@ -926,7 +1009,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       try {
         if (!Number.isInteger(windowId)) throw new Error("Invalid windowId");
         await closeTowerContainer(windowId);
-        markPanelClosed(windowId,{collapsed:true});
+        await markPanelClosed(windowId,{collapsed:true});
         sendResponse({ok:true});
       } catch (error) {
         sendResponse({ok:false,error:String(error?.message || error)});
@@ -937,9 +1020,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === "PANEL_COLLAPSED") {
     const windowId = messageWindowId(message,sender);
-    if (Number.isInteger(windowId)) markPanelClosed(windowId,{collapsed:true});
-    sendResponse({ok:true});
-    return false;
+    (async () => {
+      if (Number.isInteger(windowId)) await markPanelClosed(windowId,{collapsed:true});
+      sendResponse({ok:true});
+    })().catch(error => sendResponse({ok:false,error:String(error?.message || error)}));
+    return true;
   }
 
   if (message.type === "DISABLE_GLOBAL") {
@@ -947,7 +1032,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       globallyEnabled = false;
       await chrome.storage.local.set({ [GLOBAL_ENABLED_KEY]: false });
 
-      // Hide every collapsed rail immediately.
       const tabs = await chrome.tabs.query({ url:["http://*/*","https://*/*"] });
       await Promise.allSettled(
         tabs
@@ -958,14 +1042,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           }))
       );
 
-      // "Close" is global: close native App Tower side panels in all windows too.
-      const windowIds = [...openWindows];
-      openWindows.clear();
-      collapsedWindows.clear();
-      persistCollapsedWindows();
-      persistPanelWindows();
-
-      await Promise.allSettled(windowIds.map(windowId => closeTowerContainer(windowId)));
+      const windowIds = [...new Set([...openWindows,...collapsedWindows])];
+      await Promise.allSettled(windowIds.map(async windowId => {
+        if (openWindows.has(windowId)) await closeTowerContainer(windowId).catch(() => {});
+        await markPanelClosed(windowId,{collapsed:false});
+      }));
 
       sendResponse({ ok:true });
     })().catch(error => {
@@ -1053,9 +1134,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "SET_SYNC_ENABLED") {
     (async () => {
       const enabled = message.enabled === true;
-      syncEnabled = enabled;
-      await chrome.storage.local.set({ [SYNC_ENABLED_KEY]: enabled });
-      if (enabled) await enableBrowserSync();
+      await serializeStorageMutation("set-sync-enabled",async () => {
+        syncEnabled = enabled;
+        await chrome.storage.local.set({ [SYNC_ENABLED_KEY]: enabled });
+        if (enabled) await enableBrowserSync();
+      });
       sendResponse({ ok:true, enabled });
     })().catch(error => sendResponse({ok:false, error:String(error?.message || error)}));
     return true;
@@ -1088,11 +1171,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return false;
   }
 
+  if (message.type === "GET_STATE_COORDINATOR_DIAGNOSTICS") {
+    sendResponse({ok:true,...backgroundStateCoordinator.snapshot()});
+    return false;
+  }
+
   if (message.type === "GET_WINDOW_STATE" || message.type === "GET_SHORTCUTS") {
     (async () => {
       const windowId = messageWindowId(message,sender);
-      const state = await getWindowWorkspaceState(windowId);
-      const extra = await chrome.storage.local.get([SYNC_ENABLED_KEY]);
+      const result = await serializeWorkspaceRead(windowId,"get-window-state",async () => {
+        const state = await getWindowWorkspaceState(windowId);
+        const extra = await chrome.storage.local.get([SYNC_ENABLED_KEY]);
+        return {state,extra};
+      });
+      const {state,extra} = result;
       sendResponse({
         ok:true,
         sites:state.workspace.sites,
@@ -1111,12 +1203,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "UPDATE_WORKSPACE_STATE") {
     (async () => {
       const windowId = messageWindowId(message,sender);
-      const workspace = await saveWindowWorkspaceState(windowId,{
-        sites:message.sites,
-        panes:message.panes,
-        layout:message.layout
+      const workspace = await serializeWorkspaceMutation(windowId,"update-workspace-state",async () => {
+        const saved = await saveWindowWorkspaceState(windowId,{
+          sites:message.sites,
+          panes:message.panes,
+          layout:message.layout
+        });
+        if (message.panes) await syncCompatibilityRules(saved.panes);
+        return saved;
       });
-      if (message.panes) await syncCompatibilityRules(workspace.panes);
       sendResponse({ok:true,workspace});
     })().catch(error => sendResponse({ok:false,error:String(error?.message || error)}));
     return true;
@@ -1125,7 +1220,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "LIST_WORKSPACES") {
     (async () => {
       const windowId = messageWindowId(message,sender);
-      const state = await getWindowWorkspaceState(windowId);
+      const state = await serializeWorkspaceRead(windowId,"list-workspaces",() => getWindowWorkspaceState(windowId));
       sendResponse({ok:true,workspaces:state.workspaces,activeWorkspaceId:state.activeWorkspaceId,defaultWorkspaceId:state.defaultWorkspaceId,nativeWorkspaceBinding:false,binding:"browser-window"});
     })().catch(error => sendResponse({ok:false,error:String(error?.message || error)}));
     return true;
@@ -1134,27 +1229,36 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "CREATE_WORKSPACE") {
     (async () => {
       const windowId = messageWindowId(message,sender);
-      const workspace = await createWorkspace(message.name,{copyFromWindowId:message.copyCurrent === true ? windowId : null});
-      if (message.activate !== false && Number.isInteger(windowId)) await setWindowWorkspace(windowId,workspace.id);
-      sendResponse({ok:true,workspace,state:await getWindowWorkspaceState(windowId)});
+      const result = await serializeWorkspaceMutation(windowId,"create-workspace",async () => {
+        const workspace = await createWorkspace(message.name,{copyFromWindowId:message.copyCurrent === true ? windowId : null});
+        if (message.activate !== false && Number.isInteger(windowId)) await setWindowWorkspace(windowId,workspace.id);
+        return {workspace,state:await getWindowWorkspaceState(windowId)};
+      });
+      sendResponse({ok:true,...result});
     })().catch(error => sendResponse({ok:false,error:String(error?.message || error)}));
     return true;
   }
 
   if (message.type === "RENAME_WORKSPACE") {
-    renameWorkspace(message.workspaceId,message.name).then(workspace => sendResponse({ok:true,workspace})).catch(error => sendResponse({ok:false,error:String(error?.message || error)}));
+    serializeWorkspaceMutation(null,"rename-workspace",() => renameWorkspace(message.workspaceId,message.name))
+      .then(workspace => sendResponse({ok:true,workspace}))
+      .catch(error => sendResponse({ok:false,error:String(error?.message || error)}));
     return true;
   }
 
   if (message.type === "DELETE_WORKSPACE") {
-    deleteWorkspace(message.workspaceId).then(result => sendResponse({ok:true,...result})).catch(error => sendResponse({ok:false,error:String(error?.message || error)}));
+    serializeWorkspaceMutation(null,"delete-workspace",() => deleteWorkspace(message.workspaceId))
+      .then(result => sendResponse({ok:true,...result}))
+      .catch(error => sendResponse({ok:false,error:String(error?.message || error)}));
     return true;
   }
 
   if (message.type === "SET_ACTIVE_WORKSPACE") {
     (async () => {
       const windowId = messageWindowId(message,sender);
-      const state = await setWindowWorkspace(windowId,message.workspaceId);
+      const state = await serializeWorkspaceMutation(windowId,"set-active-workspace",() =>
+        setWindowWorkspace(windowId,message.workspaceId)
+      );
       sendResponse({ok:true,...state});
     })().catch(error => sendResponse({ok:false,error:String(error?.message || error)}));
     return true;
@@ -1162,17 +1266,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === "SET_DEFAULT_WORKSPACE") {
     (async () => {
-      const {workspaces} = await ensureWorkspaceSystem();
-      const id = String(message.workspaceId || "");
-      if (!workspaces.some(w => w.id === id)) throw new Error("Workspace not found");
-      await chrome.storage.local.set({[DEFAULT_WORKSPACE_KEY]:id});
+      const id = await serializeWorkspaceMutation(null,"set-default-workspace",async () => {
+        const {workspaces} = await ensureWorkspaceSystem();
+        const nextId = String(message.workspaceId || "");
+        if (!workspaces.some(w => w.id === nextId)) throw new Error("Workspace not found");
+        await chrome.storage.local.set({[DEFAULT_WORKSPACE_KEY]:nextId});
+        return nextId;
+      });
       sendResponse({ok:true,defaultWorkspaceId:id});
     })().catch(error => sendResponse({ok:false,error:String(error?.message || error)}));
     return true;
   }
 
   if (message.type === "GET_RECENT") {
-    getRecent(messageWindowId(message,sender),{all:message.all === true})
+    const windowId = messageWindowId(message,sender);
+    serializeWorkspaceRead(windowId,"get-recent",() => getRecent(windowId,{all:message.all === true}))
       .then(recent => sendResponse({ok:true,recent}))
       .catch(error => sendResponse({ok:false,error:String(error?.message || error)}));
     return true;
@@ -1181,8 +1289,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "RECORD_RECENT") {
     (async () => {
       const windowId = messageWindowId(message,sender);
-      const state = await getWindowWorkspaceState(windowId);
-      await recordRecent({...message,windowId,workspaceId:state.activeWorkspaceId});
+      await serializeWorkspaceMutation(windowId,"record-recent",async () => {
+        const state = await getWindowWorkspaceState(windowId);
+        await recordRecent({...message,windowId,workspaceId:state.activeWorkspaceId});
+      });
       sendResponse({ok:true});
     })().catch(error => sendResponse({ok:false,error:String(error?.message || error)}));
     return true;
@@ -1194,12 +1304,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === "SET_SITE_SETTINGS") {
-    setSiteSettings(message.url,message.patch || {}).then(settings => sendResponse({ok:true,settings})).catch(error => sendResponse({ok:false,error:String(error?.message || error)}));
+    serializeStorageMutation("set-site-settings",() => setSiteSettings(message.url,message.patch || {}))
+      .then(settings => sendResponse({ok:true,settings}))
+      .catch(error => sendResponse({ok:false,error:String(error?.message || error)}));
     return true;
   }
 
   if (message.type === "APPLY_NOTIFICATION_SETTING") {
-    applyNotificationSetting(message.url,message.setting).then(settings => sendResponse({ok:true,settings})).catch(error => sendResponse({ok:false,error:String(error?.message || error)}));
+    serializeStorageMutation("apply-notification-setting",() => applyNotificationSetting(message.url,message.setting))
+      .then(settings => sendResponse({ok:true,settings}))
+      .catch(error => sendResponse({ok:false,error:String(error?.message || error)}));
     return true;
   }
 

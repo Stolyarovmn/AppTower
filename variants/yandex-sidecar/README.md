@@ -1,32 +1,45 @@
 # App Tower v1.0.0
 
-This directory is the generated Chromium/Yandex sidecar fallback variant derived from the main `app/` source tree.
+This directory is the main Microsoft Edge / Google Chrome Manifest V3 extension source tree.
 
-> Variant note: this source tree intentionally omits the native `sidePanel` manifest permission/entry and uses the BrowserAdapter sidecar fallback.
-
-> Runtime status: implemented, but browser parity is not claimed until tested against the actual target Yandex/Chromium browser version.
+> Runtime status: implemented, but the current store candidate still requires the live P0 checks listed in `../docs/10_KNOWN_ISSUES.md` before production/store verification is claimed.
 
 ## Architecture summary
 
-- `background.js` — MV3 service worker, workspace/state coordination, fallback window lifecycle, DNR compatibility rules, Recent, sync and resource leases.
-- `sidepanel/` — App Tower UI reused inside the managed sidecar container.
+- `background.js` — MV3 service worker, workspace/state coordination, Side Panel lifecycle, DNR compatibility rules, Recent, sync and resource leases.
+- `sidepanel/` — App Tower UI, two independent panes, rail, groups/templates, search and dialogs.
 - `content/` — collapsed rail, embedded-frame bridge and Web App Manifest discovery.
 - `shared/` — browser adapter, workspace/shortcut/theme/media helpers.
 - `modules/` — declarative data-only provider modules.
-- `options/` — App Tower control plane.
+- `options/` — browser-settings-like App Tower control plane.
 - `newtab/` — App Tower New Tab override.
+- `icons/` — extension icons.
 
-## Generated-source rule
+## Core product invariants
 
-Do not develop this variant as an independent browser fork.
+- Fresh installs have no default shortcuts.
+- `Auto` is the canonical/default pane mode.
+- Top and bottom panes are independent.
+- The collapsed rail must work with zero shortcuts and after browser restart.
+- Browser Side Panel open/close events are authoritative where supported.
+- Provider integrations remain declarative/data-only; no remote executable JS/WASM.
+- Idle web panes sleep after 5 minutes; the hard live-resource cap is at most 6.
+- Sites that block iframe embedding, anti-bot, DRM, OAuth or CAPTCHA are not promised to work in-pane; Real Page/PWA sidecar is the fallback.
 
-The authoritative product source is `../../app/`. Regenerate this directory with:
+See `../AGENTS.md`, `../docs/03_ARCHITECTURE.md`, `../docs/09_ACCEPTANCE_CRITERIA.md` and `../docs/11_DECISIONS.md` for the detailed engineering rules.
 
-```bash
-python tools/make_yandex_variant.py
-```
+## Local development
 
-The generator copies the main source tree and removes the native Side Panel manifest permission/entry while retaining BrowserAdapter fallback behavior.
+Load this `app/` directory as an unpacked extension in Edge/Chrome Developer mode.
+
+To update an unpacked installation while preserving browser-managed extension storage:
+
+1. keep the same unpacked directory;
+2. replace its contents with the new full source tree;
+3. press **Reload** in the browser extensions page;
+4. reload already-open HTTP(S) tabs when content-script changes need reinjection.
+
+Do not uninstall merely to update unless you intentionally want browser-managed extension data removed.
 
 ## Validation and packaging
 
@@ -37,28 +50,23 @@ node tools/validate.mjs
 python tools/package.py
 ```
 
-The packaging flow regenerates this variant before producing release ZIPs and checks version/manifest consistency.
+`tools/package.py` regenerates `variants/yandex-sidecar/`, validates both source trees and creates full replacement ZIPs in `dist/` with SHA-256 checksums.
 
-## Product invariants
+## Release history
 
-- Fresh installs have no default shortcuts.
-- `Auto` is the canonical/default pane mode.
-- Top and bottom panes are independent.
-- Provider integrations remain declarative/data-only.
-- Idle web panes sleep after 5 minutes; the hard live-resource cap is at most 6.
-- Sites that block iframe/auth/DRM/anti-bot flows are not promised to work in-pane; Real Page/sidecar behavior is the fallback.
+Do not duplicate release history in this file. Use:
 
-## Browser status
+- `../CHANGELOG.md` for current release notes;
+- `../archive/release-notes/` for historical notes;
+- `../archive/releases/` and `../archive/RELEASE_INDEX.csv` for historical source packages/checksums.
 
-The fallback exists so Chromium-family browsers without a usable `chrome.sidePanel` API are not forced through the native Side Panel path.
+## Privacy and permissions
 
-It does **not** mean that App Tower claims identical behavior on Yandex Browser or every Chromium fork. Compatibility must be verified against the actual target browser/version.
-
-## Release history and policy
-
-Use the repository root `CHANGELOG.md` and `archive/` for history instead of duplicating release notes here.
-
-Public privacy policy: `../../PRIVACY.md`  
-Security/permission design: `../../docs/08_SECURITY_PRIVACY_PERMISSIONS.md`
+Public privacy policy: `../PRIVACY.md`  
+Security/permission design: `../docs/08_SECURITY_PRIVACY_PERMISSIONS.md`  
+Store submission checklist: `../docs/21_STORE_SUBMISSION.md`
 
 App Tower is independent software and is not affiliated with or endorsed by Microsoft, Google, Yandex, or the operators of websites opened through it.
+
+
+> Variant note: this source tree intentionally omits the native `sidePanel` manifest permission/entry and uses the BrowserAdapter sidecar fallback.
