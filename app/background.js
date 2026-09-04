@@ -4,6 +4,7 @@ import { WORKSPACES_KEY, DEFAULT_WORKSPACE_KEY, WINDOW_WORKSPACES_KEY, normalize
 import { MEDIA_STATE_KEY, normalizeMediaState } from "./shared/media-contract.js";
 import { createBackgroundStateCoordinator } from "./shared/background-state-coordinator.js";
 import { createPanelStateStore } from "./shared/panel-state-store.js";
+import { createPanelLifecycleController } from "./shared/panel-lifecycle-controller.js";
 import {
   SHORTCUT_SITE, SHORTCUT_GROUP, SHORTCUT_TEMPLATE,
   normalizeShortcut, normalizeShortcutList, firstLaunchableSite,
@@ -76,7 +77,7 @@ const panelSessionReady = chrome.storage.session.get(PANEL_SESSION_KEY).then(dat
 const railPorts = new Map();
 const panelPorts = new Map();
 const panelDisconnectTimers = new Map();
-const panelClosedAt = new Map();
+let panelLifecycleController = null;
 
 // All shared panel/workspace mutations pass through one FIFO coordinator.
 // User-activation-sensitive browser APIs (sidePanel.open/close) are still
@@ -94,7 +95,8 @@ const panelStateStore = createPanelStateStore({
     try { await chrome.storage.session.set({[COLLAPSED_SESSION_KEY]:[...collapsedWindows]}); } catch {}
   },
   broadcastRail:async (windowId,visible) => { broadcastRail(windowId,visible); },
-  clearWindowResources
+  clearWindowResources,
+  cancelPendingDisconnect:windowId => panelLifecycleController?.cancelPendingDisconnect(windowId)
 });
 
 function serializeWorkspaceMutation(windowId, action, operation) {
@@ -190,6 +192,12 @@ const hasNativePanelOpenedEvent = Boolean(
 const hasNativePanelClosedEvent = Boolean(
   browserCapabilities().nativeSidePanel && chrome.sidePanel?.onClosed?.addListener
 );
+panelLifecycleController = createPanelLifecycleController({
+  panelStateStore,
+  panelPorts,
+  disconnectTimers:panelDisconnectTimers,
+  hasNativePanelClosedEvent
+});
 
 if (hasNativePanelOpenedEvent) {
   chrome.sidePanel.onOpened.addListener(({path, windowId}) => {
@@ -225,42 +233,11 @@ chrome.runtime.onConnect.addListener((port) => {
     const windowId = Number(match[1]);
     if (!Number.isInteger(windowId)) return;
 
-    const pending = panelDisconnectTimers.get(windowId);
-    if (pending) {
-      clearTimeout(pending);
-      panelDisconnectTimers.delete(windowId);
-    }
-
     addPort(panelPorts, windowId, port);
-
-    // A live Side Panel document is also useful to recover from stale
-    // collapsed state left by an older build/reload. Right after an actual
-    // browser close we keep a short cooldown so a dying document cannot reopen
-    // the rail state by reconnecting.
-    if (hasNativePanelClosedEvent) {
-      const closedAgo = Date.now() - Number(panelClosedAt.get(windowId) || 0);
-      if (closedAgo > 1200) void markPanelOpen(windowId,{authoritative:true}).catch(() => {});
-    } else if (!collapsedWindows.has(windowId)) {
-      void markPanelOpen(windowId).catch(() => {});
-    }
+    void panelLifecycleController.connected(windowId).catch(() => {});
 
     port.onDisconnect.addListener(() => {
-      // Edge/Chrome with onClosed: never infer panel visibility from a Port.
-      // MV3 workers and extension documents can reconnect while the native
-      // Side Panel is still plainly visible.
-      if (hasNativePanelClosedEvent) return;
-
-      // Legacy/fallback Chromium: wait for a reconnect before declaring the
-      // container closed. This also covers our sidecar fallback.
-      const oldTimer = panelDisconnectTimers.get(windowId);
-      if (oldTimer) clearTimeout(oldTimer);
-      const timer = setTimeout(() => {
-        panelDisconnectTimers.delete(windowId);
-        if (!panelPorts.get(windowId)?.size) {
-          void markPanelClosed(windowId, { collapsed:true }).catch(() => {});
-        }
-      }, 900);
-      panelDisconnectTimers.set(windowId, timer);
+      panelLifecycleController.disconnected(windowId);
     });
   }
 });
@@ -291,14 +268,6 @@ function broadcastRail(windowId, visible) {
 }
 function markPanelOpen(windowId, { authoritative=false } = {}) {
   if (!Number.isInteger(Number(windowId))) return Promise.resolve({changed:false,reason:"invalid-window"});
-  if (authoritative) panelClosedAt.delete(Number(windowId));
-
-  const pending = panelDisconnectTimers.get(Number(windowId));
-  if (pending) {
-    clearTimeout(pending);
-    panelDisconnectTimers.delete(Number(windowId));
-  }
-
   return Promise.all([panelSessionReady,collapsedSessionReady]).then(() =>
     panelStateStore.open(Number(windowId),{authoritative})
   );
@@ -306,13 +275,6 @@ function markPanelOpen(windowId, { authoritative=false } = {}) {
 
 function markPanelClosed(windowId, { collapsed=true } = {}) {
   if (!Number.isInteger(Number(windowId))) return Promise.resolve({changed:false,reason:"invalid-window"});
-  panelClosedAt.set(Number(windowId),Date.now());
-  const pending = panelDisconnectTimers.get(Number(windowId));
-  if (pending) {
-    clearTimeout(pending);
-    panelDisconnectTimers.delete(Number(windowId));
-  }
-
   return Promise.all([panelSessionReady,collapsedSessionReady]).then(() =>
     panelStateStore.close(Number(windowId),{collapsed})
   );
@@ -344,14 +306,10 @@ function matchesPanelPath(path) {
 chrome.windows.onRemoved.addListener((windowId) => {
   railPorts.delete(windowId);
   panelPorts.delete(windowId);
-  panelClosedAt.delete(windowId);
-  const disconnectTimer = panelDisconnectTimers.get(windowId);
-  if (disconnectTimer) clearTimeout(disconnectTimer);
-  panelDisconnectTimers.delete(windowId);
 
   void (async () => {
     await Promise.all([panelSessionReady,collapsedSessionReady]);
-    await panelStateStore.removeWindow(windowId);
+    await panelLifecycleController.removed(windowId);
 
     let changed = false;
     for (const [origin, id] of pwaSidecars.entries()) {
