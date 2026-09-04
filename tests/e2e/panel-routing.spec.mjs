@@ -108,7 +108,7 @@ test("ATN-E2E-009 live panel consumes intents without recreation and page rail s
     await deliverLivePanelIntent(panel, "search");
     await expect.poll(() => isDialogOpen(panel, "#search-dialog")).toBe(true);
     expect(await documentToken(panel)).toBe(token);
-    await panel.locator("#search-close").click();
+    await panel.locator("#search-dialog .dialog-close").click();
     await expect.poll(() => isDialogOpen(panel, "#search-dialog")).toBe(false);
 
     await deliverLivePanelIntent(panel, "organize");
