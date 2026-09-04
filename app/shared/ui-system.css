@@ -86,12 +86,14 @@
 
 /* Focus rings are always inset. An outside outline can be clipped by scroll
  * containers (notably shortcut chooser dialogs), producing a broken partial
- * blue border even though the control itself is fully visible. The legacy
- * chooser also applied an outline on :hover, so clear that path explicitly. */
+ * blue border even though the control itself is fully visible. The chooser is
+ * keyboard-selectable and is also focused programmatically after navigation,
+ * so its visible focus treatment applies to :focus as well as :focus-visible. */
 .shortcut-chooser-item:hover {
   outline:0 !important;
   outline-offset:0 !important;
 }
+.shortcut-chooser-item:focus,
 .shortcut-chooser-item:focus-visible,
 dialog button:focus-visible,
 .rail-site:focus-visible,
