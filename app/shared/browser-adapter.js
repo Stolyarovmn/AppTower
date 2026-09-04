@@ -101,11 +101,84 @@ function installFloatingSurfaceGuard(documentRef) {
   }
 }
 
+function installShortcutDragProxy(documentRef) {
+  const install = () => {
+    const view = documentRef?.defaultView;
+    if (!view || documentRef.documentElement.dataset.atnDragProxyGuard === "1") return false;
+    documentRef.documentElement.dataset.atnDragProxyGuard = "1";
+
+    let proxy = null;
+    let source = null;
+
+    const removeProxy = () => {
+      proxy?.remove();
+      proxy = null;
+      source = null;
+    };
+
+    const visualClone = button => {
+      const first = button?.firstElementChild;
+      if (!first) return null;
+      const clone = first.cloneNode(true);
+      clone.removeAttribute?.("id");
+      clone.querySelectorAll?.("[id]").forEach(node => node.removeAttribute("id"));
+      return clone;
+    };
+
+    const ensureProxy = (button,event) => {
+      if (proxy && source === button) return proxy;
+      removeProxy();
+      const clone = visualClone(button);
+      if (!clone) return null;
+
+      proxy = documentRef.createElement("div");
+      proxy.className = "atn-drag-proxy";
+      proxy.dataset.shortcutId = button.dataset.shortcutId || "";
+      proxy.setAttribute("aria-hidden","true");
+      proxy.append(clone);
+      documentRef.body.append(proxy);
+      source = button;
+      moveProxy(event);
+      return proxy;
+    };
+
+    const moveProxy = event => {
+      if (!proxy) return;
+      proxy.style.left = `${Math.round(event.clientX)}px`;
+      proxy.style.top = `${Math.round(event.clientY)}px`;
+    };
+
+    // sidepanel.js owns the drag state and marks the source with .dragging.
+    // This shared layer only mirrors that already-authoritative state into a
+    // pointer-following visual proxy. It never decides whether a drag started
+    // or where it will be dropped.
+    view.addEventListener("pointermove",event => {
+      const button = documentRef.querySelector?.(".rail-site.dragging[data-shortcut-id]");
+      if (!button) {
+        if (proxy) removeProxy();
+        return;
+      }
+      ensureProxy(button,event);
+      moveProxy(event);
+    },{passive:true});
+    view.addEventListener("pointerup",removeProxy,{passive:true});
+    view.addEventListener("pointercancel",removeProxy,{passive:true});
+    view.addEventListener("blur",removeProxy);
+    return true;
+  };
+
+  if (install()) return;
+  if (documentRef?.readyState === "loading") {
+    documentRef.addEventListener?.("DOMContentLoaded",install,{once:true});
+  }
+}
+
 export function applyBrowserSkin(documentRef = document) {
   const browser = detectBrowser();
   documentRef.documentElement.dataset.browser = browser.id;
   documentRef.documentElement.dataset.uiStyle = browser.style;
   installFloatingSurfaceGuard(documentRef);
+  installShortcutDragProxy(documentRef);
   return browser;
 }
 
