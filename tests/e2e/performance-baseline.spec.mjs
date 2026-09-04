@@ -9,6 +9,7 @@ import {performance as nodePerformance} from "node:perf_hooks";
 const repoRoot = path.resolve(import.meta.dirname, "../..");
 const extensionPath = path.join(repoRoot, "app");
 const manifest = JSON.parse(fs.readFileSync(path.join(extensionPath, "manifest.json"), "utf8"));
+const performanceBudget = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, "performance-budget.json"), "utf8"));
 
 function extensionIdFromManifestKey(key) {
   const digest = crypto.createHash("sha256").update(Buffer.from(key, "base64")).digest().subarray(0, 16);
@@ -36,6 +37,10 @@ function summarize(values) {
     p95Ms:Number(percentile(sorted, 0.95).toFixed(2)),
     maxMs:Number(sorted.at(-1).toFixed(2))
   };
+}
+
+function relativeLimit(value) {
+  return value * (1 + performanceBudget.relativeTolerance);
 }
 
 async function startFixtureServer() {
@@ -89,9 +94,7 @@ test("ATN-PERF-001 collect Side Panel startup, interaction, idle CPU and heap ba
       if (typeof PerformanceObserver === "function") {
         try {
           const observer = new PerformanceObserver(list => {
-            for (const entry of list.getEntries()) {
-              window.__atnPerfLongTasks.push({startTime:entry.startTime,duration:entry.duration});
-            }
+            for (const entry of list.getEntries()) window.__atnPerfLongTasks.push({startTime:entry.startTime,duration:entry.duration});
           });
           observer.observe({entryTypes:["longtask"]});
           window.__atnPerfLongTaskObserver = observer;
@@ -117,8 +120,6 @@ test("ATN-PERF-001 collect Side Panel startup, interaction, idle CPU and heap ba
     const addDialogMs = nodePerformance.now() - addStarted;
     await panel.locator("#cancel-site").click();
 
-    // Performance counters are process/session cumulative. Read both ends of
-    // the idle interval through the same CDP session so the delta is valid.
     const perfSession = await context.newCDPSession(panel);
     let beforeIdle;
     let afterIdle;
@@ -138,8 +139,7 @@ test("ATN-PERF-001 collect Side Panel startup, interaction, idle CPU and heap ba
         const rect = frame.getBoundingClientRect();
         return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
       }).length,
-      longTasks:Array.isArray(window.__atnPerfLongTasks) ? window.__atnPerfLongTasks : [],
-      navigation:performance.getEntriesByType("navigation")[0]?.toJSON?.() || null
+      longTasks:Array.isArray(window.__atnPerfLongTasks) ? window.__atnPerfLongTasks : []
     }));
 
     const taskDurationMs = ((afterIdle.TaskDuration || 0) - (beforeIdle.TaskDuration || 0)) * 1000;
@@ -170,14 +170,18 @@ test("ATN-PERF-001 collect Side Panel startup, interaction, idle CPU and heap ba
     await testInfo.attach("performance-baseline", {path:outputPath,contentType:"application/json"});
     console.log(`ATN performance baseline: ${JSON.stringify(result)}`);
 
-    // These are hang/safety guards, not optimization budgets. Stable budgets
-    // are set in PERFORMANCE.md only after several CI samples exist.
-    expect(result.startup.p95Ms).toBeLessThan(5_000);
-    expect(result.searchDialog.p95Ms).toBeLessThan(2_000);
-    expect(result.addDialogMs).toBeLessThan(3_000);
+    const baseline = performanceBudget.baseline.sidePanel;
+    expect(result.startup.medianMs).toBeLessThanOrEqual(relativeLimit(baseline.startupMedianMs));
+    expect(result.startup.p95Ms).toBeLessThanOrEqual(relativeLimit(baseline.startupP95Ms));
+    expect(result.searchDialog.medianMs).toBeLessThanOrEqual(relativeLimit(baseline.searchMedianMs));
+    expect(result.searchDialog.p95Ms).toBeLessThanOrEqual(relativeLimit(baseline.searchP95Ms));
+    expect(result.addDialogMs).toBeLessThanOrEqual(relativeLimit(baseline.addDialogMs));
     expect(result.idleOneSecond.taskDurationMs).toBeGreaterThanOrEqual(0);
+    expect(result.idleOneSecond.taskDurationMs).toBeLessThanOrEqual(relativeLimit(baseline.idleTaskDurationMsPerSecond));
     expect(result.idleOneSecond.scriptDurationMs).toBeGreaterThanOrEqual(0);
-    expect(result.longestLongTaskMs).toBeLessThan(1_000);
+    expect(result.iframeCount).toBeLessThanOrEqual(baseline.iframeCount);
+    expect(result.visibleIframeCount).toBeLessThanOrEqual(baseline.visibleIframeCount);
+    expect(result.longTaskCount).toBeLessThanOrEqual(baseline.longTaskCount);
   } finally {
     await context.close().catch(() => {});
     await new Promise(resolve => server.close(resolve));
