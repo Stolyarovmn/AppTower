@@ -1,0 +1,216 @@
+const currentWindow = await chrome.windows.getCurrent();
+const params = new URLSearchParams(location.search);
+
+function parseWindowId(value) {
+  if (value == null || value === "") return null;
+  const id = Number(value);
+  return Number.isInteger(id) && id >= 0 ? id : null;
+}
+
+const hostWindowId = parseWindowId(params.get("hostWindowId")) ?? currentWindow.id;
+
+function makeCloseButton(dialog) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "dialog-close";
+  button.setAttribute("aria-label", "Закрыть");
+  button.title = "Закрыть";
+  button.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 4.5 15.5 15.5M15.5 4.5 4.5 15.5"/></svg>';
+  button.addEventListener("click", () => {
+    if (dialog.open) dialog.close("cancel");
+  });
+  return button;
+}
+
+function markLegacyCloseOnlyRows(form) {
+  for (const row of form.querySelectorAll(".dialog-actions")) {
+    const buttons = [...row.querySelectorAll(":scope > button")];
+    if (buttons.length !== 1) continue;
+    const button = buttons[0];
+    const value = String(button.value || "").toLowerCase();
+    // Keep explicit Cancel buttons: they are a form action and are useful next
+    // to Save/selection flows. Only the redundant bottom-right Close action is
+    // replaced by the conventional X in the dialog chrome.
+    if (value === "close") {
+      row.classList.add("dialog-close-only");
+      row.setAttribute("aria-hidden", "true");
+    }
+  }
+}
+
+function installDialogShell(dialog) {
+  const form = dialog.querySelector("form");
+  if (!form || form.dataset.atnDialogShell === "1") return;
+  form.dataset.atnDialogShell = "1";
+
+  form.prepend(makeCloseButton(dialog));
+  markLegacyCloseOnlyRows(form);
+
+  dialog.addEventListener("pointerdown", event => {
+    // Chromium targets the <dialog> itself for a click on ::backdrop. Treat it
+    // as cancellation only; never synthesize Save/OK/destructive actions.
+    if (event.target === dialog && dialog.open) dialog.close("backdrop");
+  });
+}
+
+for (const dialog of document.querySelectorAll("dialog")) installDialogShell(dialog);
+
+// Keep future dialogs consistent too, including module-provided declarative UI.
+const dialogObserver = new MutationObserver(records => {
+  for (const record of records) {
+    for (const node of record.addedNodes) {
+      if (!(node instanceof Element)) continue;
+      if (node.matches?.("dialog")) installDialogShell(node);
+      for (const dialog of node.querySelectorAll?.("dialog") || []) installDialogShell(dialog);
+    }
+  }
+});
+dialogObserver.observe(document.documentElement, {childList:true, subtree:true});
+
+/* Manual rail drag feedback -------------------------------------------------
+ * sidepanel.js intentionally uses Pointer Events instead of HTML5 drag/drop.
+ * The source therefore needs its own visual proxy. Keep this feedback layer
+ * independent from mutation/drop logic: it observes the existing .dragging
+ * state and can never change shortcut state by itself. */
+let dragFeedback = null;
+let dragProxy = null;
+let dragProxyFrame = 0;
+let lastPointer = {x:0,y:0};
+
+function cancelDragProxyFrame() {
+  if (!dragProxyFrame) return;
+  cancelAnimationFrame(dragProxyFrame);
+  dragProxyFrame = 0;
+}
+
+function removeDragProxy() {
+  cancelDragProxyFrame();
+  dragProxy?.remove();
+  dragProxy = null;
+  dragFeedback = null;
+}
+
+function positionDragProxy(x, y) {
+  if (!dragProxy) return;
+  dragProxy.style.left = `${Math.round(x)}px`;
+  dragProxy.style.top = `${Math.round(y)}px`;
+}
+
+function createDragProxy(source) {
+  if (!source || dragProxy) return;
+  const proxy = document.createElement("div");
+  proxy.className = "atn-drag-proxy";
+  proxy.setAttribute("aria-hidden", "true");
+  proxy.dataset.shortcutId = source.dataset.shortcutId || "";
+  proxy.dataset.shortcutKind = source.dataset.shortcutKind || "";
+
+  const visual = source.firstElementChild?.cloneNode(true);
+  if (visual) proxy.append(visual);
+  else proxy.textContent = (source.title || "?").trim().slice(0,1).toUpperCase();
+
+  document.body.append(proxy);
+  dragProxy = proxy;
+  positionDragProxy(lastPointer.x,lastPointer.y);
+}
+
+function syncDragProxy() {
+  dragProxyFrame = 0;
+  if (!dragFeedback?.source?.isConnected) {
+    removeDragProxy();
+    return;
+  }
+  if (dragFeedback.source.classList.contains("dragging")) {
+    createDragProxy(dragFeedback.source);
+    positionDragProxy(lastPointer.x,lastPointer.y);
+  }
+}
+
+function scheduleDragProxySync() {
+  if (dragProxyFrame) return;
+  // sidepanel.js owns the actual drag state and sets .dragging from a window
+  // pointermove listener later in the same event dispatch. An animation-frame
+  // callback runs after that dispatch has completed, so feedback observes the
+  // authoritative drag state instead of racing it.
+  dragProxyFrame = requestAnimationFrame(syncDragProxy);
+}
+
+document.addEventListener("pointerdown", event => {
+  if (event.button !== 0) return;
+  const source = event.target?.closest?.(".rail-site[data-shortcut-id]");
+  if (!source) return;
+  removeDragProxy();
+  dragFeedback = {pointerId:event.pointerId,source};
+  lastPointer = {x:event.clientX,y:event.clientY};
+}, true);
+
+document.addEventListener("pointermove", event => {
+  if (!dragFeedback || dragFeedback.pointerId !== event.pointerId) return;
+  lastPointer = {x:event.clientX,y:event.clientY};
+  if (dragProxy) positionDragProxy(event.clientX,event.clientY);
+  scheduleDragProxySync();
+}, {passive:true});
+
+for (const type of ["pointerup","pointercancel"]) {
+  window.addEventListener(type, event => {
+    if (!dragFeedback || dragFeedback.pointerId !== event.pointerId) return;
+    removeDragProxy();
+  }, true);
+}
+window.addEventListener("blur", removeDragProxy);
+
+/* Context-menu parity: groups already expose Dissolve directly; templates must
+ * not require opening the editor just to perform the equivalent action. */
+const shortcutMenu = document.getElementById("shortcut-menu");
+let contextShortcut = null;
+
+document.addEventListener("contextmenu", event => {
+  const shortcut = event.target?.closest?.(".rail-site[data-shortcut-id]");
+  contextShortcut = shortcut ? {
+    id:shortcut.dataset.shortcutId || "",
+    kind:shortcut.dataset.shortcutKind || ""
+  } : null;
+}, true);
+
+function injectTemplateDissolveAction() {
+  if (!shortcutMenu || shortcutMenu.classList.contains("hidden")) return;
+  if (contextShortcut?.kind !== "template" || !contextShortcut.id) return;
+  if (shortcutMenu.querySelector('[data-ui-action="dissolve-template"]')) return;
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.dataset.uiAction = "dissolve-template";
+  button.textContent = "Разобрать шаблон";
+  button.addEventListener("click", async () => {
+    const templateId = contextShortcut?.id;
+    shortcutMenu.classList.add("hidden");
+    if (!templateId) return;
+    button.disabled = true;
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type:"MUTATE_SHORTCUTS",
+        windowId:hostWindowId,
+        action:"dissolve",
+        id:templateId
+      });
+      if (!response?.ok) throw new Error(response?.error || "Не удалось разобрать шаблон");
+    } catch (error) {
+      alert(`Не удалось разобрать шаблон: ${String(error?.message || error)}`);
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  const duplicate = [...shortcutMenu.querySelectorAll("button")]
+    .find(item => item.textContent.trim() === "Дублировать");
+  const existingDivider = duplicate?.previousElementSibling?.classList?.contains("separator")
+    ? duplicate.previousElementSibling
+    : duplicate;
+
+  if (existingDivider) shortcutMenu.insertBefore(button, existingDivider);
+  else shortcutMenu.append(button);
+}
+
+if (shortcutMenu) {
+  const menuObserver = new MutationObserver(injectTemplateDissolveAction);
+  menuObserver.observe(shortcutMenu, {childList:true, attributes:true, attributeFilter:["class"]});
+}

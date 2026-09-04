@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "baseline": {
+    "sidePanel": {
+      "startupMedianMs": 127.79,
+      "startupP95Ms": 188.07,
+      "searchMedianMs": 54.00,
+      "searchP95Ms": 82.99,
+      "addDialogMs": 60.97,
+      "idleTaskDurationMsPerSecond": 6.733,
+      "iframeCount": 4,
+      "visibleIframeCount": 0,
+      "longTaskCount": 0
+    },
+    "newTab": {
+      "firstInteractiveMedianMs": 87.84,
+      "firstInteractiveP95Ms": 136.35
+    }
+  },
+  "relativeTolerance": 0.35,
+  "notes": "Hosted-runner timings use a +35% regression tolerance over the established median-of-runs baseline. ScriptDuration and JS heap remain diagnostic because current samples are too noisy for a reliable hard gate."
+}
