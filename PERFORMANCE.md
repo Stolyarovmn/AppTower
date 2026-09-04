@@ -28,20 +28,40 @@ This document tracks runtime performance and energy budgets for AppTower. Runtim
 
 The benchmark deliberately does not enforce tight absolute timing thresholds yet. The first several green CI runs establish a reproducible baseline before budgets are promoted to regression gates.
 
+### Collected green CI samples
+
+Two independent GitHub Actions jobs on commit `a11a8f5c1daae45adf7833a58b7664f79dcae546` produced comparable Chromium 140 measurements:
+
+| Metric | Run 76 | Run 77 | Two-run observation |
+|---|---:|---:|---:|
+| Startup median | 135.04 ms | 136.65 ms | 135.85 ms median-of-runs |
+| Startup p95 | 196.49 ms | 179.05 ms | 196.49 ms worst observed |
+| Search median | 50.91 ms | 52.18 ms | 51.55 ms median-of-runs |
+| Search p95 | 88.89 ms | 87.25 ms | 88.89 ms worst observed |
+| Add dialog | 64.70 ms | 62.68 ms | 63.69 ms median-of-runs |
+| JS heap used | 6.503 MiB | 4.745 MiB | 4.745–6.503 MiB observed range |
+| iframe count | 4 | 4 | invariant in this fixture |
+| visible iframe count | 0 | 0 | invariant in this fixture |
+| long tasks >50 ms | 0 | 0 | none observed |
+
+These two runs are useful evidence but are still insufficient for tight CI budgets. Continue collecting comparable samples before turning latency/heap values into regression gates.
+
+The original idle CPU readings from these two runs were invalid (`TaskDuration`/`ScriptDuration` deltas could be slightly negative) because the two ends of the interval were read through separate CDP sessions. The benchmark was corrected on 2026-09-04 to keep both reads on one CDP session and now explicitly rejects negative deltas. Idle CPU baseline remains pending until corrected green samples exist.
+
 ## Baseline table
 
 | Metric | Current baseline | Budget | Collection status |
 |---|---:|---:|---|
-| Side Panel startup median | pending CI samples | pending | automated |
-| Side Panel startup p95 | pending CI samples | safety guard < 5000 ms | automated |
-| Search dialog median | pending CI samples | pending | automated |
-| Search dialog p95 | pending CI samples | safety guard < 2000 ms | automated |
-| Add dialog latency | pending CI samples | safety guard < 3000 ms | automated |
-| Idle renderer TaskDuration / 1 s | pending CI samples | pending | automated |
-| Idle renderer ScriptDuration / 1 s | pending CI samples | pending | automated |
-| Side Panel JS heap used | pending CI samples | pending | automated |
-| Live iframe count | pending CI samples | scenario-specific invariant | automated |
-| Long tasks >50 ms | pending CI samples | pending | automated |
+| Side Panel startup median | 135.04–136.65 ms across 2 green jobs | pending | automated; more samples needed |
+| Side Panel startup p95 | 179.05–196.49 ms across 2 green jobs | safety guard < 5000 ms | automated; more samples needed |
+| Search dialog median | 50.91–52.18 ms across 2 green jobs | pending | automated; more samples needed |
+| Search dialog p95 | 87.25–88.89 ms across 2 green jobs | safety guard < 2000 ms | automated; more samples needed |
+| Add dialog latency | 62.68–64.70 ms across 2 green jobs | safety guard < 3000 ms | automated; more samples needed |
+| Idle renderer TaskDuration / 1 s | pending corrected samples | pending | automated; measurement fixed |
+| Idle renderer ScriptDuration / 1 s | pending corrected samples | pending | automated; measurement fixed |
+| Side Panel JS heap used | 4.745–6.503 MiB across 2 green jobs | pending | automated; more samples needed |
+| Live iframe count | 4 total / 0 visible in baseline fixture | scenario-specific invariant | automated |
+| Long tasks >50 ms | 0 in 2 green jobs | pending | automated |
 | Runtime/storage messages per minute | not instrumented | pending | planned |
 | Storage writes per minute | not instrumented | pending | planned |
 | Service-worker wakeups | static source evidence available; runtime counter pending | pending | planned |
@@ -52,7 +72,7 @@ The benchmark deliberately does not enforce tight absolute timing thresholds yet
 
 The MV3 service worker currently creates the `atn-resource-budget` alarm with `periodInMinutes: 1` on both install and browser startup. The alarm handler calls `enforceResourceBudget()`, which returns immediately when there are no resource leases. This is a deterministic periodic wake source in AppTower's own code even when the resource-budget subsystem has no work to perform.
 
-This is not changed in the initial baseline commit. It should first receive a dedicated regression/performance test, then be replaced by an event-driven/nearest-deadline schedule if the change preserves the 5-minute idle-sleep and max-live-resource semantics.
+This is not changed while the Serialized state coordinator TASK holds the global WIP lock. It should first receive a dedicated regression/performance test, then be replaced by an event-driven/nearest-deadline schedule if the change preserves the 5-minute idle-sleep and max-live-resource semantics.
 
 ### Proposed acceptance criteria for the follow-up TASK
 
@@ -85,4 +105,4 @@ This is not changed in the initial baseline commit. It should first receive a de
 
 ## Known measurement gaps
 
-The initial probe does not yet measure background service-worker CPU directly, runtime/storage message rate, storage-write rate, pane sleep/wake memory recovery, or extension-originated network request count. These need explicit test instrumentation rather than inference from wall-clock timing.
+The probe does not yet measure background service-worker CPU directly, runtime/storage message rate, storage-write rate, pane sleep/wake memory recovery, or extension-originated network request count. These need explicit test instrumentation rather than inference from wall-clock timing.
