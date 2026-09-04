@@ -8,6 +8,7 @@ import {performance as nodePerformance} from "node:perf_hooks";
 const repoRoot = path.resolve(import.meta.dirname, "../..");
 const extensionPath = path.join(repoRoot, "app");
 const manifest = JSON.parse(fs.readFileSync(path.join(extensionPath, "manifest.json"), "utf8"));
+const performanceBudget = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, "performance-budget.json"), "utf8"));
 
 function extensionIdFromManifestKey(key) {
   const digest = crypto.createHash("sha256").update(Buffer.from(key, "base64")).digest().subarray(0, 16);
@@ -32,6 +33,10 @@ function summarize(values) {
     p95Ms:Number(percentile(sorted, 0.95).toFixed(2)),
     maxMs:Number(sorted.at(-1).toFixed(2))
   };
+}
+
+function relativeLimit(value) {
+  return value * (1 + performanceBudget.relativeTolerance);
 }
 
 const extensionId = extensionIdFromManifestKey(manifest.key);
@@ -72,9 +77,9 @@ test("ATN-PERF-002 collect New Tab first-interactive baseline", async ({}, testI
     await testInfo.attach("performance-newtab-baseline", {path:outputPath,contentType:"application/json"});
     console.log(`ATN New Tab performance baseline: ${JSON.stringify(result)}`);
 
-    // Safety/hang guard only. A relative regression budget will be promoted
-    // after several comparable green CI samples establish runner variance.
-    expect(result.newTabFirstInteractive.p95Ms).toBeLessThan(5_000);
+    const baseline = performanceBudget.baseline.newTab;
+    expect(result.newTabFirstInteractive.medianMs).toBeLessThanOrEqual(relativeLimit(baseline.firstInteractiveMedianMs));
+    expect(result.newTabFirstInteractive.p95Ms).toBeLessThanOrEqual(relativeLimit(baseline.firstInteractiveP95Ms));
   } finally {
     await context.close().catch(() => {});
     fs.rmSync(profile, {recursive:true,force:true,maxRetries:5,retryDelay:100});
