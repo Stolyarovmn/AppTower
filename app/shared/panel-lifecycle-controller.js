@@ -24,21 +24,15 @@ export function createPanelLifecycleController({
   async function connected(windowId) {
     if (!Number.isInteger(Number(windowId))) return {changed:false, reason:"invalid-window"};
     cancelPendingDisconnect(windowId);
-
-    if (hasNativePanelClosedEvent) {
-      const closedAgo = now() - panelStateStore.lastClosedAt(windowId);
-      if (closedAgo <= reconnectCooldownMs) {
-        return {changed:false, reason:"close-cooldown"};
-      }
-      return panelStateStore.open(windowId,{authoritative:true});
-    }
-
-    return panelStateStore.open(windowId);
+    // A live runtime Port is our cross-browser source of truth. Persisted flags
+    // and close cooldowns must never keep the injected rail visible over a
+    // newly opened native panel. Hidden/closing documents stop reconnecting in
+    // sidepanel.js, so a new live Port can be treated as authoritative.
+    return panelStateStore.open(Number(windowId),{authoritative:true});
   }
 
   function disconnected(windowId) {
     if (!Number.isInteger(Number(windowId))) return false;
-    if (hasNativePanelClosedEvent) return false;
 
     cancelPendingDisconnect(windowId);
     const timer = setTimer(() => {
