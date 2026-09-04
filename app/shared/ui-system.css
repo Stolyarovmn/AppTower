@@ -9,6 +9,17 @@
   --atn-section-gap:12px;
   --atn-dialog-pad:18px;
   --atn-dialog-close-size:32px;
+
+  /* Typography roles. Components may change weight, never invent a local size
+   * for the same semantic role. Options deliberately uses a slightly roomier
+   * body than the compact Side Panel while keeping secondary copy identical. */
+  --atn-font-body:14px;
+  --atn-font-secondary:13px;
+  --atn-font-caption:11px;
+  --atn-font-dialog-title:17px;
+  --atn-font-page-title:28px;
+  --atn-line-body:1.45;
+  --atn-focus-width:2px;
 }
 
 /* Shared spacing rules. Component styles may choose layout, but spacing comes
@@ -25,8 +36,45 @@
 .card > :first-child { margin-top:0; }
 .card > :last-child { margin-bottom:0; }
 
+/* Options typography is role-based rather than element-default based. This is
+ * especially important for <small>, whose browser default used to make the
+ * Sync/Data page look smaller than the rest of Settings. */
+.settings-shell {
+  font-size:var(--atn-font-body);
+  line-height:var(--atn-line-body);
+}
+.settings-shell h1 {
+  font-size:var(--atn-font-page-title);
+  line-height:1.2;
+}
+.settings-shell h2 {
+  font-size:16px;
+  line-height:1.3;
+}
+.settings-shell button,
+.settings-shell input,
+.settings-shell select {
+  font-size:var(--atn-font-body);
+}
+.settings-shell .muted,
+.settings-shell .row-main small,
+.settings-shell .toggle small,
+.settings-shell .settings-copy {
+  font-size:var(--atn-font-secondary);
+  line-height:var(--atn-line-body);
+}
+.settings-shell .toggle b,
+.settings-shell .row-main strong {
+  font-size:var(--atn-font-body);
+  line-height:1.35;
+}
+.settings-shell .pill,
+.settings-shell .site-controls label {
+  font-size:var(--atn-font-caption);
+}
+
 /* Sync/Data used to be the odd page out: the label and action row had no
- * explicit vertical rhythm. Keep its inner edges aligned with every card. */
+ * explicit vertical rhythm and <small> inherited the UA's reduced type size. */
 .page[data-page="data"] .card {
   display:grid;
   gap:var(--atn-space-3);
@@ -34,6 +82,21 @@
 .page[data-page="data"] .card > .toggle,
 .page[data-page="data"] .card > .actions-row {
   margin:0;
+}
+
+/* Focus rings are always inset. An outside outline can be clipped by scroll
+ * containers (notably shortcut chooser dialogs), producing a broken partial
+ * blue border even though the control itself is fully visible. */
+.shortcut-chooser-item:focus-visible,
+dialog button:focus-visible,
+.rail-site:focus-visible,
+.rail-tool:focus-visible {
+  outline:0 !important;
+  outline-offset:0 !important;
+  box-shadow:inset 0 0 0 var(--atn-focus-width) var(--accent);
+}
+.rail-site.active:focus-visible {
+  box-shadow:inset 2px 0 0 var(--accent), inset 0 0 0 var(--atn-focus-width) var(--accent);
 }
 
 /* Dialog shell */
@@ -44,6 +107,11 @@ dialog > form > h2:first-child,
 dialog .dialog-title-row,
 dialog .pwa-dialog-head {
   padding-right:calc(var(--atn-dialog-close-size) + var(--atn-space-2));
+}
+
+dialog h2 {
+  font-size:var(--atn-font-dialog-title);
+  line-height:1.3;
 }
 
 .dialog-close {
@@ -69,7 +137,7 @@ dialog .pwa-dialog-head {
 .dialog-close:hover { background:var(--hover); }
 .dialog-close:focus-visible {
   outline:0;
-  box-shadow:inset 0 0 0 2px var(--accent);
+  box-shadow:inset 0 0 0 var(--atn-focus-width) var(--accent);
 }
 .dialog-close svg {
   width:18px;
@@ -107,6 +175,37 @@ dialog .settings-actions.two-col {
 }
 #template-form > .settings-actions:last-of-type {
   margin-top:var(--atn-space-3);
+}
+
+/* Pointer drag feedback. App Tower uses a manual pointer drag rather than the
+ * browser HTML5 drag API so touch/pen and rail reordering share one code path.
+ * A visual proxy follows the pointer while the actual source remains dimmed. */
+.atn-drag-proxy {
+  position:fixed;
+  z-index:2147483646;
+  width:42px;
+  height:42px;
+  display:grid;
+  place-items:center;
+  padding:6px;
+  border:1px solid var(--border);
+  border-radius:10px;
+  background:color-mix(in srgb,var(--panel) 92%,var(--text) 8%);
+  box-shadow:0 8px 24px rgba(0,0,0,.36), inset 0 0 0 1px color-mix(in srgb,var(--accent) 32%,transparent);
+  pointer-events:none;
+  transform:translate(12px,12px) scale(1.04);
+  transform-origin:center;
+  opacity:.96;
+  will-change:left,top;
+}
+.atn-drag-proxy > img {
+  width:25px;
+  height:25px;
+  object-fit:contain;
+  border-radius:6px;
+}
+.atn-drag-proxy .template-stack {
+  transform:scale(1.05);
 }
 
 @media (max-width:360px) {
