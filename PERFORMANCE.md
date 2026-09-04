@@ -10,11 +10,11 @@ This document tracks runtime performance and energy budgets for AppTower. Runtim
 
 - Functional CI must be green before starting an unrelated optimization.
 - One functional TASK may be `ACTIVE` at a time across the project.
-- Timing values from hosted CI are noisy; use multiple comparable samples, median-of-runs and relative thresholds.
-- A budget is not a target to consume. It is a regression guard above a measured baseline.
-- Performance work must not weaken privacy, compatibility or functional regression coverage.
 - Runtime code is not changed while another functional TASK owns the global WIP lock unless the performance change is required by that TASK or fixes an existing regression.
-- A single hosted-runner outlier is evidence to inspect, not by itself a regression. Noisy counters require repeated breaches across comparable jobs before blocking CI.
+- Hosted-runner timings and very small CPU counters are noisy; use multiple comparable samples, median-of-runs and relative thresholds.
+- A budget is a regression guard, not a target to consume.
+- A single outlier is evidence to inspect, not by itself a regression.
+- Very small `ScriptDuration` deltas are diagnostic only. Even a repeated absolute threshold can be false-positive on identical runtime code; blocking decisions must prefer `TaskDuration`, wall-clock latency, stable structural counters and before/after same-scenario comparisons.
 
 ## Automated probes
 
@@ -34,69 +34,105 @@ This document tracks runtime performance and energy budgets for AppTower. Runtim
 
 `tests/e2e/performance-newtab.spec.mjs` measures AppTower New Tab first-interactive latency in headed Chromium/Xvfb. Readiness requires the App Tower rail to be visible and the search control to be enabled. Seven samples are recorded to a dedicated JSON artifact.
 
-Three comparable green jobs on Chromium `140.0.7339.16` are now available:
+## Latest verified CI sample — validate run 113
 
-| Metric | Run 99 | Run 106 | Run 107 | Median of runs | Observed range |
-|---|---:|---:|---:|---:|---:|
-| New Tab first-interactive minimum | 78.76 ms | 79.52 ms | 85.82 ms | **79.52 ms** | 78.76–85.82 ms |
-| New Tab first-interactive median | 92.17 ms | 84.35 ms | 87.84 ms | **87.84 ms** | 84.35–92.17 ms |
-| New Tab first-interactive p95/max | 155.13 ms | 114.87 ms | 136.35 ms | **136.35 ms** | 114.87–155.13 ms |
+Run 113 completed successfully on head `480d630659a6d83e890a927c75db03d4ed44ba86` using Chromium `140.0.7339.16`.
 
-This metric still needs at least two more independent comparable green jobs before a tight relative budget is promoted.
+Side Panel:
 
-## Corrected seven-job Side Panel baseline
+| Metric | Run 113 |
+|---|---:|
+| Startup minimum | 125.76 ms |
+| Startup median | 136.35 ms |
+| Startup p95/max | 198.43 ms |
+| Search median | 53.38 ms |
+| Search p95/max | 91.25 ms |
+| Add dialog | 61.86 ms |
+| Idle `TaskDuration` / 1 s | 7.092 ms |
+| Idle `ScriptDuration` / 1 s | 0.132 ms |
+| JS heap used | 4.725 MiB |
+| JS heap total | 18.281 MiB |
+| iframe count | 4 |
+| visible iframe count | 0 |
+| Long Tasks >50 ms | 0 |
 
-The idle-counter bug in the original probe was corrected by reading both ends of the idle interval through the same CDP session. Seven independent corrected green jobs are now available: validate runs **88, 89, 96, 97, 99, 106 and 107**, all using Chromium `140.0.7339.16` and the same benchmark semantics.
+New Tab:
 
-| Metric | Run 88 | Run 89 | Run 96 | Run 97 | Run 99 | Run 106 | Run 107 | Median of runs | Observed range |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Side Panel startup median | 129.20 ms | 123.31 ms | 123.70 ms | 128.32 ms | 154.56 ms | 127.26 ms | 127.14 ms | **127.26 ms** | 123.31–154.56 ms |
-| Side Panel startup p95 | 188.63 ms | 172.74 ms | 197.12 ms | 191.43 ms | 185.17 ms | 179.13 ms | 187.51 ms | **187.51 ms** | 172.74–197.12 ms |
-| Search median | 52.43 ms | 52.25 ms | 52.35 ms | 60.41 ms | 56.57 ms | 54.61 ms | 54.81 ms | **54.61 ms** | 52.25–60.41 ms |
-| Search p95 | 82.03 ms | 75.35 ms | 83.94 ms | 85.86 ms | 80.92 ms | 79.54 ms | 90.14 ms | **82.03 ms** | 75.35–90.14 ms |
-| Add dialog | 59.60 ms | 63.07 ms | 59.54 ms | 60.07 ms | 63.16 ms | 65.93 ms | 57.01 ms | **60.07 ms** | 57.01–65.93 ms |
-| Idle TaskDuration / 1 s | 7.010 ms | 5.700 ms | 6.646 ms | 6.820 ms | 5.462 ms | 6.493 ms | 6.871 ms | **6.646 ms** | 5.462–7.010 ms |
-| Idle ScriptDuration / 1 s | 0.049 ms | 0.026 ms | 0.070 ms | 0 ms | 0 ms | 0.038 ms | 0.148 ms | **0.038 ms** | 0–0.148 ms |
-| JS heap used | 4.720 MiB | 6.188 MiB | 6.530 MiB | 4.382 MiB | 6.519 MiB | 4.367 MiB | 4.717 MiB | **4.720 MiB** | 4.367–6.530 MiB |
-| iframe count | 4 | 4 | 4 | 4 | 4 | 4 | 4 | **4** | invariant |
-| visible iframe count | 0 | 0 | 0 | 0 | 0 | 0 | 0 | **0** | invariant |
-| Long Tasks >50 ms | 0 | 0 | 0 | 0 | 0 | 0 | 0 | **0** | invariant |
+| Metric | Run 113 |
+|---|---:|
+| First-interactive minimum | 87.55 ms |
+| First-interactive median | 90.72 ms |
+| First-interactive p95/max | 142.90 ms |
 
-Runs 106 and 107 are separate hosted jobs for the same head commit `844c64fae14dbcf525fcf3ba1e95a9f49747c52a`; both passed the complete validation suite. Their identical-code `ScriptDuration` samples differ by almost 4x (0.038 vs 0.148 ms/s), demonstrating that this low-magnitude counter is too noisy for a single-run absolute gate. No AppTower runtime code was changed by this performance pass.
+## Corrected eight-job Side Panel baseline
 
-## Baselines and budgets
+The idle-counter bug in the original probe was corrected by reading both ends of the idle interval through one CDP session. Eight comparable corrected green jobs are now available: validate runs **88, 89, 96, 97, 99, 106, 107 and 113**, all on Chromium `140.0.7339.16` with the same benchmark semantics.
 
-Hosted-runner timing variance is material, so the first budgets are intentionally relative and conservative. A single noisy run should not block development; a repeated breach across comparable green jobs is a regression signal requiring investigation.
+| Metric | Median of runs | Observed range |
+|---|---:|---:|
+| Side Panel startup median | **127.79 ms** | 123.31–154.56 ms |
+| Side Panel startup p95 | **188.07 ms** | 172.74–198.43 ms |
+| Search median | **54.00 ms** | 52.25–60.41 ms |
+| Search p95 | **82.99 ms** | 75.35–91.25 ms |
+| Add dialog | **60.97 ms** | 57.01–65.93 ms |
+| Idle `TaskDuration` / 1 s | **6.733 ms** | 5.462–7.092 ms |
+| Idle `ScriptDuration` / 1 s | **0.0435 ms** | 0–0.148 ms |
+| JS heap used | **4.723 MiB** | 4.367–6.530 MiB |
+| iframe count | **4** | invariant |
+| visible iframe count | **0** | invariant |
+| Long Tasks >50 ms | **0** | invariant |
+
+### ScriptDuration noise finding
+
+Runs 106 and 107 were separate hosted jobs for runtime-equivalent head `844c64fae14dbcf525fcf3ba1e95a9f49747c52a`; run 113 is three commits later, but the compare from `844c64f...` to `480d630...` changes only `PERFORMANCE.md` and `tests/e2e/coordinator-race.spec.mjs`, not AppTower runtime code. Their idle `ScriptDuration` samples are **0.038**, **0.148** and **0.132 ms/s** respectively.
+
+That means the previous diagnostic rule `2 of 3 comparable jobs >0.10 ms/s` can trigger on identical runtime code. It is therefore rejected as a blocking budget. `ScriptDuration` remains a diagnostic signal only until we can measure a larger, scenario-stable interval or collect extension/service-worker CPU directly.
+
+## New Tab baseline
+
+Four comparable green jobs are now available: runs **99, 106, 107 and 113**.
+
+| Metric | Run 99 | Run 106 | Run 107 | Run 113 | Median of runs | Observed range |
+|---|---:|---:|---:|---:|---:|---:|
+| First-interactive minimum | 78.76 ms | 79.52 ms | 85.82 ms | 87.55 ms | **82.67 ms** | 78.76–87.55 ms |
+| First-interactive median | 92.17 ms | 84.35 ms | 87.84 ms | 90.72 ms | **89.28 ms** | 84.35–92.17 ms |
+| First-interactive p95/max | 155.13 ms | 114.87 ms | 136.35 ms | 142.90 ms | **139.63 ms** | 114.87–155.13 ms |
+
+One more independent comparable green job is required before promoting a tight New Tab relative budget.
+
+## Baselines and provisional budgets
 
 | Metric | Baseline | Provisional regression budget | Enforcement state |
 |---|---:|---:|---|
-| Side Panel startup median | 127.26 ms median-of-runs | +35% vs baseline = **171.80 ms** | documented; automate after Task 2 |
-| Side Panel startup p95 | 187.51 ms median-of-runs | +35% = **253.14 ms** | documented; automate after Task 2 |
-| Search median | 54.61 ms median-of-runs | +35% = **73.72 ms** | documented; automate after Task 2 |
-| Search p95 | 82.03 ms median-of-runs | +35% = **110.74 ms** | documented; automate after Task 2 |
-| Add dialog latency | 60.07 ms median-of-runs | +35% = **81.09 ms** | documented; automate after Task 2 |
-| Idle renderer TaskDuration / 1 s | 6.646 ms median-of-runs | +35% = **8.972 ms** | documented; automate after Task 2 |
-| Idle renderer ScriptDuration / 1 s | 0.038 ms median-of-runs | investigate only after **2 of 3 comparable jobs >0.10 ms/s** | documented; single-run absolute gate rejected as noisy |
-| Side Panel JS heap used | 4.720 MiB median-of-runs; observed 4.367–6.530 MiB | no tight gate yet; require scenario-stable repeated regression | collecting; current variance is too large for +35% of median |
-| Live iframe count | 4 total / 0 visible in fixture | no increase in identical fixture | automated scenario invariant |
-| Long Tasks >50 ms | 0 | no repeated Long Task in idle/command fixture | probe records; threshold remains safety-oriented |
-| New Tab first-interactive median | 87.84 ms median-of-runs, 3 green jobs | pending >=5 jobs | collecting |
-| New Tab first-interactive p95 | 136.35 ms median-of-runs, 3 green jobs | safety guard <5000 ms until >=5 jobs | collecting |
+| Side Panel startup median | 127.79 ms median-of-runs | +35% = **172.52 ms** | documented; automate after Task 2 |
+| Side Panel startup p95 | 188.07 ms median-of-runs | +35% = **253.89 ms** | documented; automate after Task 2 |
+| Search median | 54.00 ms median-of-runs | +35% = **72.90 ms** | documented; automate after Task 2 |
+| Search p95 | 82.99 ms median-of-runs | +35% = **112.04 ms** | documented; automate after Task 2 |
+| Add dialog latency | 60.97 ms median-of-runs | +35% = **82.31 ms** | documented; automate after Task 2 |
+| Idle renderer `TaskDuration` / 1 s | 6.733 ms median-of-runs | +35% = **9.090 ms** | documented; automate after Task 2 |
+| Idle renderer `ScriptDuration` / 1 s | 0.0435 ms median-of-runs | **diagnostic only** | repeated absolute threshold rejected as noisy |
+| Side Panel JS heap used | 4.723 MiB median-of-runs; observed 4.367–6.530 MiB | no tight gate yet | scenario variance too large |
+| Live iframe count | 4 total / 0 visible in fixture | no increase in identical fixture | structural invariant |
+| Long Tasks >50 ms | 0 | no repeated Long Task in idle/command fixture | safety signal |
+| New Tab first-interactive median | 89.28 ms median-of-runs, 4 green jobs | pending >=5 jobs | collecting |
+| New Tab first-interactive p95 | 139.63 ms median-of-runs, 4 green jobs | safety guard <5000 ms until >=5 jobs | collecting |
 | Runtime/storage messages per minute | not instrumented | pending | planned |
 | Storage writes per minute | not instrumented | pending | planned |
 | Service-worker wakeups | static source evidence available; runtime counter pending | pending | planned |
 | Pane sleep/wake memory delta | not instrumented | pending | planned |
 | Extension-originated network requests | not instrumented | pending | planned |
+| Observer callback rate | not instrumented | pending | planned |
+| Duplicate work after storage/Port reconnect | not instrumented | pending | planned |
 
-The +35% timing/idle guard is derived from the seven-job median-of-runs rather than the fastest job. It is deliberately wider than the observed current spread. Heap and very small ScriptDuration counters are explicitly excluded from naive single-run relative enforcement until their scenario variance is better controlled. Budget automation should compare against a versioned baseline artifact rather than hard-code values into UI behavior tests.
+Budget automation should compare against a versioned baseline artifact rather than hard-code values into UI behavior tests.
 
-## First confirmed bottleneck candidate
+## First confirmed bottleneck candidate — TASK 6
 
-The MV3 service worker currently creates the `atn-resource-budget` alarm with `periodInMinutes: 1` on install and browser startup. The alarm handler calls `enforceResourceBudget()`, which returns immediately when there are no resource leases. This is deterministic periodic AppTower-owned wakeup work even when the subsystem has nothing to do.
+The MV3 service worker currently creates the `atn-resource-budget` alarm with `periodInMinutes: 1` on install and browser startup. The alarm handler calls `enforceResourceBudget()`, which returns immediately when there are no resource leases. This is deterministic periodic AppTower-owned service-worker wakeup work even when the subsystem has nothing to do.
 
-This remains TASK 6 in the ranked backlog and is not changed while TASK 2 (Serialized state coordinator) owns the global WIP lock.
+TASK 6 remains blocked while TASK 2 (Serialized state coordinator) owns the global WIP lock.
 
-### TASK 6 acceptance criteria
+### Acceptance criteria
 
 - No periodic resource-budget alarm while there are zero live resource leases.
 - With leases present, schedule the next check for the earliest meaningful deadline instead of unconditional one-minute polling.
@@ -105,10 +141,10 @@ This remains TASK 6 in the ranked backlog and is not changed while TASK 2 (Seria
 - Browser restart restores the correct next resource-budget check from persisted leases.
 - Existing pane-isolation/resource-sleep E2E remains green.
 
-### TASK 6 automated test plan
+### Automated test plan
 
 - Alarm scheduling tests with zero, one and multiple leases.
-- Assert no recurring alarm with zero leases.
+- Assert no recurring alarm when no leases exist.
 - Assert nearest-deadline rescheduling after touch/remove.
 - E2E verify pane sleep does not reload an unrelated pane.
 - Compare measured service-worker wakeups before/after once the wakeup counter exists.
