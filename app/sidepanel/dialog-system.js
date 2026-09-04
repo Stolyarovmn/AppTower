@@ -28,7 +28,10 @@ function markLegacyCloseOnlyRows(form) {
     if (buttons.length !== 1) continue;
     const button = buttons[0];
     const value = String(button.value || "").toLowerCase();
-    if (value === "close" || value === "cancel") {
+    // Keep explicit Cancel buttons: they are a form action and are useful next
+    // to Save/selection flows. Only the redundant bottom-right Close action is
+    // replaced by the conventional X in the dialog chrome.
+    if (value === "close") {
       row.classList.add("dialog-close-only");
       row.setAttribute("aria-hidden", "true");
     }
