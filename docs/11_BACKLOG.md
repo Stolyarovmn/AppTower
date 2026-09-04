@@ -11,7 +11,7 @@ Last competitor scan: 2026-09-04.
 - Scores are recalculated whenever a material new item is added.
 - Score = user value 25% + real pain/regression 20% + AppTower fit 15% + measurable performance/UX gain 15% + implementation risk 10% (higher = lower risk) + privacy/permissions 5% + competitor maturity 5% + automated testability 5%.
 
-Current execution gate: **TASK 2 ACTIVE**. Global WIP lock is held by the Serialized state coordinator implementation. No other functional TASK may start until TASK 2 is DONE/BLOCKED/REJECTED and CI is green.
+Current execution gate: **TASK 2 ACTIVE**. Global WIP lock is held by the Serialized state coordinator implementation. No other functional TASK may start until TASK 2 is DONE/BLOCKED/REJECTED and CI is green. Last pre-scan head `1ecaefd680e5fb66668f00c9014524bc117b5367` passed `validate` run 33825036870; this backlog commit requires normal revalidation before any new TASK may start.
 
 ## TASKS
 
@@ -25,8 +25,9 @@ Current execution gate: **TASK 2 ACTIVE**. Global WIP lock is held by the Serial
 | 6 | 84 | BLOCKED | Event-based workspace snapshots + Undo for destructive mutations | High recovery value with low steady-state energy cost if snapshots happen on meaningful mutations rather than polling. | Serialized coordinator preferred |
 | 7 | 82 | BLOCKED | Compatibility ladder UX: Auto / Embedded / Mobile / Real Page with failure-driven fallback | Directly addresses iframe/site compatibility confusion while keeping low-level S/C modes out of the normal UX. | Task 1 green; renderer telemetry |
 | 8 | 80 | READY | Duplicate shortcut detection and reuse prompt | Low-risk UX improvement validated by multiple tab managers; prevents workspace clutter. | Stable add flow |
-| 9 | 78 | BLOCKED | Native browser tab-group import/export bridge | Useful workspace interoperability without trying to fully replace Chrome/Edge tab management. | Stable groups/workspaces |
-| 10 | 76 | BLOCKED | Glance preview in temporary bottom pane | Leverages AppTower's split-pane model for link preview without spawning a new tab/window. | Stable split-pane lifecycle |
+| 9 | 79 | BLOCKED | Restorable split layout metadata in templates: ratio + rebalance/reset | Chrome's own current Split View has session restore, while current split-layout extensions treat ratios and saved layouts as first-class state. AppTower already has two-pane templates, so restoring the user's chosen ratio is a narrow, high-fit extension rather than scope expansion. | Task 2 green; stable split lifecycle |
+| 10 | 78 | BLOCKED | Native browser tab-group import/export bridge | Useful workspace interoperability without trying to fully replace Chrome/Edge tab management. | Stable groups/workspaces |
+| 11 | 76 | BLOCKED | Glance preview in temporary bottom pane | Leverages AppTower's split-pane model for link preview without spawning a new tab/window. | Stable split-pane lifecycle |
 
 > Ordering is by score; status/dependency gates can keep a higher-scored TASK blocked while a lower-scored TASK is READY. Only the Task Executor may switch a TASK to `ACTIVE`.
 
@@ -113,23 +114,47 @@ Current execution gate: **TASK 2 ACTIVE**. Global WIP lock is held by the Serial
 - E2E verify pane sleep still does not reload an unrelated pane.
 - Compare service-worker wakeup count before/after once instrumentation is available.
 
+### TASK 9 — Restorable split layout metadata
+
+**Score:** `79/100` = user value 21/25 + real pain 12/20 + AppTower fit 14/15 + measurable UX gain 12/15 + implementation risk 7/10 + privacy/permissions 5/5 + maturity evidence 4/5 + testability 4/5.
+
+**Rationale:** current Chromium source exposes built-in `Split View`, a separate `Split View Session Restore` feature and persisted Side Panel resizing. This is browser-level evidence that split arrangement and restoration are becoming persistent user state rather than ephemeral UI. Split View and SideSplit provide additional current product evidence for saved layouts/ratios. Chromium is BSD-style licensed, but AppTower does not need browser code: only the behavioral pattern is used. AppTower should remain two-pane; this TASK stores layout metadata with existing templates instead of adding multi-pane grids.
+
+**Acceptance criteria**
+
+- A two-pane template may persist an explicit split ratio with a safe bounded range; existing templates without metadata retain the current default.
+- Opening a template restores its saved ratio without reloading either pane unnecessarily.
+- The user can rebalance to the default ratio and explicitly save the new ratio back to the template.
+- Ratio state is isolated per template/workspace and survives browser restart/export/import through a versioned schema.
+- Invalid/legacy ratio data is normalized safely during load/migration.
+- No new browser permission is required.
+- Scope remains exactly two AppTower panes; no 3+ pane layout is introduced by this TASK.
+
+**Automated test plan**
+
+- Unit/schema test: legacy template without ratio loads at default; invalid values normalize to bounds/default.
+- Headed Chromium E2E: create template at a non-default ratio, reopen it, assert the ratio is restored and both pane document-instance tokens are stable during resize.
+- E2E: rebalance/reset restores default and persists only when the user saves.
+- Restart/export-import test: ratio survives restart and round trip.
+- Regression: opening/navigating one pane still does not reload the other pane.
+
 ## IDEAS
 
 | Rank | Score | IDEA | Evidence / source | Risks / promotion condition |
 |---:|---:|---|---|---|
 | 1 | 74 | Per-site sleep policy presets (default / aggressive / never sleep) | Drowzy exposes configurable suspension and keep-awake/whitelist behavior; AppTower has a different iframe sleep model but the preference concept transfers cleanly. | Partly covered by TASK 3's explicit keep-awake. Promote broader presets only after resource budgets are measurable and users need per-site tuning. |
-| 2 | 74 | Template layout metadata: saved split ratio/orientation with rebalance/reset | Current Split View and SideSplit both treat reusable split layouts and width ratios as first-class workflow data. AppTower already has two-pane templates, so the transferable idea is to persist layout metadata with a template rather than add more panes or copy window-management code. | Closed-source/store evidence only; clean-room implementation required. Promote after split lifecycle is stable and user value of restoring 30/70, 50/50 or horizontal/vertical layouts is demonstrated. |
-| 3 | 73 | Favorites/pinned mini-row independent of workspace ordering | `ddx-510/dd-sidebar` (MIT) uses a compact bottom/quick-access layer. | Promote if shortcut overflow becomes a frequent UX problem and it can reuse existing storage schema. |
-| 4 | 72 | Workspace/session import from other managers | VertiTab advertises Session Buddy/Toby import; Leap and Workona-like products emphasize reusable contexts. | Promote when AppTower export schema is versioned and stable. |
-| 5 | 70 | Recently accessed smart view | VertiTab exposes Active/Recently Accessed panels; TabDog includes recently closed. | Promote after current Recent is proven stable and searchable. |
-| 6 | 68 | Optional browser-context actions over selected text/link | AI Side Panel/SuperchargeNavigation-style context actions make side tools accessible without opening UI first. | Requires strict permission review and a concrete non-AI use case. |
-| 7 | 65 | Focus mode: temporarily show only one group/workspace | Common in workspace/tab managers. | Promote if users report rail overload after groups/templates mature. |
-| 8 | 62 | Automatic domain grouping suggestions | VertiTab, TabDog and SuperchargeNavigation expose domain grouping. | AppTower should not become a tab manager; promote only as an opt-in shortcut organizer. |
-| 9 | 58 | Optional AI organizer module | Leap/VertiTab expose AI organization. | Keep out of core until there is a privacy-preserving provider/module contract and clear demand. |
-| 10 | 54 | Full vertical-tab manager | Many competitors focus here (VertiTab, TabTOC, Leap, ddSideBar). | Deliberately low: conflicts with AppTower's product boundary; reconsider only if product scope changes. |
+| 2 | 73 | Favorites/pinned mini-row independent of workspace ordering | `ddx-510/dd-sidebar` (MIT) uses a compact bottom/quick-access layer. | Promote if shortcut overflow becomes a frequent UX problem and it can reuse existing storage schema. |
+| 3 | 72 | Workspace/session import from other managers | VertiTab advertises Session Buddy/Toby import; Leap and Workona-like products emphasize reusable contexts. | Promote when AppTower export schema is versioned and stable. |
+| 4 | 70 | Recently accessed smart view | VertiTab exposes Active/Recently Accessed panels; TabDog includes recently closed. | Promote after current Recent is proven stable and searchable. |
+| 5 | 68 | Optional browser-context actions over selected text/link | AI Side Panel/SuperchargeNavigation-style context actions make side tools accessible without opening UI first. | Requires strict permission review and a concrete non-AI use case. |
+| 6 | 65 | Focus mode: temporarily show only one group/workspace | Common in workspace/tab managers. | Promote if users report rail overload after groups/templates mature. |
+| 7 | 62 | Automatic domain grouping suggestions | VertiTab, TabDog and SuperchargeNavigation expose domain grouping. | AppTower should not become a tab manager; promote only as an opt-in shortcut organizer. |
+| 8 | 58 | Optional AI organizer module | Leap/VertiTab expose AI organization. | Keep out of core until there is a privacy-preserving provider/module contract and clear demand. |
+| 9 | 54 | Full vertical-tab manager | Many competitors focus here (VertiTab, TabTOC, Leap, ddSideBar). | Deliberately low: conflicts with AppTower's product boundary; reconsider only if product scope changes. |
 
 ## Competitor evidence used in this ranking
 
+- Chromium built-in browser direction — BSD-style source currently defines `Split View`, `Split View Session Restore`, and Side Panel resizing that persists width across browser sessions. AppTower uses this only as behavioral evidence, not as a code source: https://chromium.googlesource.com/chromium/src/+/8f2c7d1c8585203b30d8f8c893f24a269a3f5417/chrome/browser/flag_descriptions.cc
 - Lunma — Apache-2.0, local/open-source vertical tabs + Spaces, Playwright E2E; local-only data model and no analytics/network calls claimed by project site: https://github.com/lunma-app/lunma and https://lunma.app/
 - Drowzy — MIT, active MV3 tab suspender using native `chrome.tabs.discard()`, unsaved-form protection, keep-awake and minimal/optional host access for form protection: https://github.com/ml3dev/drowzy
 - ddSideBar — MIT, injected iframe or Chrome SidePanel, Spaces/bookmarks: https://github.com/ddx-510/dd-sidebar
@@ -149,6 +174,7 @@ Current execution gate: **TASK 2 ACTIVE**. Global WIP lock is held by the Serial
 
 - Do not turn AppTower into a general vertical-tab manager while the differentiator remains persistent web applications/panes beside the current page.
 - Do not expand AppTower beyond two panes merely because window tilers support larger grids; template layout metadata should improve repeatability without scope creep.
+- Treat split arrangement/restoration as persistent workspace state where AppTower controls it, while respecting browser-owned Side Panel sizing rather than trying to override unsupported browser chrome APIs.
 - Never auto-sleep a pane in a way that can silently destroy unsaved user state or interrupt active media; resource saving must be correctness-safe first.
 - Prefer event-driven snapshots and lifecycle handling over periodic polling.
 - Prefer optional permissions for optional integrations.
