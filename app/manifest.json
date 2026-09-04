@@ -3,7 +3,7 @@
   "name": "App Tower",
   "short_name": "App Tower",
   "version": "1.0.0",
-  "description": "App Tower workspace layer with reliable current-page capture, native Edge rail controls, resilient collapse/expand, search, workspaces, and modules.",
+  "description": "Persistent side-panel workspace for Edge and Chrome with app rail, dual web panes, workspaces, groups, templates, and sync.",
   "minimum_chrome_version": "116",
   "permissions": [
     "sidePanel",
@@ -11,7 +11,6 @@
     "favicon",
     "declarativeNetRequestWithHostAccess",
     "scripting",
-    "declarativeNetRequestFeedback",
     "windows",
     "alarms",
     "contextMenus"
@@ -96,8 +95,7 @@
     "newtab": "newtab/newtab.html"
   },
   "optional_permissions": [
-    "contentSettings",
-    "notifications"
+    "contentSettings"
   ],
   "options_ui": {
     "page": "options/options.html",

@@ -1,77 +1,123 @@
-# 10 — Known issues / verification queue
+# 10 — Known issues / live verification queue
 
-## P0 — v0.8.5 live verification
+## P0 — v1.0.0 store-candidate verification
 
-The following fixes are present in code but were not yet confirmed by the user
-after the v0.8.5 delivery:
+The following paths are implemented in source but must be confirmed in a real browser before 1.0.0 is described as production/store verified.
 
-1. **Add current page with no shortcuts**
-   - Previous symptom: form opens empty.
-   - v0.8.5 change: resolve active normal HTTP(S) browser tab / recent web tab.
-   - Required test: normal site -> open empty App Tower -> Add current page.
+### 1. Add current page with an empty workspace
 
-2. **Collapse/expand**
-   - Previous symptom: collapse button does nothing; after restart collapsed rail
-     will not expand, apparently worse with zero shortcuts.
-   - v0.8.5 change: browser-adapter close strategy and disabled-tab repair.
-   - Required test: five collapse/expand cycles, then browser restart, zero sites.
+Historical symptom: the Add Site form opened empty even though a normal browser tab was active.
 
-3. **Settings icon**
-   - Previous symptom: custom gear does not look like Edge system glyph.
-   - v0.8.5 change: Edge uses Segoe Fluent/MDL2 Settings glyph with SVG fallback.
-   - Required test: Edge light and dark theme, 100% and >100% display scaling.
+Required test:
 
-## High priority regression queue
+1. open a normal HTTP(S) site;
+2. open an empty App Tower workspace;
+3. choose Add Current;
+4. verify URL/title are captured from the intended browser tab or active App Tower pane according to the UI source selection.
 
-### Group/template drag
-Historically:
-- prohibited-drop cursor appeared
-- site could not be dropped into group
-- site->site did not reliably create group/template
+### 2. Collapse / expand / restart
 
-Code later disabled native draggable behavior and moved to Pointer Events.
-Needs live mouse/touch retest.
+Historical symptoms:
 
-### Spontaneous pane reloads
-Historically both panes reloaded together because workspace change broadcasts
-forced `renderAll(true)`.
-Later builds removed forced reload for ordinary workspace writes.
-Needs a 10+ minute runtime test and logging if reproduced.
+- collapse button did nothing;
+- collapsed rail could fail to expand after restart;
+- zero-shortcut state made lifecycle regressions easier to reproduce;
+- collapsed and expanded rails could appear at the same time.
 
-### Search
-Historically only Esc worked because results were re-rendered on mouseenter and
-the close button submit was prevented.
-v0.8.4 changed this; needs live retest.
+Required test:
 
-### Recent -> Open
-Recent population became visible in v0.8.3 screenshots, but opening failed.
-v0.8.4 changed the user-gesture path. Needs live retest.
+- five collapse/expand cycles with zero shortcuts;
+- repeat with shortcuts;
+- restart browser while collapsed;
+- expand after restart;
+- verify there is never a duplicate collapsed rail while the native Side Panel is open.
 
-## Third-party service issues
+### 3. Settings icon / DPI
+
+Required Edge visual test:
+
+- light theme @100%;
+- dark theme @100%;
+- light/dark at >100% Windows display scaling;
+- verify icon size/alignment matches the surrounding control system.
+
+### 4. Search interaction
+
+Historical symptom: Esc worked but mouse interaction could be lost by result re-rendering.
+
+Required test:
+
+- open search by rail icon;
+- click result;
+- close with explicit Close;
+- close with Esc;
+- use keyboard selection/Enter.
+
+### 5. Recent -> Open
+
+Required test:
+
+- navigate/open several App Tower sites/templates;
+- verify Recent populates;
+- use Open from Options -> Recent;
+- verify the requested item opens without losing Chromium user activation.
+
+### 6. Group/template drag
+
+Historical symptoms:
+
+- prohibited-drop cursor;
+- site could not be dropped into a group;
+- site-on-site did not reliably create Group/Template.
+
+Required test with mouse and, where available, touch/pointer input:
+
+- reorder sites;
+- site -> existing group;
+- site -> site -> Group;
+- site -> site -> two-pane Template;
+- edit/save template overlap and top/bottom order.
+
+### 7. Pane reload stability
+
+Historical symptom: both panes reloaded together when workspace state changes triggered forced rendering.
+
+Required test:
+
+- keep two independent sites open for at least 10 minutes;
+- interact with only one pane;
+- change shortcuts/settings that should not replace pane URLs;
+- verify the other pane does not reload without a documented renderer/resource reason.
+
+If reproduced, collect timestamps for workspace writes/change notifications, iframe source changes, resource sleep/wake and Side Panel lifecycle events rather than stacking speculative reload fixes.
+
+## Third-party service constraints
 
 ### YouTube
-Specific video embeds are more predictable than a generic full YouTube page.
-Generic YouTube inside an iframe remains unreliable. Do not endlessly rotate
-between desktop/mobile URLs without evidence.
 
-Possible product decisions:
-- keep generic Auto best-effort Compatibility
-- recommend specific video embed/module
-- offer Real Page/PWA sidecar when generic page fails
-- add a visible "site blocks/failed in pane -> open Real Page" recovery affordance
+Specific supported video/embed/module paths are more predictable than a generic full YouTube page inside an arbitrary iframe. Generic YouTube iframe behavior is best-effort and must not be marketed as universally reliable.
+
+Fallback options:
+
+- supported provider/module path;
+- Compatibility when appropriate;
+- Real Page/PWA sidecar when top-level browsing is required.
 
 ### Gemini / Google anti-bot
-User observed `google.com/sorry` / reCAPTCHA inside the pane. This is external
-anti-abuse behavior. Do not try to bypass CAPTCHA via DNR. Prefer Real Page/PWA
-sidecar for services that reject embedded traffic.
+
+`google.com/sorry`, reCAPTCHA or other anti-abuse responses are external service behavior. App Tower must not attempt to bypass CAPTCHA/anti-bot through DNR.
 
 ### Password autofill
-Cross-origin framed pages do not provide the same password-manager behavior as
-top-level browsing. Real Page/PWA sidecar is the intended fallback.
+
+Cross-origin framed pages may not provide password-manager behavior identical to top-level browsing. Real Page/PWA sidecar is the intended fallback for sites that require top-level context.
 
 ## UX debt
 
-- verify all toolbar hit targets and spacing on high-DPI Windows
-- continue replacing tiny/non-native menu symbols with a consistent icon system
-- make Shortcuts/Recent/Web Apps/Sidecars pages action-oriented, not read-only
-- clearly explain diagnostic resource lease rows as diagnostics, not logs
+- verify toolbar hit targets and spacing on high-DPI Windows;
+- continue replacing tiny/non-native-looking symbols with the shared icon system;
+- keep Shortcuts/Recent/Web Apps/Sidecars pages action-oriented rather than passive lists;
+- keep resource-lease rows clearly labelled as diagnostics, not application logs.
+
+## Release gate
+
+A green static validator/CI does not close these items. They are closed only by recorded real-browser verification against the release candidate.
