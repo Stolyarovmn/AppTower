@@ -108,7 +108,7 @@ test("ATN-PERF-001 collect Side Panel startup, interaction, idle CPU and heap ba
       await panel.locator("#rail-search").click();
       await expect.poll(() => panel.locator("#search-dialog").evaluate(element => element.open === true)).toBe(true);
       searchSamples.push(nodePerformance.now() - started);
-      await panel.locator("#search-close").click();
+      await panel.locator("#search-dialog .dialog-close").click();
       await expect.poll(() => panel.locator("#search-dialog").evaluate(element => element.open === true)).toBe(false);
     }
 
