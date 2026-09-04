@@ -36,17 +36,17 @@ test("rapid open/close transitions commit in FIFO order", async () => {
   assert.equal(collapsedWindows.has(7),false);
   assert.deepEqual(trace,[
     "cancel-disconnect:7",
-    "persist-open:7",
     "rail:7:false",
+    "persist-open:7",
     "cancel-disconnect:7",
+    "rail:7:true",
     "clear:7",
     "persist-open:",
     "persist-collapsed:7",
-    "rail:7:true",
-    "persist-collapsed:",
     "cancel-disconnect:7",
-    "persist-open:7",
-    "rail:7:false"
+    "rail:7:false",
+    "persist-collapsed:",
+    "persist-open:7"
   ]);
 });
 
@@ -93,11 +93,48 @@ test("close cancels pending reconnect inference before mutating visible state", 
 
   assert.deepEqual(trace,[
     "cancel-disconnect:12",
+    "rail:12:true",
     "clear:12",
     "persist-open:",
-    "persist-collapsed:12",
-    "rail:12:true"
+    "persist-collapsed:12"
   ]);
   assert.equal(openWindows.has(12),false);
   assert.equal(collapsedWindows.has(12),true);
+});
+
+test("collapse rail handoff happens before session persistence can stall", async () => {
+  const coordinator = createBackgroundStateCoordinator();
+  const openWindows = new Set([21]);
+  const collapsedWindows = new Set();
+  const trace = [];
+  let releasePersist;
+  const persistGate = new Promise(resolve => { releasePersist = resolve; });
+
+  const store = createPanelStateStore({
+    coordinator,
+    openWindows,
+    collapsedWindows,
+    persistOpen:async () => {
+      trace.push("persist-open:start");
+      await persistGate;
+      trace.push("persist-open:end");
+    },
+    persistCollapsed:async () => { trace.push("persist-collapsed"); },
+    broadcastRail:async (windowId,visible) => { trace.push(`rail:${windowId}:${visible}`); },
+    clearWindowResources:async windowId => { trace.push(`clear:${windowId}`); },
+    cancelPendingDisconnect:async windowId => { trace.push(`cancel-disconnect:${windowId}`); }
+  });
+
+  const closing = store.close(21,{collapsed:true});
+  await delay(0);
+
+  assert.equal(openWindows.has(21),false);
+  assert.equal(collapsedWindows.has(21),true);
+  assert.ok(trace.indexOf("rail:21:true") >= 0);
+  assert.ok(trace.indexOf("rail:21:true") < trace.indexOf("persist-open:start"));
+  assert.equal(trace.includes("persist-open:end"),false);
+
+  releasePersist();
+  await closing;
+  assert.equal(trace.includes("persist-open:end"),true);
 });

@@ -9,6 +9,11 @@
   --atn-section-gap:12px;
   --atn-dialog-pad:18px;
   --atn-dialog-close-size:32px;
+  --atn-surface-radius:8px;
+  --atn-surface-gutter:8px;
+  --atn-surface-shadow:0 12px 40px rgba(0,0,0,.35);
+  --atn-menu-padding:6px;
+  --atn-menu-row-min-height:34px;
 
   /* Typography roles. Components may change weight, never invent a local size
    * for the same semantic role. Options deliberately uses a slightly roomier
@@ -35,6 +40,42 @@
 
 .card > :first-child { margin-top:0; }
 .card > :last-child { margin-bottom:0; }
+
+/* Dialogs and pointer context menus are the same floating-surface family.
+ * Older sidepanel.css rules gave the menu its own padding/row geometry, which
+ * made it visibly unrelated to the dialogs and allowed long labels to wrap. */
+dialog,
+.shortcut-menu {
+  border:1px solid var(--border);
+  border-radius:var(--atn-surface-radius);
+  background:var(--dialog);
+  color:var(--text);
+}
+.shortcut-menu {
+  min-width:210px;
+  width:max-content;
+  max-width:calc(100vw - var(--atn-space-4));
+  padding:var(--atn-menu-padding);
+  box-shadow:var(--atn-surface-shadow);
+}
+.shortcut-menu button {
+  width:100%;
+  min-height:var(--atn-menu-row-min-height);
+  height:auto;
+  padding:6px var(--atn-space-3);
+  border:0;
+  border-radius:6px;
+  background:transparent;
+  text-align:left;
+  line-height:1.3;
+  white-space:nowrap;
+}
+.shortcut-menu button:hover { background:var(--hover); }
+.shortcut-menu .separator {
+  height:1px;
+  margin:var(--atn-space-1) var(--atn-space-2);
+  background:var(--border);
+}
 
 /* Options typography is role-based rather than element-default based. This is
  * especially important for <small>, whose browser default used to make the
