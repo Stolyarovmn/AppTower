@@ -64,7 +64,7 @@ replace_once(
   return true;
 }
 ''',
-'''',
+"",
 "dead ATN_PANEL_ACTION sender",
 )
 
