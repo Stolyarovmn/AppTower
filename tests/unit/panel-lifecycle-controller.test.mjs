@@ -67,6 +67,19 @@ test("reconnect cancels pending disconnect before opening panel state", async ()
   assert.deepEqual(h.calls, [["open", 4, {}]]);
 });
 
+test("stale legacy disconnect callback cannot close a reconnected live panel", async () => {
+  const h = createHarness();
+  h.controller.disconnected(5);
+  const stale = h.scheduled[0];
+
+  await h.controller.connected(5);
+  h.panelPorts.set(5,new Set([{}]));
+  await stale.fn();
+  await Promise.resolve();
+
+  assert.deepEqual(h.calls, [["open", 5, {}]]);
+});
+
 test("native onClosed mode never infers close from Port disconnect", () => {
   const h = createHarness({native:true});
   assert.equal(h.controller.disconnected(3), false);
