@@ -1,31 +1,34 @@
 import {createMutationCoordinator} from "./mutation-coordinator.js";
 
-// Keep serialization local to the state that can actually conflict. A single
-// process-wide FIFO is unsafe in an MV3 extension: one browser API promise that
-// never settles can otherwise freeze every shortcut save, panel transition and
-// workspace command in every browser window.
+// Serialize only operations that can really conflict. A process-wide FIFO (or
+// even a single queue per window) makes availability depend on the slowest
+// browser/storage promise. Panel lifecycle and workspace persistence touch
+// different state families, so they deliberately use separate lanes.
 export function createBackgroundStateCoordinator({onEvent = null} = {}) {
-  const windowQueues = new Map();
+  const panelQueues = new Map();
+  const workspaceQueues = new Map();
   const storageQueues = new Map();
   const globalWorkspaceQueue = createMutationCoordinator({onEvent});
 
   const label = (scope, action) => `${scope}:${action}`;
 
-  function queueForWindow(windowId) {
-    const id = Number(windowId);
-    if (!Number.isInteger(id)) return null;
-    let queue = windowQueues.get(id);
+  function queueFrom(map, key) {
+    let queue = map.get(key);
     if (!queue) {
       queue = createMutationCoordinator({onEvent});
-      windowQueues.set(id, queue);
+      map.set(key, queue);
     }
     return queue;
   }
 
-  // Storage work is split by conflict domain. Bootstrap/browser-repair work
-  // must never sit in front of a user click. Sync operations still serialize
-  // with each other, settings with settings, and pending panel actions with
-  // pending panel actions.
+  function validWindowId(windowId) {
+    const id = Number(windowId);
+    return Number.isInteger(id) && id >= 0 ? id : null;
+  }
+
+  // Bootstrap/browser-repair work must never sit in front of a user click.
+  // Sync operations serialize with each other, settings with settings, and
+  // pending panel actions with pending panel actions.
   function storageLane(action) {
     const name = String(action || "storage");
     if (name.startsWith("initialize-")) return "bootstrap";
@@ -35,66 +38,65 @@ export function createBackgroundStateCoordinator({onEvent = null} = {}) {
     return "default";
   }
 
-  function queueForStorage(action) {
-    const lane = storageLane(action);
-    let queue = storageQueues.get(lane);
-    if (!queue) {
-      queue = createMutationCoordinator({onEvent});
-      storageQueues.set(lane, queue);
-    }
-    return {lane,queue};
+  function allQueues() {
+    return [
+      globalWorkspaceQueue,
+      ...panelQueues.values(),
+      ...workspaceQueues.values(),
+      ...storageQueues.values()
+    ];
   }
 
   return {
     panel(windowId, action, operation) {
-      const id = Number(windowId);
-      const queue = queueForWindow(id);
-      if (!queue) {
+      const id = validWindowId(windowId);
+      if (id == null) {
         return Promise.reject(new TypeError("panel windowId must be an integer"));
       }
-      return queue.enqueue(label(`panel:${id}`, action), operation);
+      return queueFrom(panelQueues,id).enqueue(label(`panel:${id}`, action), operation);
     },
 
     workspace(windowId, action, operation) {
-      const id = Number(windowId);
-      const queue = queueForWindow(id);
-      if (queue) return queue.enqueue(label(`workspace:${id}`, action), operation);
+      const id = validWindowId(windowId);
+      if (id != null) {
+        return queueFrom(workspaceQueues,id).enqueue(label(`workspace:${id}`, action), operation);
+      }
       return globalWorkspaceQueue.enqueue(label("workspace:global", action), operation);
     },
 
     workspaceRead(windowId, action, reader) {
-      const id = Number(windowId);
-      const queue = queueForWindow(id);
-      if (queue) return queue.enqueueRead(label(`workspace:${id}`, action), reader);
+      const id = validWindowId(windowId);
+      if (id != null) {
+        return queueFrom(workspaceQueues,id).enqueueRead(label(`workspace:${id}`, action), reader);
+      }
       return globalWorkspaceQueue.enqueueRead(label("workspace:global", action), reader);
     },
 
     storage(action, operation) {
-      const {lane,queue} = queueForStorage(action);
-      return queue.enqueue(label(`storage:${lane}`, action), operation);
+      const lane = storageLane(action);
+      return queueFrom(storageQueues,lane).enqueue(label(`storage:${lane}`, action), operation);
     },
 
     async whenIdle() {
-      const queues = [globalWorkspaceQueue,...windowQueues.values(),...storageQueues.values()];
-      await Promise.all(queues.map(queue => queue.whenIdle()));
+      await Promise.all(allQueues().map(queue => queue.whenIdle()));
     },
 
     snapshot() {
-      const windows = Object.fromEntries(
-        [...windowQueues.entries()].map(([id,queue]) => [id,queue.snapshot()])
+      const panel = Object.fromEntries(
+        [...panelQueues.entries()].map(([id,queue]) => [id,queue.snapshot()])
+      );
+      const workspace = Object.fromEntries(
+        [...workspaceQueues.entries()].map(([id,queue]) => [id,queue.snapshot()])
       );
       const storage = Object.fromEntries(
         [...storageQueues.entries()].map(([lane,queue]) => [lane,queue.snapshot()])
       );
       return {
-        windows,
+        panel,
+        workspace,
         storage,
         globalWorkspace:globalWorkspaceQueue.snapshot(),
-        pending:[
-          globalWorkspaceQueue,
-          ...windowQueues.values(),
-          ...storageQueues.values()
-        ].reduce((sum,queue) => sum + queue.snapshot().pending,0)
+        pending:allQueues().reduce((sum,queue) => sum + queue.snapshot().pending,0)
       };
     }
   };
