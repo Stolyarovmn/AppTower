@@ -57,6 +57,15 @@ async function isDialogOpen(page, selector) {
   return page.locator(selector).evaluate(element => element.open === true);
 }
 
+async function documentToken(panel) {
+  return panel.evaluate(() => {
+    if (!window.__atnCoordinatorRaceDocumentToken) {
+      window.__atnCoordinatorRaceDocumentToken = crypto.randomUUID();
+    }
+    return window.__atnCoordinatorRaceDocumentToken;
+  });
+}
+
 async function deliverIntent(panel, intent, extra={}) {
   await panel.evaluate(async ({intent,extra}) => {
     const currentWindow = await chrome.windows.getCurrent();
@@ -83,8 +92,9 @@ test("ATN-E2E-012 rapid intents and panel reconnect keep one logical state", asy
     await web.goto(`${baseUrl}/race`);
     await expect(web.locator("h1")).toHaveText("Fixture race");
 
-    let panel = await openPanelDocument(context);
+    const panel = await openPanelDocument(context);
     await expect.poll(() => railHidden(web)).toBe(true);
+    const tokenBeforeReconnect = await documentToken(panel);
 
     for (let iteration = 0; iteration < 3; iteration += 1) {
       await deliverIntent(panel, "search");
@@ -109,11 +119,16 @@ test("ATN-E2E-012 rapid intents and panel reconnect keep one logical state", asy
     await expect.poll(() => isDialogOpen(panel, "#site-dialog")).toBe(false);
     await expect(panel.locator("#panel-sites .rail-site")).toHaveCount(1);
 
-    await panel.close();
-    await expect.poll(() => railHidden(web), {timeout:4000}).toBe(false);
-
-    panel = await openPanelDocument(context);
+    // Reloading the live panel recreates its document and runtime Port without
+    // pretending that an ordinary extension tab can synthesize Chromium's
+    // native sidePanel.onClosed/onOpened lifecycle events. The rail must stay
+    // hidden throughout this reconnect and persisted logical state must survive.
+    await panel.reload();
+    await panel.waitForLoadState("domcontentloaded");
+    await expect(panel.locator("#panel-sites")).toBeAttached();
     await expect.poll(() => railHidden(web)).toBe(true);
+    const tokenAfterReconnect = await documentToken(panel);
+    expect(tokenAfterReconnect).not.toBe(tokenBeforeReconnect);
     await expect(panel.locator("#panel-sites .rail-site")).toHaveCount(1);
 
     await deliverIntent(panel, "search");
