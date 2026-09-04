@@ -51,15 +51,8 @@ async function startFixtureServer() {
   return {server, url:`http://127.0.0.1:${address.port}/fixture`};
 }
 
-async function cdpMetrics(context, page) {
-  const session = await context.newCDPSession(page);
-  try {
-    await session.send("Performance.enable");
-    const result = await session.send("Performance.getMetrics");
-    return Object.fromEntries(result.metrics.map(item => [item.name, item.value]));
-  } finally {
-    await session.detach();
-  }
+function metricsMap(result) {
+  return Object.fromEntries(result.metrics.map(item => [item.name, item.value]));
 }
 
 test("ATN-PERF-001 collect Side Panel startup, interaction, idle CPU and heap baseline", async ({}, testInfo) => {
@@ -124,9 +117,19 @@ test("ATN-PERF-001 collect Side Panel startup, interaction, idle CPU and heap ba
     const addDialogMs = nodePerformance.now() - addStarted;
     await panel.locator("#cancel-site").click();
 
-    const beforeIdle = await cdpMetrics(context, panel);
-    await panel.waitForTimeout(1_000);
-    const afterIdle = await cdpMetrics(context, panel);
+    // Performance counters are process/session cumulative. Read both ends of
+    // the idle interval through the same CDP session so the delta is valid.
+    const perfSession = await context.newCDPSession(panel);
+    let beforeIdle;
+    let afterIdle;
+    try {
+      await perfSession.send("Performance.enable");
+      beforeIdle = metricsMap(await perfSession.send("Performance.getMetrics"));
+      await panel.waitForTimeout(1_000);
+      afterIdle = metricsMap(await perfSession.send("Performance.getMetrics"));
+    } finally {
+      await perfSession.detach();
+    }
 
     const runtime = await panel.evaluate(() => ({
       iframeCount:document.querySelectorAll("iframe").length,
@@ -139,6 +142,9 @@ test("ATN-PERF-001 collect Side Panel startup, interaction, idle CPU and heap ba
       navigation:performance.getEntriesByType("navigation")[0]?.toJSON?.() || null
     }));
 
+    const taskDurationMs = ((afterIdle.TaskDuration || 0) - (beforeIdle.TaskDuration || 0)) * 1000;
+    const scriptDurationMs = ((afterIdle.ScriptDuration || 0) - (beforeIdle.ScriptDuration || 0)) * 1000;
+
     const result = {
       capturedAt:new Date().toISOString(),
       chromiumVersion:await context.browser()?.version?.() || "unknown",
@@ -146,8 +152,8 @@ test("ATN-PERF-001 collect Side Panel startup, interaction, idle CPU and heap ba
       searchDialog:summarize(searchSamples),
       addDialogMs:Number(addDialogMs.toFixed(2)),
       idleOneSecond:{
-        taskDurationMs:Number((((afterIdle.TaskDuration || 0) - (beforeIdle.TaskDuration || 0)) * 1000).toFixed(3)),
-        scriptDurationMs:Number((((afterIdle.ScriptDuration || 0) - (beforeIdle.ScriptDuration || 0)) * 1000).toFixed(3))
+        taskDurationMs:Number(taskDurationMs.toFixed(3)),
+        scriptDurationMs:Number(scriptDurationMs.toFixed(3))
       },
       heap:{
         usedMiB:Number(((afterIdle.JSHeapUsedSize || 0) / 1024 / 1024).toFixed(3)),
@@ -169,6 +175,8 @@ test("ATN-PERF-001 collect Side Panel startup, interaction, idle CPU and heap ba
     expect(result.startup.p95Ms).toBeLessThan(5_000);
     expect(result.searchDialog.p95Ms).toBeLessThan(2_000);
     expect(result.addDialogMs).toBeLessThan(3_000);
+    expect(result.idleOneSecond.taskDurationMs).toBeGreaterThanOrEqual(0);
+    expect(result.idleOneSecond.scriptDurationMs).toBeGreaterThanOrEqual(0);
     expect(result.longestLongTaskMs).toBeLessThan(1_000);
   } finally {
     await context.close().catch(() => {});
