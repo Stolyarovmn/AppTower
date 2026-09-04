@@ -105,7 +105,7 @@ test("ATN-E2E-012 rapid intents and panel reconnect keep one logical state", asy
     for (let iteration = 0; iteration < 3; iteration += 1) {
       await deliverIntent(panel, "search");
       await expect.poll(() => isDialogOpen(panel, "#search-dialog")).toBe(true);
-      await panel.locator("#search-close").click();
+      await panel.locator("#search-dialog .dialog-close").click();
       await expect.poll(() => isDialogOpen(panel, "#search-dialog")).toBe(false);
 
       await deliverIntent(panel, "organize");
@@ -140,7 +140,7 @@ test("ATN-E2E-012 rapid intents and panel reconnect keep one logical state", asy
 
     await deliverIntent(panel, "search");
     await expect.poll(() => isDialogOpen(panel, "#search-dialog")).toBe(true);
-    await panel.locator("#search-close").click();
+    await panel.locator("#search-dialog .dialog-close").click();
     await expect.poll(() => isDialogOpen(panel, "#search-dialog")).toBe(false);
     await expect(panel.locator("#panel-sites .rail-site")).toHaveCount(1);
   } finally {
