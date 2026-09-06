@@ -155,10 +155,6 @@ async function installSyncBridge() {
     return true;
   };
 
-  // Bootstrap before onInstalled/onStartup is dispatched. This is the critical
-  // reinstall path: the old implementation stored the opt-in only in local
-  // storage, so uninstalling reset the switch and prevented the remote payload
-  // from being pulled on the next install.
   const [remote,local] = await Promise.all([
     chrome.storage.sync.get([SYNC_INTENT_KEY,SYNC_PAYLOAD_KEY,SYNC_PREFERENCES_KEY]),
     chrome.storage.local.get([SYNC_ENABLED_KEY,WORKSPACES_KEY])
@@ -211,5 +207,5 @@ async function installSyncBridge() {
 }
 
 if (globalThis.chrome?.storage?.local && globalThis.chrome?.storage?.sync) {
-  await installSyncBridge();
+  void installSyncBridge().catch(() => {});
 }
