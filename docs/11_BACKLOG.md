@@ -1,6 +1,6 @@
 # AppTower ranked backlog
 
-Last competitor scan: 2026-09-04.
+Last competitor scan: 2026-09-07.
 
 ## Rules
 
@@ -15,7 +15,7 @@ Last competitor scan: 2026-09-04.
 
 **No TASK is ACTIVE.** TASK 2 is complete; the executor must select the next TASK in a later run.
 
-The current PR head observed during this scan is `5a29da97a59620d057f458fb3adc26ecab037d42`. GitHub returned no combined-status entries for that head during this scan, so CI is **not confirmed green**. READY TASKS therefore remain blocked from activation until a successful validation run is observed.
+The current regression PR #2 head observed during this scan is `6ec579a64af0ba9d1346a04a0f3df854aaba839c`. Its `validate` workflow run `34061140457` completed with conclusion **`action_required`**, so CI is not green. READY TASKS remain blocked from activation until a successful validation run is observed. PR #1's previous head `d431061e5328b67395c1cc24da7bf9d078839223` had passed validation, but that does not override the newer regression-branch gate.
 
 ## TASKS
 
@@ -28,11 +28,12 @@ The current PR head observed during this scan is `5a29da97a59620d057f458fb3adc26
 | 5 | 86 | BLOCKED | Command Palette across shortcuts/templates/workspaces/recent | TASK 2 |
 | 6 | 85 | BLOCKED | Event-driven nearest-deadline resource scheduling | Performance baseline; green CI |
 | 7 | 84 | BLOCKED | Event-based workspace snapshots + Undo | TASK 2; TASK 4 preferred |
-| 8 | 82 | BLOCKED | Compatibility ladder UX: Auto / Embedded / Mobile / Real Page | Stable renderer telemetry; Task 1 |
-| 9 | 80 | READY | Duplicate shortcut detection and reuse prompt | Stable add flow; green CI |
-| 10 | 79 | BLOCKED | Restorable split layout metadata in templates | TASK 2; TASK 4 preferred; stable split lifecycle |
-| 11 | 78 | BLOCKED | Native browser tab-group import/export bridge | Stable groups/workspaces; TASK 4 preferred |
-| 12 | 76 | BLOCKED | Glance preview in temporary bottom pane | Stable split-pane lifecycle |
+| 8 | 83 | BLOCKED | Installed-extension lifecycle E2E harness using browser-managed install/action/inspection | Green CI; reproducible packaged build; Chrome DevTools-for-agents toolchain availability |
+| 9 | 82 | BLOCKED | Compatibility ladder UX: Auto / Embedded / Mobile / Real Page | Stable renderer telemetry; Task 1 |
+| 10 | 80 | READY | Duplicate shortcut detection and reuse prompt | Stable add flow; green CI |
+| 11 | 79 | BLOCKED | Restorable split layout metadata in templates | TASK 2; TASK 4 preferred; stable split lifecycle |
+| 12 | 78 | BLOCKED | Native browser tab-group import/export bridge | Stable groups/workspaces; TASK 4 preferred |
+| 13 | 76 | BLOCKED | Glance preview in temporary bottom pane | Stable split-pane lifecycle |
 
 Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 
@@ -86,21 +87,29 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 **Dependencies:** TASK 2; TASK 4 preferred.
 **Sources/competitors:** VertiTab, ArchTabs, SuperchargeBrowser, SnapTabs (MIT).
 
-### TASK 8 — Compatibility ladder — 82/100 — BLOCKED
+### TASK 8 — Installed-extension lifecycle E2E harness — 83/100 — BLOCKED
+**Score:** 20/25 user value + 18/20 real pain/regression + 14/15 AppTower fit + 10/15 measurable UX/reliability gain + 7/10 low implementation risk + 5/5 privacy/permissions + 4/5 maturity + 5/5 automated testability = **83**.
+**Rationale:** AppTower has repeatedly reproduced failures only after loading the real extension in a browser. Chrome's official DevTools-for-agents extension tooling, documented on 2026-09-04, can install an unpacked extension, list installed extensions, trigger its toolbar action and then inspect the live browser state. That provides a browser-managed E2E layer between unit/headed-page tests and the remaining Edge manual gate.
+**Acceptance criteria:** test harness installs the exact packaged AppTower build into a fresh Chrome profile; verifies the expected extension id/version metadata; triggers the extension action through the browser-managed extension lifecycle rather than DOM-mocking it; executes P0 smoke flows for open/collapse/expand/Add Current Page/Search/Organize; detects duplicate panel/rail instances; captures deterministic failure diagnostics; uninstalls or disposes the profile after the run; does not add runtime manifest permissions to AppTower.
+**Automated test plan:** clean-profile install and action-trigger smoke; extension reload/reinstall; restart with persisted workspace; one injected rail; native side-panel open; add-current-page source resolution; collapse/expand; failure artifact capture; negative case for wrong/stale package provenance. Keep Edge-specific verification separate until equivalent Edge automation is proven.
+**Dependencies:** green CI; reproducible exact-head package/provenance work from regression PR #2; supported Chrome DevTools-for-agents/MCP environment.
+**Sources/competitors:** Chrome for Developers, “Debug Chrome extensions with AI agents”, last updated 2026-09-04. Documentation is CC BY 4.0 and Google code samples are Apache-2.0; AppTower should implement its own harness and need not copy sample code.
+
+### TASK 9 — Compatibility ladder — 82/100 — BLOCKED
 **Rationale:** explainable fallback is better than exposing renderer internals when sites cannot embed cleanly.
 **Acceptance criteria:** Auto/Embedded/Mobile/Real Page; deterministic failure reason; optional diagnostics only on explicit action; site/pane-scoped fallback; unrelated pane remains live.
 **Automated test plan:** successful embed/frame denial/navigation failure/Real Page fixtures; per-site persistence; two-window compatibility-rule collision; permission prompt tests.
 **Dependencies:** stable renderer telemetry, TASK 1.
 **Sources/competitors:** Universal Split View; SplitView; SidePilot (Apache-2.0); QuickPanel WebView2 demonstrates why a Real Page/native sidecar remains necessary for iframe-blocked sites, but QuickPanel source is PolyForm Noncommercial and not reusable.
 
-### TASK 9 — Duplicate shortcut detection — 80/100 — READY
+### TASK 10 — Duplicate shortcut detection — 80/100 — READY
 **Rationale:** prevents rail/workspace clutter with low implementation and permission risk.
 **Acceptance criteria:** canonical URL matching; reuse/open existing or intentionally duplicate; group/template identity not merged accidentally; no network lookup.
 **Automated test plan:** canonical URL/query/hash fixtures; same URL across workspaces/groups; Add Current Page E2E; keyboard confirmation.
 **Dependencies:** stable add flow, green CI.
 **Sources/competitors:** Tab Wise, Tabwise, TabDog, Tab Manager v2, Tablio.
 
-### TASK 10 — Restorable split layout metadata — 79/100 — BLOCKED
+### TASK 11 — Restorable split layout metadata — 79/100 — BLOCKED
 **Score:** 21+12+14+12+7+5+4+4 = **79**.
 **Rationale:** layout ratios are durable workflow state; AppTower can gain repeatability without going beyond two panes.
 **Acceptance criteria:** bounded ratio in template; legacy default; restore without unnecessary pane reload; rebalance/reset; restart/export-import; exactly two panes.
@@ -108,14 +117,14 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 **Dependencies:** TASK 2, TASK 4 preferred, stable split lifecycle.
 **Sources/competitors:** Chromium Split View/session restore and persisted side-panel resizing; Split View; SideSplit.
 
-### TASK 11 — Native tab-group import/export bridge — 78/100 — BLOCKED
+### TASK 12 — Native tab-group import/export bridge — 78/100 — BLOCKED
 **Rationale:** native interoperability without turning AppTower into a full tab manager.
 **Acceptance criteria:** explicit import/export; preserve title/color/order where API supports; AppTower remains authoritative; no history/bookmarks permission for basic bridge.
 **Automated test plan:** import/export native groups; duplicates; collapsed groups; restart; unsupported-browser fallback.
 **Dependencies:** stable groups/workspaces; TASK 4 preferred.
 **Sources/competitors:** Lunma, TabTOC, SnapTabs, Tab Manager v2.
 
-### TASK 12 — Glance preview in temporary bottom pane — 76/100 — BLOCKED
+### TASK 13 — Glance preview in temporary bottom pane — 76/100 — BLOCKED
 **Rationale:** temporary reference preview reuses AppTower split model instead of spawning permanent tabs/windows.
 **Acceptance criteria:** temporary bottom pane; top unchanged; explicit promote; close restores layout; compatibility fallback applies.
 **Automated test plan:** preview/close/promote; repeated previews; blocked-embed fallback; stable top-pane document token.
@@ -140,7 +149,7 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 | 12 | 58 | Optional AI organizer module | Leap/VertiTab-style products | Keep out of core until privacy-preserving provider/module contract and demand |
 | 13 | 54 | Full vertical-tab manager | VertiTab, TabTOC, ddSideBar, TabTree, Tabwise | Deliberately low; conflicts with product boundary |
 
-### New IDEA — Panel navigation escape policy — 74/100
+### IDEA — Panel navigation escape policy — 74/100
 
 **Score:** 19/25 user value + 9/20 real pain + 15/15 AppTower fit + 12/15 measurable UX gain + 8/10 low implementation risk + 5/5 privacy/permissions + 3/5 maturity + 3/5 automated testability = **74**.
 
@@ -152,11 +161,12 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 
 **License:** QuickPanel is licensed under **PolyForm Noncommercial 1.0.0**. Its source is therefore treated as incompatible for general reusable/commercial code transfer. Only independently reimplemented behavior/architecture ideas are admissible.
 
-## Research notes — 2026-09-04
+## Research notes — 2026-09-07
 
-- **QuickPanel v1.0.8** is unusually close to AppTower's original product problem: it restores an Edge-like app rail as a Windows native sidecar using WebView2, anchors one control to each Chromium window, keeps per-app persistent sessions/zoom, shares one WebView2 environment with named per-app profiles, and has Lite Mode with hidden-panel suspension, max-live=3 and per-panel Keep Alive. It is useful product/architecture evidence but not a code source because of PolyForm Noncommercial licensing.
-- **SideFlow** validates per-tab versus global side-panel scoping and lightweight favorites, but does not justify a new backlog item yet because AppTower's persistent app-tower model intentionally favors stable window/workspace scope.
-- **Tab Workspace / Tablio / ThisPanel** reinforce local-first workspaces, duplicate reuse, command palette/favorites and native side-panel UX; these map to existing TASKS/IDEAS and do not warrant duplicates.
+- **Chrome DevTools for agents / extension lifecycle tooling** is the main new finding in this scan. The official Chrome documentation, updated 2026-09-04, explicitly supports installing unpacked extensions, listing installed extensions and triggering extension actions in an agent-controlled browser session. For AppTower this is strong evidence for an installed-extension regression layer, not a product runtime dependency. No AppTower manifest permission needs to be added.
+- **Silo** is a recent MIT MV3 side-panel project that keeps its core validators pure and local while using the persistent side panel, content script and service worker as separate entry points. Its architecture reinforces separation of browser lifecycle/DOM extraction from pure logic, but AppTower already follows sufficiently similar separation and no new backlog item is justified.
+- Chromium Split View continues to evolve in 2026, including recent work around choosing existing tabs in split creation and earlier session-restore support. This strengthens existing split-layout/session-restore evidence but does not justify another AppTower TASK beyond TASK 11.
+- No newly discovered competitor justified changing the scores of existing product TASKS or IDEAS in this pass. All items were reconsidered under the same weighted rubric; their numeric scores remain unchanged apart from insertion of TASK 8 at 83.
 
 ## Product guardrails
 
@@ -171,4 +181,5 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 - Real Page/sidecar geometry must be scoped to AppTower-owned fallback windows only; never globally reroute normal tabs/pop-ups.
 - Cross-domain pane navigation policy must preserve authentication/SSO flows and remain user-overridable.
 - Specialized adapters/modules are preferable to broad core permissions.
+- Installed-extension E2E must test the exact packaged build and must not require broader AppTower runtime permissions.
 - Every promoted competitor-inspired feature must have acceptance criteria and automated regression/E2E coverage before execution.
