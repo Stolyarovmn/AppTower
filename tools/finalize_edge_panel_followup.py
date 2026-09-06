@@ -82,6 +82,14 @@ for path in [
     )
     write(path, text)
 
+# Count alone is insufficient for pointer geometry: a freshly re-rendered rail
+# can already contain two nodes while the browser has not laid them out yet.
+replace_exact(
+    "tests/e2e/ui-system-regressions.spec.mjs",
+    '''    const source = sites.nth(0);\n    const target = sites.nth(1);\n    const sourceId = await source.getAttribute("data-shortcut-id");\n    const from = await source.boundingBox();\n    const to = await target.boundingBox();\n''',
+    '''    const source = sites.nth(0);\n    const target = sites.nth(1);\n    await source.scrollIntoViewIfNeeded();\n    await target.scrollIntoViewIfNeeded();\n    await expect(source).toBeVisible();\n    await expect(target).toBeVisible();\n    const sourceId = await source.getAttribute("data-shortcut-id");\n    const from = await source.boundingBox();\n    const to = await target.boundingBox();\n''',
+)
+
 # The performance budget stays strict. A single shared-runner outlier gets one
 # fresh retry so a noisy machine does not invalidate an otherwise clean build.
 replace_exact(
