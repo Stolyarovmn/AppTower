@@ -20,18 +20,12 @@ def replace_exact(path, old, new, count=1):
     write(path, text.replace(old, new))
 
 
-# The Side Panel itself owns drag feedback. Observer-based proxies raced the
-# pointer handler because they ran before .dragging was set on the same event.
+# The Side Panel itself owns drag feedback. The generic observer proxy raced the
+# actual pointer handler because it could run before .dragging was set.
 replace_exact(
     "app/shared/browser-adapter.js",
     '''  installFloatingSurfaceGuard(documentRef);\n  installShortcutDragProxy(documentRef);\n  return browser;\n''',
     '''  installFloatingSurfaceGuard(documentRef);\n  return browser;\n''',
-)
-
-replace_exact(
-    "app/sidepanel/dialog-system.js",
-    '''function createDragProxy(source) {\n  if (!source || dragProxy) return;\n''',
-    '''function createDragProxy(source) {\n  if (!source || dragProxy || document.querySelector('.atn-drag-proxy[data-owner="sidepanel"]')) return;\n''',
 )
 
 replace_exact(
@@ -64,7 +58,7 @@ replace_exact(
     '''  panelSites.querySelector(`[data-shortcut-id="${CSS.escape(railDrag.sourceId)}"]`)?.classList.remove("dragging");\n  removeRailDragProxy();\n  railDrag = null;\n  clearRailDropMarks();\n''',
 )
 
-# A deterministic readiness marker keeps tests (and diagnostics) from treating
+# A deterministic readiness marker keeps tests and diagnostics from treating
 # DOMContentLoaded as equivalent to the async MV3 state bootstrap being ready.
 replace_exact(
     "app/sidepanel/sidepanel.js",
@@ -88,8 +82,8 @@ for path in [
     )
     write(path, text)
 
-# The new-tab performance check is intentionally strict, but a single noisy
-# shared-runner sample should trigger one clean rerun rather than fail a build.
+# The performance budget stays strict. A single shared-runner outlier gets one
+# fresh retry so a noisy machine does not invalidate an otherwise clean build.
 replace_exact(
     "tests/e2e/performance-newtab.spec.mjs",
     '''const newTabUrl = `chrome-extension://${extensionId}/newtab/newtab.html`;\n\ntest("ATN-PERF-002 collect New Tab first-interactive baseline", async ({}, testInfo) => {\n''',
