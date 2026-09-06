@@ -1,0 +1,332 @@
+diff --git a/app/background.js b/app/background.js
+--- a/app/background.js
++++ b/app/background.js
+@@ -5,6 +5,7 @@ import { MEDIA_STATE_KEY, normalizeMediaState } from "./shared/media-contract.js";
+ import { createBackgroundStateCoordinator } from "./shared/background-state-coordinator.js";
+ import { createPanelStateStore } from "./shared/panel-state-store.js";
+ import { createPanelLifecycleController } from "./shared/panel-lifecycle-controller.js";
++import { collapseTargetForUrl } from "./shared/collapse-handoff.js";
+ import {
+   SHORTCUT_SITE, SHORTCUT_GROUP, SHORTCUT_TEMPLATE,
+   normalizeShortcut, normalizeShortcutList, firstLaunchableSite,
+@@ -789,6 +790,35 @@ async function bestWebTabForWindow(windowId) {
+   return null;
+ }
+ 
++async function prepareCollapsedRail(windowId) {
++  const [tab] = await chrome.tabs.query({active:true,windowId});
++  if (!Number.isInteger(tab?.id)) {
++    throw new Error("Не удалось определить активную вкладку для сворачивания App Tower");
++  }
++
++  const target = collapseTargetForUrl(
++    tab.url,
++    chrome.runtime.getURL("newtab/newtab.html")
++  );
++
++  if (target === "newtab") {
++    return {kind:"newtab",tabId:tab.id};
++  }
++
++  if (target !== "content") {
++    throw new Error("На служебной странице Edge нельзя свернуть App Tower в узкую панель. Перейдите на обычный сайт или новую вкладку App Tower.");
++  }
++
++  try {
++    const response = await chrome.tabs.sendMessage(tab.id, {
++      type:"ATN_SET_RAIL_VISIBLE",
++      visible:true,
++      reason:"collapse-handoff"
++    });
++    if (!response?.ok) throw new Error("rail did not acknowledge handoff");
++  } catch {
++    throw new Error("Компактная панель App Tower ещё не готова на этой странице. Дождитесь загрузки страницы и повторите сворачивание.");
++  }
++
++  return {kind:"content",tabId:tab.id};
++}
++
+ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+   if (!message || typeof message !== "object") return;
+@@ -937,9 +967,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+     (async () => {
+       try {
+         if (!Number.isInteger(windowId)) throw new Error("Invalid windowId");
++        const handoff = await prepareCollapsedRail(windowId);
+         await closeTowerContainer(windowId);
+         await markPanelClosed(windowId,{collapsed:true});
+-        sendResponse({ok:true});
++        sendResponse({ok:true,handoff:handoff.kind});
+       } catch (error) {
+         sendResponse({ok:false,error:String(error?.message || error)});
+       }
+diff --git a/app/content/rail.js b/app/content/rail.js
+--- a/app/content/rail.js
++++ b/app/content/rail.js
+@@ -582,9 +582,11 @@
+       setVisible(changes.atnEnabled.newValue!==false);
+     }
+   });
+-  chrome.runtime.onMessage.addListener(message=>{
++  chrome.runtime.onMessage.addListener((message,_sender,sendResponse)=>{
+     if(disposed||message?.type!=="ATN_SET_RAIL_VISIBLE")return;
+     setVisible(message.visible);
++    sendResponse?.({ok:true,visible:Boolean(message.visible)});
++    return false;
+   });
+   window.addEventListener("resize",scheduleGeometry,{passive:true});
+   window.addEventListener("scroll",scheduleFixedAdjustment,{passive:true});
+diff --git a/app/options/options.html b/app/options/options.html
+--- a/app/options/options.html
++++ b/app/options/options.html
+@@ -120,6 +120,7 @@
+     </main>
+   </div>
++  <script src="options-nav-bootstrap.js"></script>
+   <script src="options.js" type="module"></script>
+ </body>
+ </html>
+diff --git a/app/options/options-nav-bootstrap.js b/app/options/options-nav-bootstrap.js
+new file mode 100644
+--- /dev/null
++++ b/app/options/options-nav-bootstrap.js
+@@ -0,0 +1,27 @@
++(() => {
++  const nav = [...document.querySelectorAll("#settings-nav button[data-section]")];
++  const pages = [...document.querySelectorAll(".page[data-page]")];
++  if (!nav.length || !pages.length) return;
++
++  const sections = new Set(nav.map(button => button.dataset.section).filter(Boolean));
++  const show = id => {
++    if (!sections.has(id)) return;
++    for (const button of nav) button.classList.toggle("active", button.dataset.section === id);
++    for (const page of pages) page.classList.toggle("active", page.dataset.page === id);
++
++    const hash = `#${id}`;
++    if (location.hash !== hash) {
++      history.replaceState(history.state, "", hash);
++    }
++  };
++
++  for (const button of nav) {
++    button.addEventListener("click", () => show(button.dataset.section));
++  }
++
++  const initial = location.hash.slice(1);
++  if (sections.has(initial)) show(initial);
++
++  document.documentElement.dataset.optionsNavReady = "1";
++})();
+diff --git a/app/shared/collapse-handoff.js b/app/shared/collapse-handoff.js
+new file mode 100644
+--- /dev/null
++++ b/app/shared/collapse-handoff.js
+@@ -0,0 +1,11 @@
++export function collapseTargetForUrl(value, newTabUrl = "") {
++  const url = String(value || "");
++  if (/^https?:\/\//i.test(url)) return "content";
++
++  const appNewTab = String(newTabUrl || "");
++  if (appNewTab && (url === appNewTab || url.startsWith(`${appNewTab}?`) || url.startsWith(`${appNewTab}#`))) {
++    return "newtab";
++  }
++
++  return "unsupported";
++}
+diff --git a/app/sidepanel/sidepanel.css b/app/sidepanel/sidepanel.css
+--- a/app/sidepanel/sidepanel.css
++++ b/app/sidepanel/sidepanel.css
+@@ -75,8 +75,23 @@ button { cursor:pointer; }
+ .pane.active .pane-toolbar { box-shadow:inset 3px 0 0 var(--accent); }
+ .pane-toolbar { height:44px;flex:0 0 44px;display:flex;align-items:center;gap:6px;padding:6px 8px;border-bottom:1px solid var(--border);background:var(--toolbar); }
+ .pane-select,.go,.reload,.external,.focus,.mode-button,.pwa-button { border:0;background:transparent;border-radius:6px;min-width:27px;height:30px;padding:0 5px; }
++.go,.reload,.external,.focus { display:grid;place-items:center; }
+ .pane-select:hover,.go:hover,.reload:hover,.external:hover,.focus:hover,.mode-button:hover,.pwa-button:hover { background:var(--hover); }
++.pane-action-icon {
++  width:18px;
++  height:18px;
++  display:block;
++  fill:none;
++  stroke:currentColor;
++  stroke-width:1.55;
++  stroke-linecap:round;
++  stroke-linejoin:round;
++}
++.focus .focus-restore-icon { display:none; }
++.focus[aria-pressed="true"] .focus-expand-icon { display:none; }
++.focus[aria-pressed="true"] .focus-restore-icon { display:block; }
+ .mode-button { width:29px;min-width:29px;font-weight:800;font-size:12px;border:1px solid var(--border); }
+ .mode-button.mode-auto { color:#8cbcff; }
+ .mode-button.mode-secure { color:#63d38a; }
+diff --git a/app/sidepanel/sidepanel.html b/app/sidepanel/sidepanel.html
+--- a/app/sidepanel/sidepanel.html
++++ b/app/sidepanel/sidepanel.html
+@@ -43,9 +43,17 @@
+           <div class="pane-toolbar">
+             <button class="pane-select" data-action="activate" title="Активная область"><span class="dot"></span></button>
+             <input class="url-input" data-role="url" spellcheck="false" aria-label="URL верхней области">
+-            <button class="go" data-action="go" title="Открыть URL">↵</button>
+-            <button class="reload" data-action="reload" title="Обновить">⟳</button>
++            <button class="go" data-action="go" title="Открыть URL" aria-label="Открыть URL">
++              <svg class="pane-action-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11M11 6l4 4-4 4"/></svg>
++            </button>
++            <button class="reload" data-action="reload" title="Обновить" aria-label="Обновить">
++              <svg class="pane-action-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M15.5 7.2A6 6 0 1 0 16 12"/><path d="M12.5 4.5h3.5V8"/></svg>
++            </button>
+             <button class="mode-button" data-action="mode" title="Режим отображения">A</button>
+@@ -61,8 +69,15 @@
+                 <path d="M10 6.2v4.4M7.8 8.4h4.4"></path>
+               </svg>
+             </button>
+-            <button class="external" data-action="external" title="Открыть в обычной вкладке">↗</button>
+-            <button class="focus" data-action="focus" title="Развернуть эту область">□</button>
++            <button class="external" data-action="external" title="Открыть в обычной вкладке" aria-label="Открыть в обычной вкладке">
++              <svg class="pane-action-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M9 5H5.5A1.5 1.5 0 0 0 4 6.5v8A1.5 1.5 0 0 0 5.5 16h8a1.5 1.5 0 0 0 1.5-1.5V11"/><path d="M11 4h5v5M10 10l6-6"/></svg>
++            </button>
++            <button class="focus hidden" data-action="focus" title="Развернуть эту область" aria-label="Развернуть эту область" aria-pressed="false">
++              <svg class="pane-action-icon focus-expand-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M8 4H4v4M12 4h4v4M16 12v4h-4M8 16H4v-4"/></svg>
++              <svg class="pane-action-icon focus-restore-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5h8v8M13 15H5V7"/></svg>
++            </button>
+           </div>
+@@ -116,9 +131,17 @@
+           <div class="pane-toolbar">
+             <button class="pane-select" data-action="activate" title="Активная область"><span class="dot"></span></button>
+             <input class="url-input" data-role="url" spellcheck="false" aria-label="URL нижней области">
+-            <button class="go" data-action="go" title="Открыть URL">↵</button>
+-            <button class="reload" data-action="reload" title="Обновить">⟳</button>
++            <button class="go" data-action="go" title="Открыть URL" aria-label="Открыть URL">
++              <svg class="pane-action-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11M11 6l4 4-4 4"/></svg>
++            </button>
++            <button class="reload" data-action="reload" title="Обновить" aria-label="Обновить">
++              <svg class="pane-action-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M15.5 7.2A6 6 0 1 0 16 12"/><path d="M12.5 4.5h3.5V8"/></svg>
++            </button>
+             <button class="mode-button" data-action="mode" title="Режим отображения">A</button>
+@@ -134,8 +157,15 @@
+                 <path d="M10 6.2v4.4M7.8 8.4h4.4"></path>
+               </svg>
+             </button>
+-            <button class="external" data-action="external" title="Открыть в обычной вкладке">↗</button>
+-            <button class="focus" data-action="focus" title="Развернуть эту область">□</button>
++            <button class="external" data-action="external" title="Открыть в обычной вкладке" aria-label="Открыть в обычной вкладке">
++              <svg class="pane-action-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M9 5H5.5A1.5 1.5 0 0 0 4 6.5v8A1.5 1.5 0 0 0 5.5 16h8a1.5 1.5 0 0 0 1.5-1.5V11"/><path d="M11 4h5v5M10 10l6-6"/></svg>
++            </button>
++            <button class="focus hidden" data-action="focus" title="Развернуть эту область" aria-label="Развернуть эту область" aria-pressed="false">
++              <svg class="pane-action-icon focus-expand-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M8 4H4v4M12 4h4v4M16 12v4h-4M8 16H4v-4"/></svg>
++              <svg class="pane-action-icon focus-restore-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5h8v8M13 15H5V7"/></svg>
++            </button>
+           </div>
+diff --git a/app/sidepanel/sidepanel.js b/app/sidepanel/sidepanel.js
+--- a/app/sidepanel/sidepanel.js
++++ b/app/sidepanel/sidepanel.js
+@@ -482,6 +482,7 @@ function renderAll(forceReload = false) {
+     : (state.layout.split ? "split" : `single-${state.layout.activePane === "bottom" ? "bottom" : "top"}`);
+ 
+   updateLayoutButton();
++  updatePaneFocusControls();
+   if (!onboarding) {
+     const visiblePanes = state.focus
+       ? new Set([state.focus])
+@@ -828,6 +829,24 @@ function updateLayoutButton() {
+     : "Показана одна область · нажмите для двух";
+ }
+ 
++function updatePaneFocusControls() {
++  const canChangeLayout = state.layout.split || Boolean(state.focus);
++  for (const [name, pane] of Object.entries(paneEls)) {
++    const button = pane?.querySelector('[data-action="focus"]');
++    if (!button) continue;
++
++    const focused = state.focus === name;
++    const hidden = !canChangeLayout || (Boolean(state.focus) && !focused);
++    button.classList.toggle("hidden", hidden);
++    button.setAttribute("aria-pressed", String(focused));
++    button.title = focused ? "Вернуть две области" : "Развернуть эту область";
++    button.setAttribute(
++      "aria-label",
++      focused ? "Вернуть две области" : "Развернуть эту область"
++    );
++  }
++}
++
+ function faviconURL(url) {
+   const favicon = new URL("/_favicon/", chrome.runtime.getURL("/"));
+   favicon.searchParams.set("pageUrl", url);
+@@ -2508,8 +2527,8 @@ siteForm.addEventListener("submit", async (event) => {
+ 
+     await persistWorkspaceState(patch);
+     await syncCompatRules();
+-    siteDialog.close();
+     renderAll(false);
++    siteDialog.close();
+   } catch (error) {
+     state.sites = previousSites;
+     state.panes = previousPanes;
+diff --git a/tests/e2e/ui-followup-regressions.spec.mjs b/tests/e2e/ui-followup-regressions.spec.mjs
+--- a/tests/e2e/ui-followup-regressions.spec.mjs
++++ b/tests/e2e/ui-followup-regressions.spec.mjs
+@@ -106,11 +106,17 @@ test("ATN-E2E-021 drag proxy is unique and stays to the right of the pointer", async () => {
+ });
+ 
+ test("ATN-E2E-022 pane focus control only appears when it can change the layout", async () => {
++  const {server,baseUrl} = await startFixtureServer();
+   const profile = fs.mkdtempSync(path.join(os.tmpdir(),"app-tower-focus-control-"));
+   const context = await launch(profile);
+   try {
++    const web = context.pages()[0] || await context.newPage();
++    await web.goto(`${baseUrl}/host`);
+     const panel = await openPanel(context);
++    await addCustomSite(panel,"Focus layout",`${baseUrl}/focus`,{fromHome:true});
++
+     const topFocus = panel.locator('.pane[data-pane="top"] [data-action="focus"]');
+     await expect(topFocus).toBeHidden();
+ 
+@@ -123,6 +129,7 @@ test("ATN-E2E-022 pane focus control only appears when it can change the layout", async () => {
+     await expect(panel.locator("#workspace")).toHaveAttribute("data-layout","split");
+   } finally {
+     await context.close().catch(()=>{});
++    await new Promise(resolve => server.close(resolve));
+     fs.rmSync(profile,{recursive:true,force:true});
+   }
+ });
++
++test("ATN-E2E-024 pane toolbar actions use SVG icons instead of text glyphs", async () => {
++  const profile = fs.mkdtempSync(path.join(os.tmpdir(),"app-tower-pane-icons-"));
++  const context = await launch(profile);
++  try {
++    const panel = await openPanel(context);
++    for (const action of ["go","reload","external","focus"]) {
++      const button = panel.locator(`.pane[data-pane="top"] [data-action="${action}"]`);
++      await expect(button.locator("svg").first()).toBeAttached();
++      expect((await button.evaluate(element => [...element.childNodes].filter(node => node.nodeType === Node.TEXT_NODE).map(node => node.textContent).join("").trim()))).toBe("");
++    }
++  } finally {
++    await context.close().catch(()=>{});
++    fs.rmSync(profile,{recursive:true,force:true});
++  }
++});
+diff --git a/tests/unit/collapse-handoff.test.mjs b/tests/unit/collapse-handoff.test.mjs
+new file mode 100644
+--- /dev/null
++++ b/tests/unit/collapse-handoff.test.mjs
+@@ -0,0 +1,23 @@
++import test from "node:test";
++import assert from "node:assert/strict";
++import {collapseTargetForUrl} from "../../app/shared/collapse-handoff.js";
++
++test("normal http pages can hand off to the injected compact rail", () => {
++  assert.equal(collapseTargetForUrl("https://example.com/a","chrome-extension://id/newtab/newtab.html"),"content");
++  assert.equal(collapseTargetForUrl("http://127.0.0.1:8080/","chrome-extension://id/newtab/newtab.html"),"content");
++});
++
++test("App Tower new tab can hand off to its built-in rail", () => {
++  const newTab = "chrome-extension://id/newtab/newtab.html";
++  assert.equal(collapseTargetForUrl(newTab,newTab),"newtab");
++  assert.equal(collapseTargetForUrl(`${newTab}#home`,newTab),"newtab");
++});
++
++test("privileged browser pages are rejected instead of making App Tower disappear", () => {
++  const newTab = "chrome-extension://id/newtab/newtab.html";
++  assert.equal(collapseTargetForUrl("edge://settings/help",newTab),"unsupported");
++  assert.equal(collapseTargetForUrl("chrome://extensions/",newTab),"unsupported");
++  assert.equal(collapseTargetForUrl("chrome-extension://id/options/options.html",newTab),"unsupported");
++});
