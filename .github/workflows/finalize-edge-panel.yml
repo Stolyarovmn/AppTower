@@ -30,7 +30,9 @@ jobs:
       - name: Apply final source edits
         run: |
           python tools/finalize_edge_panel.py
+          python tools/finalize_edge_panel_followup.py
           rm tools/finalize_edge_panel.py
+          rm tools/finalize_edge_panel_followup.py
           rm tools/edge-panel-finalize.patch
           rm .github/workflows/finalize-edge-panel.yml
           python tools/make_yandex_variant.py
