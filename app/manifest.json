@@ -20,7 +20,7 @@
     "https://*/*"
   ],
   "background": {
-    "service_worker": "background.js",
+    "service_worker": "background-entry.js",
     "type": "module"
   },
   "action": {
@@ -31,54 +31,32 @@
   },
   "content_scripts": [
     {
-      "matches": [
-        "http://*/*",
-        "https://*/*"
-      ],
-      "js": [
-        "content/rail.js"
-      ],
-      "css": [
-        "content/rail.css"
-      ],
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content/rail.js"],
+      "css": ["content/rail.css"],
       "run_at": "document_start"
     },
     {
-      "matches": [
-        "http://*/*",
-        "https://*/*"
-      ],
+      "matches": ["http://*/*", "https://*/*"],
       "all_frames": true,
       "match_about_blank": true,
-      "js": [
-        "content/embedded-frame.js"
-      ],
+      "js": ["content/embedded-frame.js"],
       "run_at": "document_start",
       "match_origin_as_fallback": true
     },
     {
-      "matches": [
-        "http://*/*",
-        "https://*/*"
-      ],
+      "matches": ["http://*/*", "https://*/*"],
       "all_frames": true,
       "match_about_blank": true,
       "match_origin_as_fallback": true,
-      "js": [
-        "content/pwa-discovery.js"
-      ],
+      "js": ["content/pwa-discovery.js"],
       "run_at": "document_start"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": [
-        "_favicon/*"
-      ],
-      "matches": [
-        "http://*/*",
-        "https://*/*"
-      ]
+      "resources": ["_favicon/*"],
+      "matches": ["http://*/*", "https://*/*"]
     }
   ],
   "content_security_policy": {
@@ -94,9 +72,7 @@
   "chrome_url_overrides": {
     "newtab": "newtab/newtab.html"
   },
-  "optional_permissions": [
-    "contentSettings"
-  ],
+  "optional_permissions": ["contentSettings"],
   "options_ui": {
     "page": "options/options.html",
     "open_in_tab": true
