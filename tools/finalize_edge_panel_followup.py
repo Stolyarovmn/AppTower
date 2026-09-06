@@ -82,12 +82,13 @@ for path in [
     )
     write(path, text)
 
-# Count alone is insufficient for pointer geometry: a freshly re-rendered rail
-# can already contain two nodes while the browser has not laid them out yet.
+# The rail is intentionally re-rendered after shortcut mutations. Sample both
+# shortcut rectangles and IDs in one DOM evaluation so a re-render cannot detach
+# one locator between two geometry calls.
 replace_exact(
     "tests/e2e/ui-system-regressions.spec.mjs",
-    '''    const source = sites.nth(0);\n    const target = sites.nth(1);\n    const sourceId = await source.getAttribute("data-shortcut-id");\n    const from = await source.boundingBox();\n    const to = await target.boundingBox();\n''',
-    '''    const source = sites.nth(0);\n    const target = sites.nth(1);\n    await source.scrollIntoViewIfNeeded();\n    await target.scrollIntoViewIfNeeded();\n    await expect(source).toBeVisible();\n    await expect(target).toBeVisible();\n    const sourceId = await source.getAttribute("data-shortcut-id");\n    const from = await source.boundingBox();\n    const to = await target.boundingBox();\n''',
+    '''    const source = sites.nth(0);\n    const target = sites.nth(1);\n    const sourceId = await source.getAttribute("data-shortcut-id");\n    const from = await source.boundingBox();\n    const to = await target.boundingBox();\n    if (!from || !to) throw new Error("rail shortcut geometry unavailable");\n\n    const startX = from.x + from.width/2;\n    const startY = from.y + from.height/2;\n''',
+    '''    let geometry = null;\n    for (let attempt=0; attempt<30 && !geometry; attempt++) {\n      geometry = await sites.evaluateAll(nodes => {\n        if (nodes.length !== 2) return null;\n        const [source,target] = nodes;\n        const from = source.getBoundingClientRect();\n        const to = target.getBoundingClientRect();\n        if (from.width <= 0 || from.height <= 0 || to.width <= 0 || to.height <= 0) return null;\n        return {\n          sourceId:source.dataset.shortcutId || "",\n          targetId:target.dataset.shortcutId || "",\n          from:{x:from.x,y:from.y,width:from.width,height:from.height},\n          to:{x:to.x,y:to.y,width:to.width,height:to.height}\n        };\n      });\n      if (!geometry) await panel.waitForTimeout(50);\n    }\n    if (!geometry) throw new Error("rail shortcut geometry unavailable");\n\n    const {sourceId,targetId,from,to} = geometry;\n    const source = panel.locator(`#panel-sites .rail-site[data-shortcut-id="${sourceId}"]`);\n    const target = panel.locator(`#panel-sites .rail-site[data-shortcut-id="${targetId}"]`);\n    const startX = from.x + from.width/2;\n    const startY = from.y + from.height/2;\n''',
 )
 
 # The performance budget stays strict. A single shared-runner outlier gets one
