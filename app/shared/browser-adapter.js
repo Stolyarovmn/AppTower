@@ -178,7 +178,6 @@ export function applyBrowserSkin(documentRef = document) {
   documentRef.documentElement.dataset.browser = browser.id;
   documentRef.documentElement.dataset.uiStyle = browser.style;
   installFloatingSurfaceGuard(documentRef);
-  installShortcutDragProxy(documentRef);
   return browser;
 }
 

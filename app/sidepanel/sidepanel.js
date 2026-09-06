@@ -345,6 +345,7 @@ await loadPwaState();
 await syncCompatRules();
 renderAll();
 await consumePendingAction();
+document.documentElement.dataset.panelReady = "1";
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== "local") return;
@@ -497,6 +498,7 @@ function renderAll(forceReload = false) {
     : (state.layout.split ? "split" : `single-${state.layout.activePane === "bottom" ? "bottom" : "top"}`);
 
   updateLayoutButton();
+  updatePaneFocusControls();
   if (!onboarding) {
     const visiblePanes = state.focus
       ? new Set([state.focus])
@@ -836,6 +838,21 @@ function updateLayoutButton() {
   toggleSplit.title = state.layout.split
     ? "Показаны две области · нажмите для одной"
     : "Показана одна область · нажмите для двух";
+}
+
+function updatePaneFocusControls() {
+  const canChangeLayout = state.layout.split || Boolean(state.focus);
+  for (const [name, pane] of Object.entries(paneEls)) {
+    const button = pane?.querySelector('[data-action="focus"]');
+    if (!button) continue;
+
+    const focused = state.focus === name;
+    const hidden = !canChangeLayout || (Boolean(state.focus) && !focused);
+    button.classList.toggle("hidden", hidden);
+    button.setAttribute("aria-pressed", String(focused));
+    button.title = focused ? "Вернуть две области" : "Развернуть эту область";
+    button.setAttribute("aria-label", focused ? "Вернуть две области" : "Развернуть эту область");
+  }
 }
 
 function faviconURL(url) {
@@ -1304,6 +1321,35 @@ new ResizeObserver(updateRailScrollControls).observe(panelSitesScroll);
 
 let suppressShortcutClickUntil = 0;
 let railDrag = null;
+let railDragProxy = null;
+
+function removeRailDragProxy() {
+  railDragProxy?.remove();
+  railDragProxy = null;
+}
+
+function createRailDragProxy(button,event) {
+  removeRailDragProxy();
+  const visual = button?.firstElementChild?.cloneNode(true);
+  if (!visual) return;
+  visual.querySelectorAll?.("[id]").forEach(node => node.removeAttribute("id"));
+  visual.removeAttribute?.("id");
+  const proxy = document.createElement("div");
+  proxy.className = "atn-drag-proxy";
+  proxy.dataset.owner = "sidepanel";
+  proxy.dataset.shortcutId = button.dataset.shortcutId || "";
+  proxy.setAttribute("aria-hidden","true");
+  proxy.append(visual);
+  document.body.append(proxy);
+  railDragProxy = proxy;
+  moveRailDragProxy(event);
+}
+
+function moveRailDragProxy(event) {
+  if (!railDragProxy) return;
+  railDragProxy.style.left = `${Math.round(event.clientX)}px`;
+  railDragProxy.style.top = `${Math.round(event.clientY)}px`;
+}
 
 function clearRailDropMarks() {
   for (const el of panelSites.querySelectorAll(".drop-before,.drop-after,.drop-combine")) {
@@ -1316,6 +1362,7 @@ function beginRailDrag(event, button) {
   railDrag.dragging = true;
   clearTimeout(railDrag.holdTimer);
   button.classList.add("dragging");
+  createRailDragProxy(button,event);
   try { button.setPointerCapture(event.pointerId); } catch {}
 }
 
@@ -1377,6 +1424,7 @@ window.addEventListener("pointermove", event => {
   }
 
   if (!railDrag?.dragging) return;
+  moveRailDragProxy(event);
   event.preventDefault();
   const scrollRect = panelSitesScroll.getBoundingClientRect();
   if (event.clientY < scrollRect.top + 26) panelSitesScroll.scrollBy({top:-10});
@@ -1393,6 +1441,7 @@ async function finishRailDrag(event) {
   railDrag = null;
   const sourceButton = panelSites.querySelector(`[data-shortcut-id="${CSS.escape(current.sourceId)}"]`);
   sourceButton?.classList.remove("dragging");
+  removeRailDragProxy();
   clearRailDropMarks();
   if (!current.dragging) return;
   suppressShortcutClickUntil = Date.now() + 350;
@@ -1429,6 +1478,7 @@ window.addEventListener("pointercancel", event => {
   if (!railDrag || railDrag.pointerId !== event.pointerId) return;
   clearTimeout(railDrag.holdTimer);
   panelSites.querySelector(`[data-shortcut-id="${CSS.escape(railDrag.sourceId)}"]`)?.classList.remove("dragging");
+  removeRailDragProxy();
   railDrag = null;
   clearRailDropMarks();
 });
@@ -2513,8 +2563,8 @@ siteForm.addEventListener("submit", async (event) => {
 
     await persistWorkspaceState(patch);
     await syncCompatRules();
-    siteDialog.close();
     renderAll(false);
+    siteDialog.close();
   } catch (error) {
     state.sites = previousSites;
     state.panes = previousPanes;

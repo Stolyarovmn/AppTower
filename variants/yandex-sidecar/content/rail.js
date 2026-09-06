@@ -582,9 +582,11 @@
       setVisible(changes.atnEnabled.newValue!==false);
     }
   });
-  chrome.runtime.onMessage.addListener(message=>{
+  chrome.runtime.onMessage.addListener((message,_sender,sendResponse)=>{
     if(disposed||message?.type!=="ATN_SET_RAIL_VISIBLE")return;
     setVisible(message.visible);
+    sendResponse?.({ok:true,visible:Boolean(message.visible)});
+    return false;
   });
   window.addEventListener("resize",scheduleGeometry,{passive:true});
   window.addEventListener("scroll",scheduleFixedAdjustment,{passive:true});

@@ -1,0 +1,299 @@
+:root {
+  --atn-space-1:4px;
+  --atn-space-2:8px;
+  --atn-space-3:12px;
+  --atn-space-4:16px;
+  --atn-space-5:20px;
+  --atn-space-6:24px;
+  --atn-control-gap:8px;
+  --atn-section-gap:12px;
+  --atn-dialog-pad:18px;
+  --atn-dialog-close-size:32px;
+  --atn-surface-radius:8px;
+  --atn-surface-gutter:8px;
+  --atn-surface-shadow:0 12px 40px rgba(0,0,0,.35);
+  --atn-menu-padding:6px;
+  --atn-menu-row-min-height:34px;
+  --atn-control-height:34px;
+  --atn-control-radius:7px;
+  --atn-icon-button-size:30px;
+  --atn-icon-size:18px;
+  --atn-icon-stroke:1.6;
+
+  /* Typography roles. Components may change weight, never invent a local size
+   * for the same semantic role. Options deliberately uses a slightly roomier
+   * body than the compact Side Panel while keeping secondary copy identical. */
+  --atn-font-body:14px;
+  --atn-font-secondary:13px;
+  --atn-font-caption:11px;
+  --atn-font-dialog-title:17px;
+  --atn-font-page-title:28px;
+  --atn-line-body:1.45;
+  --atn-focus-width:2px;
+}
+
+/* Shared spacing rules. Component styles may choose layout, but spacing comes
+ * from this small scale so dialogs/options cannot drift one screen at a time. */
+.actions-row,
+.settings-actions,
+.dialog-actions,
+.workspace-actions,
+.webapp-actions,
+.row-actions {
+  gap:var(--atn-control-gap);
+}
+
+.card > :first-child { margin-top:0; }
+.card > :last-child { margin-bottom:0; }
+
+/* Shared control geometry. */
+.settings-shell button,
+.settings-shell input,
+.settings-shell select,
+dialog button,
+dialog input,
+dialog select {
+  border-radius:var(--atn-control-radius);
+}
+.settings-shell button,
+.settings-shell select,
+.settings-shell input:not([type="checkbox"]):not([type="color"]):not([type="range"]) {
+  min-height:var(--atn-control-height);
+}
+.settings-shell .card,
+.settings-shell .row {
+  border-radius:calc(var(--atn-surface-radius) + 2px);
+}
+
+/* Dialogs and pointer context menus are the same floating-surface family. */
+dialog,
+.shortcut-menu {
+  border:1px solid var(--border);
+  border-radius:var(--atn-surface-radius);
+  background:var(--dialog);
+  color:var(--text);
+}
+.shortcut-menu {
+  min-width:210px;
+  width:max-content;
+  max-width:calc(100vw - var(--atn-space-4));
+  padding:var(--atn-menu-padding);
+  box-shadow:var(--atn-surface-shadow);
+}
+.shortcut-menu button {
+  width:100%;
+  min-height:var(--atn-menu-row-min-height);
+  height:auto;
+  padding:6px var(--atn-space-3);
+  border:0;
+  border-radius:var(--atn-control-radius);
+  background:transparent;
+  text-align:left;
+  line-height:1.3;
+  white-space:nowrap;
+}
+.shortcut-menu button:hover { background:var(--hover); }
+.shortcut-menu .separator {
+  height:1px;
+  margin:var(--atn-space-1) var(--atn-space-2);
+  background:var(--border);
+}
+
+/* Options typography is role-based rather than element-default based. */
+.settings-shell {
+  font-size:var(--atn-font-body);
+  line-height:var(--atn-line-body);
+}
+.settings-shell h1 {
+  font-size:var(--atn-font-page-title);
+  line-height:1.2;
+}
+.settings-shell h2 {
+  font-size:16px;
+  line-height:1.3;
+}
+.settings-shell button,
+.settings-shell input,
+.settings-shell select {
+  font-size:var(--atn-font-body);
+}
+.settings-shell .muted,
+.settings-shell .row-main small,
+.settings-shell .toggle small,
+.settings-shell .settings-copy {
+  font-size:var(--atn-font-secondary);
+  line-height:var(--atn-line-body);
+}
+.settings-shell .toggle b,
+.settings-shell .row-main strong {
+  font-size:var(--atn-font-body);
+  line-height:1.35;
+}
+.settings-shell .pill,
+.settings-shell .site-controls label {
+  font-size:var(--atn-font-caption);
+}
+
+/* One icon language: same optical box and stroke across panel/settings. */
+.atn-icon-control {
+  width:var(--atn-icon-button-size);
+  min-width:var(--atn-icon-button-size);
+  height:var(--atn-icon-button-size);
+  padding:0;
+  display:grid;
+  place-items:center;
+}
+.atn-icon-control > svg,
+.tool-icon-svg,
+.nav-icon svg {
+  width:var(--atn-icon-size);
+  height:var(--atn-icon-size);
+  fill:none;
+  stroke:currentColor;
+  stroke-width:var(--atn-icon-stroke);
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.pane-toolbar .atn-icon-control { flex:0 0 var(--atn-icon-button-size); }
+.rail-tool.atn-icon-control { width:36px; min-width:36px; height:36px; }
+.pane-toolbar .atn-icon-control[hidden] { display:none !important; }
+
+/* Sync/Data used to be the odd page out. */
+.page[data-page="data"] .card {
+  display:grid;
+  gap:var(--atn-space-3);
+}
+.page[data-page="data"] .card > .toggle,
+.page[data-page="data"] .card > .actions-row {
+  margin:0;
+}
+
+/* Focus rings are always inset. */
+.shortcut-chooser-item:hover {
+  outline:0 !important;
+  outline-offset:0 !important;
+}
+.shortcut-chooser-item:focus,
+.shortcut-chooser-item:focus-visible,
+dialog button:focus-visible,
+.rail-site:focus-visible,
+.rail-tool:focus-visible {
+  outline:0 !important;
+  outline-offset:0 !important;
+  box-shadow:inset 0 0 0 var(--atn-focus-width) var(--accent);
+}
+.rail-site.active:focus-visible {
+  box-shadow:inset 2px 0 0 var(--accent), inset 0 0 0 var(--atn-focus-width) var(--accent);
+}
+
+/* Dialog shell */
+dialog > form {
+  position:relative;
+}
+dialog > form > h2:first-child,
+dialog .dialog-title-row,
+dialog .pwa-dialog-head {
+  padding-right:calc(var(--atn-dialog-close-size) + var(--atn-space-2));
+}
+
+dialog h2 {
+  font-size:var(--atn-font-dialog-title);
+  line-height:1.3;
+}
+
+.dialog-close {
+  appearance:none;
+  -webkit-appearance:none;
+  position:absolute;
+  top:var(--atn-space-3);
+  right:var(--atn-space-3);
+  z-index:20;
+  width:var(--atn-dialog-close-size);
+  height:var(--atn-dialog-close-size);
+  min-width:var(--atn-dialog-close-size);
+  min-height:var(--atn-dialog-close-size);
+  display:grid;
+  place-items:center;
+  padding:0;
+  border:0;
+  border-radius:var(--atn-control-radius);
+  background:transparent;
+  color:var(--text);
+  cursor:pointer;
+}
+.dialog-close:hover { background:var(--hover); }
+.dialog-close:focus-visible {
+  outline:0;
+  box-shadow:inset 0 0 0 var(--atn-focus-width) var(--accent);
+}
+.dialog-close svg {
+  width:var(--atn-icon-size);
+  height:var(--atn-icon-size);
+  fill:none;
+  stroke:currentColor;
+  stroke-width:var(--atn-icon-stroke);
+  stroke-linecap:round;
+}
+
+/* A close-only footer competes with Save/OK muscle memory. */
+.dialog-close-only { display:none !important; }
+.search-footer #search-close { display:none !important; }
+.search-box-row {
+  margin-right:calc(var(--atn-dialog-close-size) + var(--atn-space-2));
+}
+
+/* Form action rhythm. */
+dialog form > .settings-actions,
+dialog form > .dialog-actions {
+  margin-top:var(--atn-space-3);
+}
+dialog form > .settings-actions + .settings-actions {
+  margin-top:var(--atn-space-2);
+}
+dialog .settings-actions.two-col {
+  column-gap:var(--atn-control-gap);
+  row-gap:var(--atn-control-gap);
+}
+#group-form .settings-actions button,
+#template-form .settings-actions button {
+  min-height:36px;
+}
+#template-form > .settings-actions:last-of-type {
+  margin-top:var(--atn-space-3);
+}
+
+/* Pointer drag feedback. The proxy is intentionally to the RIGHT of the
+ * pointer and vertically centered, so it never hides the exact drop target. */
+.atn-drag-proxy {
+  position:fixed;
+  z-index:2147483646;
+  width:42px;
+  height:42px;
+  display:grid;
+  place-items:center;
+  padding:6px;
+  border:1px solid var(--border);
+  border-radius:10px;
+  background:color-mix(in srgb,var(--panel) 92%,var(--text) 8%);
+  box-shadow:0 8px 24px rgba(0,0,0,.36), inset 0 0 0 1px color-mix(in srgb,var(--accent) 32%,transparent);
+  pointer-events:none;
+  transform:translate(16px,-50%) scale(1.04);
+  transform-origin:center;
+  opacity:.96;
+  will-change:left,top;
+}
+.atn-drag-proxy > img {
+  width:25px;
+  height:25px;
+  object-fit:contain;
+  border-radius:6px;
+}
+.atn-drag-proxy .template-stack {
+  transform:scale(1.05);
+}
+
+@media (max-width:360px) {
+  dialog .settings-actions.two-col {
+    grid-template-columns:1fr;
+  }
+}

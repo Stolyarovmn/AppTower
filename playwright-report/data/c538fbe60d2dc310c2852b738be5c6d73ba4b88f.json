@@ -1,0 +1,31 @@
+{
+  "capturedAt": "2026-09-06T21:27:21.066Z",
+  "chromiumVersion": "140.0.7339.16",
+  "startup": {
+    "samples": 5,
+    "minMs": 132.55,
+    "medianMs": 148.44,
+    "p95Ms": 197.73,
+    "maxMs": 197.73
+  },
+  "searchDialog": {
+    "samples": 7,
+    "minMs": 44.62,
+    "medianMs": 52.77,
+    "p95Ms": 92.01,
+    "maxMs": 92.01
+  },
+  "addDialogMs": 62.1,
+  "idleOneSecond": {
+    "taskDurationMs": 6.341,
+    "scriptDurationMs": 0.132
+  },
+  "heap": {
+    "usedMiB": 6.705,
+    "totalMiB": 19.281
+  },
+  "iframeCount": 4,
+  "visibleIframeCount": 0,
+  "longTaskCount": 0,
+  "longestLongTaskMs": 0
+}

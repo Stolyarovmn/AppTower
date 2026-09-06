@@ -46,8 +46,12 @@
           <div class="pane-toolbar">
             <button class="pane-select" data-action="activate" title="Активная область"><span class="dot"></span></button>
             <input class="url-input" data-role="url" spellcheck="false" aria-label="URL верхней области">
-            <button class="go" data-action="go" title="Открыть URL">↵</button>
-            <button class="reload" data-action="reload" title="Обновить">⟳</button>
+            <button class="go" data-action="go" title="Открыть URL" aria-label="Открыть URL">
+              <svg class="pane-action-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11M11 6l4 4-4 4"/></svg>
+            </button>
+            <button class="reload" data-action="reload" title="Обновить" aria-label="Обновить">
+              <svg class="pane-action-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M15.5 7.2A6 6 0 1 0 16 12"/><path d="M12.5 4.5h3.5V8"/></svg>
+            </button>
             <button class="mode-button" data-action="mode" title="Режим отображения">A</button>
             <button class="pwa-button hidden" data-action="pwa" title="Web App Manifest" aria-label="Веб-приложение">
               <svg viewBox="0 0 20 20" aria-hidden="true">
@@ -61,8 +65,13 @@
                 <path d="M10 6.2v4.4M7.8 8.4h4.4"></path>
               </svg>
             </button>
-            <button class="external" data-action="external" title="Открыть в обычной вкладке">↗</button>
-            <button class="focus" data-action="focus" title="Развернуть эту область">□</button>
+            <button class="external" data-action="external" title="Открыть в обычной вкладке" aria-label="Открыть в обычной вкладке">
+              <svg class="pane-action-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M9 5H5.5A1.5 1.5 0 0 0 4 6.5v8A1.5 1.5 0 0 0 5.5 16h8a1.5 1.5 0 0 0 1.5-1.5V11"/><path d="M11 4h5v5M10 10l6-6"/></svg>
+            </button>
+            <button class="focus hidden" data-action="focus" title="Развернуть эту область" aria-label="Развернуть эту область" aria-pressed="false">
+              <svg class="pane-action-icon focus-expand-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M8 4H4v4M12 4h4v4M16 12v4h-4M8 16H4v-4"/></svg>
+              <svg class="pane-action-icon focus-restore-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5h8v8M13 15H5V7"/></svg>
+            </button>
           </div>
           <div class="frame-wrap">
             <iframe name="app-tower-pane-top" data-role="frame" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; camera; clipboard-write; encrypted-media; fullscreen; gyroscope; microphone; picture-in-picture; web-share" allowfullscreen></iframe>
@@ -111,8 +120,12 @@
           <div class="pane-toolbar">
             <button class="pane-select" data-action="activate" title="Активная область"><span class="dot"></span></button>
             <input class="url-input" data-role="url" spellcheck="false" aria-label="URL нижней области">
-            <button class="go" data-action="go" title="Открыть URL">↵</button>
-            <button class="reload" data-action="reload" title="Обновить">⟳</button>
+            <button class="go" data-action="go" title="Открыть URL" aria-label="Открыть URL">
+              <svg class="pane-action-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11M11 6l4 4-4 4"/></svg>
+            </button>
+            <button class="reload" data-action="reload" title="Обновить" aria-label="Обновить">
+              <svg class="pane-action-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M15.5 7.2A6 6 0 1 0 16 12"/><path d="M12.5 4.5h3.5V8"/></svg>
+            </button>
             <button class="mode-button" data-action="mode" title="Режим отображения">A</button>
             <button class="pwa-button hidden" data-action="pwa" title="Web App Manifest" aria-label="Веб-приложение">
               <svg viewBox="0 0 20 20" aria-hidden="true">
@@ -126,8 +139,13 @@
                 <path d="M10 6.2v4.4M7.8 8.4h4.4"></path>
               </svg>
             </button>
-            <button class="external" data-action="external" title="Открыть в обычной вкладке">↗</button>
-            <button class="focus" data-action="focus" title="Развернуть эту область">□</button>
+            <button class="external" data-action="external" title="Открыть в обычной вкладке" aria-label="Открыть в обычной вкладке">
+              <svg class="pane-action-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M9 5H5.5A1.5 1.5 0 0 0 4 6.5v8A1.5 1.5 0 0 0 5.5 16h8a1.5 1.5 0 0 0 1.5-1.5V11"/><path d="M11 4h5v5M10 10l6-6"/></svg>
+            </button>
+            <button class="focus hidden" data-action="focus" title="Развернуть эту область" aria-label="Развернуть эту область" aria-pressed="false">
+              <svg class="pane-action-icon focus-expand-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M8 4H4v4M12 4h4v4M16 12v4h-4M8 16H4v-4"/></svg>
+              <svg class="pane-action-icon focus-restore-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5h8v8M13 15H5V7"/></svg>
+            </button>
           </div>
           <div class="frame-wrap">
             <iframe name="app-tower-pane-bottom" data-role="frame" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; camera; clipboard-write; encrypted-media; fullscreen; gyroscope; microphone; picture-in-picture; web-share" allowfullscreen></iframe>

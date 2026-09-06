@@ -48,6 +48,7 @@ async function openPanel(context) {
   await page.goto(extensionUrl("sidepanel/sidepanel.html"));
   await page.waitForLoadState("domcontentloaded");
   await expect(page.locator("#panel-sites")).toBeAttached();
+  await expect(page.locator("html")).toHaveAttribute("data-panel-ready","1");
   return page;
 }
 
@@ -104,10 +105,15 @@ test("ATN-E2E-021 drag proxy is unique and stays to the right of the pointer", a
 });
 
 test("ATN-E2E-022 pane focus control only appears when it can change the layout", async () => {
+  const {server,baseUrl} = await startFixtureServer();
   const profile = fs.mkdtempSync(path.join(os.tmpdir(),"app-tower-focus-control-"));
   const context = await launch(profile);
   try {
+    const web = context.pages()[0] || await context.newPage();
+    await web.goto(`${baseUrl}/host`);
     const panel = await openPanel(context);
+    await addCustomSite(panel,"Focus layout",`${baseUrl}/focus`,{fromHome:true});
+
     const topFocus = panel.locator('.pane[data-pane="top"] [data-action="focus"]');
     await expect(topFocus).toBeHidden();
 
@@ -121,6 +127,7 @@ test("ATN-E2E-022 pane focus control only appears when it can change the layout"
     await expect(panel.locator("#workspace")).toHaveAttribute("data-layout","split");
   } finally {
     await context.close().catch(()=>{});
+    await new Promise(resolve => server.close(resolve));
     fs.rmSync(profile,{recursive:true,force:true});
   }
 });
@@ -155,3 +162,25 @@ test("ATN-E2E-023 empty group context menu never starts with a separator", async
     fs.rmSync(profile,{recursive:true,force:true});
   }
 });
+
+test("ATN-E2E-024 pane toolbar actions use SVG icons instead of text glyphs", async () => {
+  const profile = fs.mkdtempSync(path.join(os.tmpdir(),"app-tower-pane-icons-"));
+  const context = await launch(profile);
+  try {
+    const panel = await openPanel(context);
+    for (const action of ["go","reload","external","focus"]) {
+      const button = panel.locator(`.pane[data-pane="top"] [data-action="${action}"]`);
+      await expect(button.locator("svg").first()).toBeAttached();
+      const text = await button.evaluate(element => [...element.childNodes]
+        .filter(node => node.nodeType === Node.TEXT_NODE)
+        .map(node => node.textContent)
+        .join("")
+        .trim());
+      expect(text).toBe("");
+    }
+  } finally {
+    await context.close().catch(()=>{});
+    fs.rmSync(profile,{recursive:true,force:true});
+  }
+});
+

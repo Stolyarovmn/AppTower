@@ -38,6 +38,7 @@ async function openPanel(context) {
   await page.goto(extensionUrl("sidepanel/sidepanel.html"));
   await page.waitForLoadState("domcontentloaded");
   await expect(page.locator("#panel-sites")).toBeAttached();
+  await expect(page.locator("html")).toHaveAttribute("data-panel-ready","1");
   return page;
 }
 

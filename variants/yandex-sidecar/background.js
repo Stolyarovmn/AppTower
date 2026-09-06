@@ -5,6 +5,7 @@ import { MEDIA_STATE_KEY, normalizeMediaState } from "./shared/media-contract.js
 import { createBackgroundStateCoordinator } from "./shared/background-state-coordinator.js";
 import { createPanelStateStore } from "./shared/panel-state-store.js";
 import { createPanelLifecycleController } from "./shared/panel-lifecycle-controller.js";
+import { collapseTargetForUrl } from "./shared/collapse-handoff.js";
 import {
   SHORTCUT_SITE, SHORTCUT_GROUP, SHORTCUT_TEMPLATE,
   normalizeShortcut, normalizeShortcutList, firstLaunchableSite,
@@ -791,6 +792,40 @@ async function bestWebTabForWindow(windowId) {
   return null;
 }
 
+
+async function prepareCollapsedRail(windowId) {
+  const [tab] = await chrome.tabs.query({active:true,windowId});
+  if (!Number.isInteger(tab?.id)) {
+    throw new Error("Не удалось определить активную вкладку для сворачивания App Tower");
+  }
+
+  const target = collapseTargetForUrl(
+    tab.url,
+    chrome.runtime.getURL("newtab/newtab.html")
+  );
+
+  if (target === "newtab") {
+    return {kind:"newtab",tabId:tab.id};
+  }
+
+  if (target !== "content") {
+    throw new Error("На служебной странице Edge нельзя свернуть App Tower в узкую панель. Перейдите на обычный сайт или новую вкладку App Tower.");
+  }
+
+  try {
+    const response = await chrome.tabs.sendMessage(tab.id, {
+      type:"ATN_SET_RAIL_VISIBLE",
+      visible:true,
+      reason:"collapse-handoff"
+    });
+    if (!response?.ok) throw new Error("rail did not acknowledge handoff");
+  } catch {
+    throw new Error("Компактная панель App Tower ещё не готова на этой странице. Дождитесь загрузки страницы и повторите сворачивание.");
+  }
+
+  return {kind:"content",tabId:tab.id};
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!message || typeof message !== "object") return;
 
@@ -957,9 +992,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     (async () => {
       try {
         if (!Number.isInteger(windowId)) throw new Error("Invalid windowId");
+        const handoff = await prepareCollapsedRail(windowId);
         await closeTowerContainer(windowId);
         await markPanelClosed(windowId,{collapsed:true});
-        sendResponse({ok:true});
+        sendResponse({ok:true,handoff:handoff.kind});
       } catch (error) {
         sendResponse({ok:false,error:String(error?.message || error)});
       }

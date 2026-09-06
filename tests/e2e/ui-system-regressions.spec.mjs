@@ -49,6 +49,7 @@ async function openPanel(context) {
   await page.goto(extensionUrl("sidepanel/sidepanel.html"));
   await page.waitForLoadState("domcontentloaded");
   await expect(page.locator("#panel-sites")).toBeAttached();
+  await expect(page.locator("html")).toHaveAttribute("data-panel-ready","1");
   return page;
 }
 
@@ -78,13 +79,28 @@ test("ATN-E2E-017 drag shows a pointer-following shortcut proxy before drop", as
 
     const sites = panel.locator("#panel-sites .rail-site");
     await expect(sites).toHaveCount(2);
-    const source = sites.nth(0);
-    const target = sites.nth(1);
-    const sourceId = await source.getAttribute("data-shortcut-id");
-    const from = await source.boundingBox();
-    const to = await target.boundingBox();
-    if (!from || !to) throw new Error("rail shortcut geometry unavailable");
+    let geometry = null;
+    for (let attempt=0; attempt<30 && !geometry; attempt++) {
+      geometry = await sites.evaluateAll(nodes => {
+        if (nodes.length !== 2) return null;
+        const [source,target] = nodes;
+        const from = source.getBoundingClientRect();
+        const to = target.getBoundingClientRect();
+        if (from.width <= 0 || from.height <= 0 || to.width <= 0 || to.height <= 0) return null;
+        return {
+          sourceId:source.dataset.shortcutId || "",
+          targetId:target.dataset.shortcutId || "",
+          from:{x:from.x,y:from.y,width:from.width,height:from.height},
+          to:{x:to.x,y:to.y,width:to.width,height:to.height}
+        };
+      });
+      if (!geometry) await panel.waitForTimeout(50);
+    }
+    if (!geometry) throw new Error("rail shortcut geometry unavailable");
 
+    const {sourceId,targetId,from,to} = geometry;
+    const source = panel.locator(`#panel-sites .rail-site[data-shortcut-id="${sourceId}"]`);
+    const target = panel.locator(`#panel-sites .rail-site[data-shortcut-id="${targetId}"]`);
     const startX = from.x + from.width/2;
     const startY = from.y + from.height/2;
     await panel.mouse.move(startX,startY);

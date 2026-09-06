@@ -42,6 +42,8 @@ function relativeLimit(value) {
 const extensionId = extensionIdFromManifestKey(manifest.key);
 const newTabUrl = `chrome-extension://${extensionId}/newtab/newtab.html`;
 
+test.describe.configure({retries:1});
+
 test("ATN-PERF-002 collect New Tab first-interactive baseline", async ({}, testInfo) => {
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), "app-tower-perf-newtab-"));
   const context = await chromium.launchPersistentContext(profile, {

@@ -18,10 +18,10 @@ export function createPanelStateStore({
 
   async function open(windowId, {authoritative = false} = {}) {
     return coordinator.panel(windowId, "open", async () => {
+      let collapsedChanged = false;
       if (authoritative) {
         closedAt.delete(windowId);
-        const collapsedChanged = collapsedWindows.delete(windowId);
-        if (collapsedChanged) await persistCollapsed();
+        collapsedChanged = collapsedWindows.delete(windowId);
       } else if (collapsedWindows.has(windowId)) {
         return {changed:false, reason:"collapsed"};
       }
@@ -29,8 +29,14 @@ export function createPanelStateStore({
       await cancelPendingDisconnect(windowId);
       const changed = !openWindows.has(windowId);
       openWindows.add(windowId);
-      if (changed) await persistOpen();
+
+      // Visibility is the user-facing state and must not wait for session
+      // persistence. In Edge a slow storage write here used to leave the
+      // injected rail visible beside an already-open native Side Panel.
       await broadcastRail(windowId, false);
+
+      if (collapsedChanged) await persistCollapsed();
+      if (changed) await persistOpen();
       return {changed, open:true, collapsed:false};
     });
   }
@@ -45,10 +51,15 @@ export function createPanelStateStore({
         : collapsedWindows.delete(windowId);
 
       if (collapsed) collapsedWindows.add(windowId);
+
+      // Handoff to the collapsed rail before any persistence/cleanup awaits.
+      // The native Side Panel may already be gone by the time this mutation is
+      // processed; delaying this broadcast makes Collapse look like Close.
+      await broadcastRail(windowId, true);
+
       await clearWindowResources(windowId);
       if (openChanged) await persistOpen();
       if (collapsedChanged) await persistCollapsed();
-      await broadcastRail(windowId, true);
       return {changed:openChanged || collapsedChanged, open:false, collapsed};
     });
   }
