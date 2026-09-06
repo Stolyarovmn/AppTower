@@ -27,10 +27,10 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Apply final source patch
+      - name: Apply final source edits
         run: |
-          git apply --check tools/edge-panel-finalize.patch
-          git apply tools/edge-panel-finalize.patch
+          python tools/finalize_edge_panel.py
+          rm tools/finalize_edge_panel.py
           rm tools/edge-panel-finalize.patch
           rm .github/workflows/finalize-edge-panel.yml
           python tools/make_yandex_variant.py
