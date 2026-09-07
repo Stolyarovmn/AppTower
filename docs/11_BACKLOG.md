@@ -16,15 +16,17 @@ Last competitor scan: 2026-09-07.
 
 **No TASK is ACTIVE.** TASK 2 is complete. This research process does not activate implementation work; only the AppTower Task Executor may move another TASK to `ACTIVE`.
 
-The current regression PR #2 head observed during this scan is `3f9f709b7db8ff11a6d5c0e56ecde3b8c7409dbc`. Its `validate` workflow run `34097191379` completed with conclusion **`success`**. The current regression head is therefore green; READY TASKS are not globally blocked by CI, while TASKS with unresolved functional dependencies remain `BLOCKED`.
+The current regression PR #2 head observed during this scan is `81d0ba7f42c6b6cfb1733d082192b4bc2b88b11e`. Its `validate` workflow run `34104575403` completed with conclusion **`success`**. The current regression head is therefore green; READY TASKS are not globally blocked by CI, while TASKS with unresolved functional dependencies remain `BLOCKED`.
 
 ## Fresh research notes
 
+- Drowzy 1.5.0 is a current MIT-licensed MV3 tab suspender updated in September 2026. Its manifest keeps `<all_urls>` optional rather than required, has no static all-page content script, and uses `tabs`, `storage`, `alarms`, `contextMenus`, `scripting`, `sidePanel`, and `favicon`. Its documented sleep model uses Chrome-native `tabs.discard()` and protects active/audible/pinned/whitelisted tabs plus unsaved-form cases. This is strong permission/privacy evidence for TASK 3: AppTower should keep pane sleep guard logic scoped and capability-driven, and should not add broad host access just to detect blockers. It also reinforces TASK 10's permission-budget direction. No code is copied.
+- TabZen provides useful independent product evidence for per-domain/per-group sleep timers, battery-aware aggressiveness, memory-pressure triggers, form-input protection, schedules and both native-discard and placeholder suspension strategies. However the repository contains no LICENSE file and GitHub reports no detected license even though the README says "MIT"; its manifest also requires `<all_urls>`, `system.memory`, notifications and a static all-page content script. Therefore TabZen is treated as behavior-only/clean-room evidence, not as a code source. It strengthens existing IDEA "Per-site sleep policy presets" and IDEA "Resource-pressure-aware emergency eviction", but does not change their scores because maturity/adoption remains low and the permission surface is broader than AppTower should accept by default.
 - TabTOC 1.2.0 was updated in the Chrome Web Store on 2026-09-04 and explicitly exposes three workspace surfaces: floating overlay on ordinary pages, native Side Panel, and a New Tab workspace. Its product site states that the native Side Panel remains available on `chrome://` pages where an injected overlay cannot operate. Nest 1.5.3, updated 2026-09-03, independently uses the same broad pattern: injected overlay plus persistent native Side Panel/full-page surfaces, and explicitly notes that the Side Panel works on Chrome-owned pages where injection cannot. This directly matches AppTower's known start/new-tab availability requirement and motivates TASK 17: a clean-room restricted-page control-surface fallback using AppTower's existing native Side Panel instead of trying to inject the rail into browser-owned pages.
 - TabTOC's website describes the product as free/open source, but this scan did not locate a verifiable source repository or source license for the current extension build. Nest source/license was also not verified. Therefore neither implementation is a code source for AppTower; only the independently observable multi-surface behavior is used as evidence. TASK 17 is intentionally designed as an independent implementation and does not require new broad host permissions or `chrome_url_overrides`.
 - Microsoft Edge documentation updated in July 2026 explicitly marks the PWA `edge_side_panel` integration as **deprecated** and says it will soon no longer be supported. AppTower must not make PWA-sidebar metadata a required compatibility path. PWA discovery may remain useful for ordinary installability/app metadata, but panel compatibility must stay capability-driven and fall back to AppTower's own Embedded/Mobile/Real Page surfaces. This strengthens TASK 9 and adds a guardrail to TASK 12; it does not justify a separate TASK or a score change.
 - Tab Pilot / Tab Radar is a current MIT-licensed side-panel tab command center with fuzzy search, command palette, grouping, sessions/recently-closed and activity features. Its manifest currently requests `tabs`, `tabGroups`, `windows`, `sidePanel`, `storage`, `sessions`, `history`, `activeTab`, `scripting`, `nativeMessaging`, `idle`, `alarms`, `<all_urls>`, and an all-page content script. This is useful competitor evidence for Command Palette/search UX, but its broad permission/injection surface is an anti-pattern for AppTower's core and reinforces TASK 10 (permission budget) plus TASK 12 (context-scoped injection). No source code is needed or copied.
-- All TASK and IDEA scores were recalculated after these findings. Existing numeric scores did not change. TASK 17 enters at 86/100; at the 86 tie it ranks ahead of Command Palette because it removes a known unsupported-page/lifecycle gap and reduces duplicate-surface/routing risk.
+- All TASK and IDEA scores were recalculated after these findings. Existing numeric scores did not change.
 
 ## TASKS
 
@@ -77,7 +79,7 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 **Acceptance criteria:** dirty form/contenteditable and active media block auto-sleep; `Keep awake` persists without polling; blockers clear after submit/reset/pause/end; pane-scoped cleanup on navigation/removal; no broad permission.
 **Automated test plan:** dirty text/checkbox/contenteditable; playing/paused media; keep-awake restart; blocker cleanup; unchanged idle/max-live semantics for normal panes.
 **Dependencies:** embedded-frame bridge and resource lease/sleep path.
-**Sources/competitors:** Drowzy (MIT); QuickPanel Lite Mode/Keep Alive as behavior evidence only because QuickPanel is PolyForm Noncommercial.
+**Sources/competitors:** Drowzy 1.5.0 (MIT; native `tabs.discard()`, optional `<all_urls>`, no static all-page content script); QuickPanel Lite Mode/Keep Alive as behavior evidence only because QuickPanel is PolyForm Noncommercial; TabZen behavior-only because its repository licensing is incomplete/ambiguous despite an MIT statement in README.
 
 ### TASK 4 — Versioned persistence schema + append-only migrations — 88/100 — BLOCKED
 **Score:** 23+17+15+10+8+5+5+5 = **88**.
@@ -107,7 +109,7 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 **Acceptance criteria:** no recurring alarm with zero leases; next check is earliest meaningful deadline; create/touch/remove reschedules deterministically; current idle/max-live behavior is preserved; restart restores deadline.
 **Automated test plan:** zero/one/many lease scheduler; touch/remove; pane-isolation E2E; instrument service-worker wakeups before/after.
 **Dependencies:** performance baseline.
-**Sources/competitors:** AppTower implementation; MV3 event-driven guidance; QuickPanel behavior evidence. Tab Pilot's simultaneous `idle` + `alarms` activity model is not evidence of lower energy use and must not be treated as such.
+**Sources/competitors:** AppTower implementation; MV3 event-driven guidance; QuickPanel behavior evidence. Drowzy's documented fixed 60-second alarm is evidence of a common simple design, not evidence of lower idle energy. Tab Pilot's simultaneous `idle` + `alarms` activity model is also not evidence of lower energy use and must not be treated as such.
 
 ### TASK 7 — Event-based workspace snapshots + Undo — 84/100 — BLOCKED
 **Rationale:** recovery from destructive workspace/group/template mutations has high value without periodic background work.
@@ -137,7 +139,7 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 **Acceptance criteria:** reviewed required/optional/host sets per variant; fail on unreviewed addition or optional→required promotion; rationale per permission; generated fallback has its own narrower budget; removals remain allowed.
 **Automated test plan:** allowed/new required/new optional/new host/required↔optional/fallback-drift fixtures; package validation runs the same gate.
 **Dependencies:** current manifest/variant inventory.
-**Sources/competitors:** Benjamin410/chrome-tab-manager (ISC); Chrome Web Store minimum-permission guidance; Tab Pilot/Tab Radar (MIT) as fresh evidence of how a feature-rich side-panel manager can accumulate `history`, `nativeMessaging`, `idle`, `alarms`, `<all_urls>` and all-page injection — a boundary AppTower should avoid unless separately justified.
+**Sources/competitors:** Benjamin410/chrome-tab-manager (ISC); Chrome Web Store minimum-permission guidance; Drowzy (MIT) as evidence for keeping `<all_urls>` optional when only specific blocker checks need host access; Tab Pilot/Tab Radar (MIT) as fresh evidence of how a feature-rich side-panel manager can accumulate `history`, `nativeMessaging`, `idle`, `alarms`, `<all_urls>` and all-page injection — a boundary AppTower should avoid unless separately justified.
 
 ### TASK 11 — Duplicate shortcut detection — 80/100 — READY
 **Rationale:** prevents rail/workspace clutter with low implementation and permission risk.
@@ -152,7 +154,7 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 **Acceptance criteria:** inventory rail/pane/PWA roles; pane bridge only in AppTower-owned pane contexts; PWA discovery on-demand/bounded to inspected page; sensitive contexts are not broadened; Add Current Page/PWA metadata detection still works; no new permission; no required dependency on `edge_side_panel`; measure helper initializations before/after.
 **Automated test plan:** static manifest assertion; ordinary page has no pane/PWA helper initialization; top/bottom pane isolation; on-demand PWA fixture; auth/payment fixtures; restart/reconnect/fallback; capability-negative Edge PWA-sidebar fixture; before/after initialization count.
 **Dependencies:** current content-script inventory; TASK 1. Coordinate with TASK 9.
-**Sources/competitors:** Side Link Preview (MIT) behavior/privacy evidence; Chrome `scripting` API docs; Microsoft Edge July 2026 PWA-sidebar deprecation. Tab Pilot's `<all_urls>` plus all-page content script is a current anti-pattern comparison, not an implementation source.
+**Sources/competitors:** Side Link Preview (MIT) behavior/privacy evidence; Chrome `scripting` API docs; Microsoft Edge July 2026 PWA-sidebar deprecation. Drowzy's absence of a static all-page content script is additional privacy-surface evidence; Tab Pilot's `<all_urls>` plus all-page content script is a current anti-pattern comparison, not an implementation source.
 
 ### TASK 13 — Restorable split layout metadata — 79/100 — BLOCKED
 **Score:** 21+12+14+12+7+5+4+4 = **79**.
@@ -181,9 +183,9 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 | Rank | Score | IDEA | Evidence / source | Promotion condition / risk |
 |---:|---:|---|---|---|
 | 1 | 74 | Anchored Real Page/sidecar placement: remember monitor/window bounds, restore extension-owned sidecar geometry after restart and optionally reuse an existing sidecar | Tab Anchor (MIT), QuickPanel; Split Workspace/splitescreen store behavior | Promote after Real Page lifecycle is stable; normalize display changes; never reroute normal browsing globally; store-only source/license remains unverified where noted. |
-| 2 | 74 | Per-site sleep policy presets: default/aggressive/never sleep | Drowzy (MIT) | Promote after TASK 3 + measurable resource baseline. |
+| 2 | 74 | Per-site sleep policy presets: default/aggressive/never sleep | Drowzy (MIT); TabZen behavior-only due incomplete license declaration | Promote after TASK 3 + measurable resource baseline; do not inherit TabZen's required `<all_urls>`/all-page script. |
 | 3 | 74 | Panel navigation escape policy | QuickPanel | Promote after navigation telemetry proves accidental pane hijacking; clean-room only because QuickPanel is PolyForm Noncommercial. |
-| 4 | 73 | Resource-pressure-aware emergency eviction using coarse system-memory pressure, LRU and pane safety guards | TabRest (MIT) | Promote after TASK 3 + TASK 6 baseline; justify `system.memory`; no per-pane heap polling/broad host access. |
+| 4 | 73 | Resource-pressure-aware emergency eviction using coarse system-memory pressure, LRU and pane safety guards | TabRest (MIT); TabZen behavior-only | Promote after TASK 3 + TASK 6 baseline; justify `system.memory`; no per-pane heap polling/broad host access. |
 | 5 | 73 | Favorites/pinned mini-row independent of workspace ordering | ddSideBar (MIT), Lunma, TabTree, ThisPanel | Promote if rail overflow is recurring UX pain. |
 | 6 | 72 | Workspace/session import from other managers | VertiTab, Lunma, Tabwise | Promote after TASK 4 export/import schema; avoid mandatory history permission. |
 | 7 | 71 | Native browser Split View awareness/bridge | W3C WebExtensions split-tabs proposal; MDN; Chrome Web Store split-view behavior | Keep as IDEA until stable create/remove split-view APIs or a concrete coexistence regression. |
