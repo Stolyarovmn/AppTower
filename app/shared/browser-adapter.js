@@ -1,19 +1,14 @@
 const FALLBACK_WINDOW_KEY = "atnTowerFallbackWindowsV1";
-const DISABLED_SIDE_PANEL_TABS_KEY = "atnDisabledSidePanelTabsV1";
+const NATIVE_SIDE_PANEL_DISABLED_KEY = "atnNativeSidePanelDisabledV2";
+const LEGACY_DISABLED_SIDE_PANEL_TABS_KEY = "atnDisabledSidePanelTabsV1";
 
 // Native chrome.sidePanel pages do not get our sidecar hostWindowId query
-// parameter. sidepanel.js historically did Number(params.get("hostWindowId")),
-// and Number(null) is 0, so a native panel incorrectly bound itself to window
-// 0 instead of chrome.windows.getCurrent(). Put an explicitly non-numeric
-// sentinel into native side-panel URLs before the importing module evaluates.
-// Sidecar URLs already carry a real numeric hostWindowId and are untouched.
+// parameter. Put an explicitly non-numeric sentinel into native side-panel
+// URLs so sidepanel.js resolves the real current browser window.
 if (typeof document !== "undefined" && typeof history !== "undefined") {
   try {
     const url = new URL(location.href);
-    if (
-      url.pathname.endsWith("/sidepanel/sidepanel.html") &&
-      !url.searchParams.has("hostWindowId")
-    ) {
+    if (url.pathname.endsWith("/sidepanel/sidepanel.html") && !url.searchParams.has("hostWindowId")) {
       url.searchParams.set("hostWindowId", "current");
       history.replaceState(history.state, "", url);
     }
@@ -64,7 +59,6 @@ function installFloatingSurfaceGuard(documentRef) {
     const clamp = () => {
       frame = 0;
       if (!menu.isConnected || menu.classList.contains("hidden")) return;
-
       const style = view.getComputedStyle(documentRef.documentElement);
       const parsedGutter = Number.parseFloat(style.getPropertyValue("--atn-surface-gutter"));
       const gutter = Number.isFinite(parsedGutter) ? Math.max(0,parsedGutter) : 8;
@@ -73,19 +67,14 @@ function installFloatingSurfaceGuard(documentRef) {
       const maxTop = Math.max(gutter, view.innerHeight - rect.height - gutter);
       const left = Math.max(gutter, Math.min(rect.left,maxLeft));
       const top = Math.max(gutter, Math.min(rect.top,maxTop));
-
       if (Math.abs(rect.left-left) > .5) menu.style.left = `${Math.round(left)}px`;
       if (Math.abs(rect.top-top) > .5) menu.style.top = `${Math.round(top)}px`;
     };
     const schedule = () => {
       if (frame) return;
-      if (typeof view.requestAnimationFrame === "function") {
-        frame = view.requestAnimationFrame(clamp);
-      } else {
-        view.setTimeout(clamp,0);
-      }
+      if (typeof view.requestAnimationFrame === "function") frame = view.requestAnimationFrame(clamp);
+      else view.setTimeout(clamp,0);
     };
-
     const Observer = view.MutationObserver;
     if (Observer) {
       const observer = new Observer(schedule);
@@ -94,83 +83,8 @@ function installFloatingSurfaceGuard(documentRef) {
     view.addEventListener?.("resize",schedule,{passive:true});
     return true;
   };
-
   if (install()) return;
-  if (documentRef?.readyState === "loading") {
-    documentRef.addEventListener?.("DOMContentLoaded",install,{once:true});
-  }
-}
-
-function installShortcutDragProxy(documentRef) {
-  const install = () => {
-    const view = documentRef?.defaultView;
-    if (!view || documentRef.documentElement.dataset.atnDragProxyGuard === "1") return false;
-    documentRef.documentElement.dataset.atnDragProxyGuard = "1";
-
-    let proxy = null;
-    let source = null;
-
-    const removeProxy = () => {
-      proxy?.remove();
-      proxy = null;
-      source = null;
-    };
-
-    const visualClone = button => {
-      const first = button?.firstElementChild;
-      if (!first) return null;
-      const clone = first.cloneNode(true);
-      clone.removeAttribute?.("id");
-      clone.querySelectorAll?.("[id]").forEach(node => node.removeAttribute("id"));
-      return clone;
-    };
-
-    const ensureProxy = (button,event) => {
-      if (proxy && source === button) return proxy;
-      removeProxy();
-      const clone = visualClone(button);
-      if (!clone) return null;
-
-      proxy = documentRef.createElement("div");
-      proxy.className = "atn-drag-proxy";
-      proxy.dataset.shortcutId = button.dataset.shortcutId || "";
-      proxy.setAttribute("aria-hidden","true");
-      proxy.append(clone);
-      documentRef.body.append(proxy);
-      source = button;
-      moveProxy(event);
-      return proxy;
-    };
-
-    const moveProxy = event => {
-      if (!proxy) return;
-      proxy.style.left = `${Math.round(event.clientX)}px`;
-      proxy.style.top = `${Math.round(event.clientY)}px`;
-    };
-
-    // sidepanel.js owns the drag state and marks the source with .dragging.
-    // This shared layer only mirrors that already-authoritative state into a
-    // pointer-following visual proxy. It never decides whether a drag started
-    // or where it will be dropped.
-    view.addEventListener("pointermove",event => {
-      const button = documentRef.querySelector?.(".rail-site.dragging[data-shortcut-id]");
-      if (!button) {
-        if (proxy) removeProxy();
-        return;
-      }
-      ensureProxy(button,event);
-      moveProxy(event);
-    },{passive:true});
-    view.addEventListener("pointerup",removeProxy,{passive:true});
-    view.addEventListener("pointercancel",removeProxy,{passive:true});
-    view.addEventListener("blur",removeProxy);
-    return true;
-  };
-
-  if (install()) return;
-  if (documentRef?.readyState === "loading") {
-    documentRef.addEventListener?.("DOMContentLoaded",install,{once:true});
-  }
+  if (documentRef?.readyState === "loading") documentRef.addEventListener?.("DOMContentLoaded",install,{once:true});
 }
 
 export function applyBrowserSkin(documentRef = document) {
@@ -181,36 +95,38 @@ export function applyBrowserSkin(documentRef = document) {
   return browser;
 }
 
-async function disabledSidePanelTabIds() {
-  const data = await chrome.storage.session.get(DISABLED_SIDE_PANEL_TABS_KEY);
-  return new Set((data[DISABLED_SIDE_PANEL_TABS_KEY] || []).map(Number).filter(Number.isInteger));
+async function nativePanelWasDisabled() {
+  try {
+    const data = await chrome.storage.session.get(NATIVE_SIDE_PANEL_DISABLED_KEY);
+    return data[NATIVE_SIDE_PANEL_DISABLED_KEY] === true;
+  } catch {
+    return false;
+  }
 }
 
-export async function openTowerContainer(windowId, {intent=null, tabId=null} = {}) {
+async function setNativePanelDisabled(value) {
+  try {
+    if (value) await chrome.storage.session.set({[NATIVE_SIDE_PANEL_DISABLED_KEY]:true});
+    else await chrome.storage.session.remove(NATIVE_SIDE_PANEL_DISABLED_KEY);
+  } catch {}
+}
+
+export async function openTowerContainer(windowId, {intent=null} = {}) {
   const numericWindowId = Number(windowId);
-  const numericTabId = Number(tabId);
   if (sidePanelPermissionGrantedByManifest() && chrome.sidePanel?.open && Number.isInteger(numericWindowId)) {
-    // Normal opens must not call setOptions(enabled:true) every time: Edge can
-    // recreate an already-visible Side Panel document when per-tab options are
-    // rewritten. Re-enable only a tab that App Tower itself disabled as the
-    // compatibility collapse fallback.
-    let mustRestoreTab = false;
-    if (Number.isInteger(numericTabId) && chrome.sidePanel?.setOptions) {
-      try {
-        mustRestoreTab = (await disabledSidePanelTabIds()).has(numericTabId);
-      } catch {}
-    }
-
-    if (mustRestoreTab) {
-      // Keep open() in the original user-gesture chain: start both browser API
-      // calls before awaiting either promise.
-      const enablePromise = chrome.sidePanel.setOptions({tabId:numericTabId,enabled:true});
-      const openPromise = chrome.sidePanel.open({tabId:numericTabId});
+    // Never use tabId here. A tab-scoped open makes Edge swap/recreate the
+    // Side Panel document when the active browser tab changes, which reloads
+    // every iframe inside App Tower. The panel is a browser-window workspace.
+    if (chrome.sidePanel?.setOptions && await nativePanelWasDisabled()) {
+      // Keep both calls in the original user-gesture turn. The global enabled
+      // flag is only a compatibility close fallback; it does not create any
+      // per-tab Side Panel state.
+      const enablePromise = chrome.sidePanel.setOptions({enabled:true});
+      const openPromise = chrome.sidePanel.open({windowId:numericWindowId});
       await Promise.all([enablePromise,openPromise]);
-      forgetDisabledSidePanelTab(numericTabId).catch(()=>{});
-      return {kind:"sidePanel", windowId:numericWindowId, tabId:numericTabId, restored:true};
+      await setNativePanelDisabled(false);
+      return {kind:"sidePanel", windowId:numericWindowId, restored:true};
     }
-
     await chrome.sidePanel.open({windowId:numericWindowId});
     return {kind:"sidePanel", windowId:numericWindowId};
   }
@@ -251,7 +167,6 @@ export async function openTowerContainer(windowId, {intent=null, tabId=null} = {
   if (Number.isInteger(top)) createData.top = top;
   const win = await chrome.windows.create(createData);
   if (!Number.isInteger(win?.id)) throw new Error("Could not create App Tower sidecar");
-
   if (hostWindowId != null) {
     raw[hostWindowId] = win.id;
     await chrome.storage.session.set({[FALLBACK_WINDOW_KEY]:raw});
@@ -259,45 +174,22 @@ export async function openTowerContainer(windowId, {intent=null, tabId=null} = {
   return {kind:"sidecar",windowId:win.id,reused:false};
 }
 
-async function rememberDisabledSidePanelTab(tabId) {
-  const ids = await disabledSidePanelTabIds();
-  ids.add(Number(tabId));
-  await chrome.storage.session.set({[DISABLED_SIDE_PANEL_TABS_KEY]:[...ids]});
-}
-
-async function forgetDisabledSidePanelTab(tabId) {
-  const ids = await disabledSidePanelTabIds();
-  if (!ids.delete(Number(tabId))) return;
-  await chrome.storage.session.set({[DISABLED_SIDE_PANEL_TABS_KEY]:[...ids]});
-}
-
-async function disableNativeSidePanelForActiveTab(windowId) {
-  if (!chrome.sidePanel?.setOptions) return null;
-  const [tab] = await chrome.tabs.query({active:true,windowId});
-  if (!Number.isInteger(tab?.id)) return null;
-  await chrome.sidePanel.setOptions({tabId:tab.id,enabled:false});
-  await rememberDisabledSidePanelTab(tab.id);
-  return tab.id;
-}
-
 export async function repairNativeSidePanelOptions() {
-  if (!sidePanelPermissionGrantedByManifest() || !chrome.sidePanel?.getOptions || !chrome.sidePanel?.setOptions) {
-    return {repaired:0};
-  }
+  if (!sidePanelPermissionGrantedByManifest() || !chrome.sidePanel?.setOptions) return {repaired:0};
+
+  // Old builds created tab-specific enabled/disabled overrides. Do not scan or
+  // rewrite tabs anymore: doing so is exactly what made Edge treat App Tower as
+  // tab-scoped. Those overrides disappear with the browser session. We only
+  // clear our legacy bookkeeping and restore the one global compatibility flag.
   let repaired=0;
-  let tabs=[];
-  try { tabs=await chrome.tabs.query({}); } catch { return {repaired}; }
-  for (const tab of tabs) {
-    if (!Number.isInteger(tab?.id)) continue;
+  if (await nativePanelWasDisabled()) {
     try {
-      const options=await chrome.sidePanel.getOptions({tabId:tab.id});
-      if (options?.enabled === false) {
-        await chrome.sidePanel.setOptions({tabId:tab.id,enabled:true});
-        repaired++;
-      }
+      await chrome.sidePanel.setOptions({enabled:true});
+      repaired=1;
     } catch {}
+    await setNativePanelDisabled(false);
   }
-  try { await chrome.storage.session.remove(DISABLED_SIDE_PANEL_TABS_KEY); } catch {}
+  try { await chrome.storage.session.remove(LEGACY_DISABLED_SIDE_PANEL_TABS_KEY); } catch {}
   return {repaired};
 }
 
@@ -306,9 +198,6 @@ export async function closeTowerContainer(windowId) {
   const native = sidePanelPermissionGrantedByManifest() && Number.isInteger(id);
 
   if (native) {
-    // Chrome 141+ exposes close(). Modern Edge builds may expose it too. Use
-    // the real close operation first; unlike the old v0.8.4 toggle workaround
-    // it cannot hide and immediately re-show the same panel.
     if (chrome.sidePanel?.close) {
       try {
         await chrome.sidePanel.close({windowId:id});
@@ -316,13 +205,17 @@ export async function closeTowerContainer(windowId) {
       } catch {}
     }
 
-    // Compatibility fallback for Edge builds where close() isn't implemented:
-    // disable the active tab and KEEP it disabled. The next explicit App Tower
-    // open re-enables exactly that tab rather than rewriting every open.
-    try {
-      const tabId=await disableNativeSidePanelForActiveTab(id);
-      if (Number.isInteger(tabId)) return {kind:"sidePanel",method:"tab-disable",tabId};
-    } catch {}
+    // Edge versions without sidePanel.close need a compatibility close. The
+    // old implementation disabled the active tab; reopening then became
+    // tab-scoped and caused iframe reloads on every tab switch. Disable only
+    // the extension's global Side Panel option instead, then reopen by window.
+    if (chrome.sidePanel?.setOptions) {
+      try {
+        await chrome.sidePanel.setOptions({enabled:false});
+        await setNativePanelDisabled(true);
+        return {kind:"sidePanel",method:"global-disable"};
+      } catch {}
+    }
   }
 
   const raw = (await chrome.storage.session.get(FALLBACK_WINDOW_KEY))[FALLBACK_WINDOW_KEY] || {};
