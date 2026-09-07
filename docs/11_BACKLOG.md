@@ -32,9 +32,10 @@ The current regression PR #2 head observed during this scan is `6ec579a64af0ba9d
 | 9 | 82 | BLOCKED | Compatibility ladder UX: Auto / Embedded / Mobile / Real Page | Stable renderer telemetry; Task 1 |
 | 10 | 81 | BLOCKED | Manifest permission budget + CI regression gate | Current manifest/variant inventory; green CI before executor activation |
 | 11 | 80 | READY | Duplicate shortcut detection and reuse prompt | Stable add flow; green CI |
-| 12 | 79 | BLOCKED | Restorable split layout metadata in templates | TASK 2; TASK 4 preferred; stable split lifecycle |
-| 13 | 78 | BLOCKED | Native browser tab-group import/export bridge | Stable groups/workspaces; TASK 4 preferred |
-| 14 | 76 | BLOCKED | Glance preview in temporary bottom pane | Stable split-pane lifecycle |
+| 12 | 79 | BLOCKED | Context-scoped pane bridge/PWA content-script injection instead of all-page/all-frame injection | Current script-role inventory; TASK 1; green CI |
+| 13 | 79 | BLOCKED | Restorable split layout metadata in templates | TASK 2; TASK 4 preferred; stable split lifecycle |
+| 14 | 78 | BLOCKED | Native browser tab-group import/export bridge | Stable groups/workspaces; TASK 4 preferred |
+| 15 | 76 | BLOCKED | Glance preview in temporary bottom pane | Stable split-pane lifecycle |
 
 Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 
@@ -118,7 +119,15 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 **Dependencies:** stable add flow, green CI.
 **Sources/competitors:** Tab Wise, Tabwise, TabDog, Tab Manager v2, Tablio.
 
-### TASK 12 — Restorable split layout metadata — 79/100 — BLOCKED
+### TASK 12 — Context-scoped pane bridge/PWA content-script injection — 79/100 — BLOCKED
+**Score:** 19/25 user value + 14/20 real pain/regression + 15/15 AppTower fit + 11/15 measurable performance/UX + 7/10 low implementation risk + 5/5 privacy/permissions + 3/5 maturity + 5/5 automated testability = **79**.
+**Rationale:** AppTower currently declares `embedded-frame.js` and `pwa-discovery.js` as `all_frames` content scripts across every HTTP(S) page. That makes pane-specific bridge/discovery code run in ordinary browsing contexts where it is usually not needed, increasing injection surface and avoidable work. A fresh Side Link Preview release demonstrates a conservative injection-scope mindset by excluding sensitive authentication, banking, webmail, streaming and cloud-console contexts; Chrome's stable `chrome.scripting` API additionally supports runtime targeting by tab/frame and dynamic content-script registration. AppTower should independently narrow its own script roles rather than copy Side Link Preview's hard-coded site list.
+**Acceptance criteria:** inventory rail, pane-bridge and PWA-discovery responsibilities separately; keep only the minimum script surface required for ordinary pages; pane bridge executes only for AppTower-owned pane documents/frames or an equivalently precise lifecycle scope; PWA discovery becomes explicit/on-demand or otherwise bounded to the page being inspected rather than every frame of every page; sensitive auth/payment/admin contexts are not broadened by the change; Add Current Page/PWA detection, split-pane messaging and compatibility fallback remain functional; no new host/runtime permission is added; measure before/after injection count or equivalent per-navigation work on representative ordinary browsing pages.
+**Automated test plan:** manifest/static assertion that pane/PWA helper scripts are no longer unconditional `all_frames` injections; ordinary-page fixture proves no pane bridge/PWA discovery initialization; AppTower top/bottom pane fixtures prove bridge initialization and isolation; Add Current Page PWA fixture proves on-demand discovery; auth/login and payment-like fixtures prove no accidental helper injection; restart/reconnect and compatibility-fallback E2E; performance fixture records helper-initialization count before/after.
+**Dependencies:** current content-script role inventory; TASK 1; green CI. Coordinate with TASK 9 so compatibility fallback still receives required pane telemetry.
+**Sources/competitors:** Side Link Preview (MIT, 2026) as behavior/privacy evidence only; its manifest uses broad matching but explicitly excludes many sensitive contexts. Chrome `chrome.scripting` documentation confirms runtime-targeted injection plus dynamic `registerContentScripts`/`unregisterContentScripts`; official documentation is CC BY 4.0 and samples Apache-2.0. AppTower implementation should be clean-room and need not copy competitor code or exclusion lists.
+
+### TASK 13 — Restorable split layout metadata — 79/100 — BLOCKED
 **Score:** 21+12+14+12+7+5+4+4 = **79**.
 **Rationale:** layout ratios are durable workflow state; AppTower can gain repeatability without going beyond two panes.
 **Acceptance criteria:** bounded ratio in template; legacy default; restore without unnecessary pane reload; rebalance/reset; restart/export-import; exactly two panes.
@@ -126,14 +135,14 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 **Dependencies:** TASK 2, TASK 4 preferred, stable split lifecycle.
 **Sources/competitors:** Chromium Split View/session restore and persisted side-panel resizing; Split View; SideSplit.
 
-### TASK 13 — Native tab-group import/export bridge — 78/100 — BLOCKED
+### TASK 14 — Native tab-group import/export bridge — 78/100 — BLOCKED
 **Rationale:** native interoperability without turning AppTower into a full tab manager.
 **Acceptance criteria:** explicit import/export; preserve title/color/order where API supports; AppTower remains authoritative; no history/bookmarks permission for basic bridge.
 **Automated test plan:** import/export native groups; duplicates; collapsed groups; restart; unsupported-browser fallback.
 **Dependencies:** stable groups/workspaces; TASK 4 preferred.
 **Sources/competitors:** Lunma, TabTOC, SnapTabs, Tab Manager v2.
 
-### TASK 14 — Glance preview in temporary bottom pane — 76/100 — BLOCKED
+### TASK 15 — Glance preview in temporary bottom pane — 76/100 — BLOCKED
 **Rationale:** temporary reference preview reuses AppTower split model instead of spawning permanent tabs/windows.
 **Acceptance criteria:** temporary bottom pane; top unchanged; explicit promote; close restores layout; compatibility fallback applies.
 **Automated test plan:** preview/close/promote; repeated previews; blocked-embed fallback; stable top-pane document token.
@@ -157,39 +166,3 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 | 11 | 62 | Automatic domain grouping suggestions | VertiTab, TabDog, SuperchargeNavigation | Opt-in shortcut organizer only; do not become tab manager |
 | 12 | 58 | Optional AI organizer module | Leap/VertiTab-style products | Keep out of core until privacy-preserving provider/module contract and demand |
 | 13 | 54 | Full vertical-tab manager | VertiTab, TabTOC, ddSideBar, TabTree, Tabwise | Deliberately low; conflicts with product boundary |
-
-### IDEA — Panel navigation escape policy — 74/100
-
-**Score:** 19/25 user value + 9/20 real pain + 15/15 AppTower fit + 12/15 measurable UX gain + 8/10 low implementation risk + 5/5 privacy/permissions + 3/5 maturity + 3/5 automated testability = **74**.
-
-**Why IDEA, not TASK:** QuickPanel provides strong UX evidence that app-like panels benefit from keeping intended app navigation inside while sending unrelated cross-domain destinations to the normal browser, but AppTower has not yet demonstrated accidental cross-domain pane hijacking as a recurring regression. At 74 it is intentionally below the promotion threshold.
-
-**Clean-room design direction:** classify navigation from pane origin plus user intent, not from a hardcoded competitor list. Same-origin/same-app destinations stay in-pane by default; unrelated external destinations may be offered/opened in the main browser; authentication/SSO redirects must be allowed to complete. Never introduce a new broad permission solely for this policy.
-
-**Automated test plan if promoted:** same-origin link stays in pane; unrelated cross-origin link opens main browser only when policy says so; Google/Microsoft-style auth redirect fixture completes; `target=_blank`, download and attachment cases; top/bottom pane isolation; user override persists per app/site.
-
-**License:** QuickPanel is licensed under **PolyForm Noncommercial 1.0.0**. Its source is therefore treated as incompatible for general reusable/commercial code transfer. Only independently reimplemented behavior/architecture ideas are admissible.
-
-## Research notes — 2026-09-07
-
-- **Manifest permission budget / CI regression gate** is the new finding in this scan. `Benjamin410/chrome-tab-manager` (ISC) keeps a documented required-permission set and its quality workflow rejects undocumented permission additions. AppTower's current `tools/validate.mjs` validates manifest structure/resources and fallback `sidePanel` removal, but does not currently enforce an allowlisted permission/host budget. This becomes TASK 10 at 81/100 because AppTower has already experienced permission drift during store-readiness cleanup, the solution adds no runtime permission, and it is completely automatable.
-- **Tab Wise** (MIT) keeps `system.memory` optional while core side-panel/tab features use a separate required set. This reinforces the existing resource-pressure guardrail: system memory must remain optional/justified rather than becoming a default dependency. It does not justify a second resource TASK.
-- **Chrome Tab Manager** also demonstrates a relatively narrow permission surface (`tabs`, `tabGroups`, `sidePanel`, `storage`, `sessions`) for its core tab-management UI despite extensive search/group/history UI. Its page-label feature is designed so additions such as `activeTab`, `scripting`, `webRequest` or host permissions require explicit justification. This reinforces TASK 10 rather than expanding AppTower's permission surface.
-- Existing TASKS and IDEAS were all reconsidered under the weighted rubric. Their numeric scores remain unchanged; only the new TASK at 81 was inserted and lower ranks shifted.
-
-## Product guardrails
-
-- Do not turn AppTower into a general vertical-tab manager while the differentiator remains persistent web applications/panes beside the current page.
-- Do not expand beyond two panes merely because tilers support larger grids.
-- Treat split arrangement/restoration and durable state as versioned, testable compatibility surfaces.
-- Never auto-sleep a pane if that can silently destroy unsaved state or interrupt active media.
-- Prefer event-driven lifecycle/snapshot/resource handling over polling.
-- System-memory pressure may only tighten eviction policy after measurement; never bypass pane safety guards or justify default per-pane heap polling/broad host access.
-- Prefer optional permissions for optional integrations; do not require history/bookmarks merely for onboarding.
-- CI must fail on unreviewed manifest permission/host-pattern expansion; optional features should not silently become required permissions.
-- Do not make native bookmarks the authoritative AppTower store.
-- Real Page/sidecar geometry must be scoped to AppTower-owned fallback windows only; never globally reroute normal tabs/pop-ups.
-- Cross-domain pane navigation policy must preserve authentication/SSO flows and remain user-overridable.
-- Specialized adapters/modules are preferable to broad core permissions.
-- Installed-extension E2E must test the exact packaged build and must not require broader AppTower runtime permissions.
-- Every promoted competitor-inspired feature must have acceptance criteria and automated regression/E2E coverage before execution.
