@@ -245,6 +245,22 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 **Dependencies:** TASK 9 compatibility ladder; TASK 12 context-scoped pane bridge/injection boundary; stable pane ownership/navigation instrumentation; TASK 2 already completed.
 **Sources/competitors:** Lunma 0.6.0 (Apache-2.0, current licensed Chromium evidence); QuickPanel (PolyForm Noncommercial, behavior only). No competitor code is copied; AppTower's policy is clean-room and intentionally avoids Lunma's static all-HTTP(S) content-script footprint.
 
+
+### Cleanroom evidence for TASK 3 / next scheduled reassessment
+
+User direction (2026-09-07): record information-loss risk in the planned work and let the scheduled ranking process reassess it; do not manufacture an immediate priority override or duplicate TASK.
+
+**Target:** `feature/cleanroom-functions`, baseline commit `2c1073b3d83e7a2d294a1621ce23f3a3b62220a1`. Historical DONE statuses above describe their original implementation, not Cleanroom acceptance.
+**Observed source evidence (not a reproduced user data-loss incident):**
+- `cleanroom/ui/panes.js`: sleep replaces iframe src with about:blank; idle eligibility does not check dirty forms/contenteditable or playing media.
+- `cleanroom/core/services.js`: capacity eviction requests APP_SLEEP and removes leases; no protected-pane eligibility filter.
+- `cleanroom/core/model.js`: mergeSync uses whole-organization last-writer-wins timestamps; evaluate concurrent-edit loss separately under TASK 4 / sync fixtures.
+Sources: https://github.com/Stolyarovmn/AppTower/blob/2c1073b3d83e7a2d294a1621ce23f3a3b62220a1/cleanroom/ui/panes.js and https://github.com/Stolyarovmn/AppTower/blob/2c1073b3d83e7a2d294a1621ce23f3a3b62220a1/cleanroom/core/services.js .
+
+**TASK 3 acceptance additions:** define precedence of dirty/unknown state, active media, keep-awake, idle timeout and hard cap. Recommended design to evaluate: when all resources are protected, refuse/defer a new load or request an explicit victim instead of silently evicting one. Do not claim universal dirty-state detection. Do not capture form contents, passwords or tokens into diagnostics.
+**Regression plan:** type unsaved input and contenteditable text; advance idle deadline; request a load at full protected capacity; lower capacity; change workspace; test iframe navigation and inaccessible/unknown bridge. Assert no automatic src reset for protected/unknown panes and no unrelated pane reload. Explicit user unload remains a separate operation. For TASK 4 test simultaneous offline organization edits and import failure without overwriting the original state.
+**Scheduling:** retain existing TASK identifiers/statuses/scores pending the next scheduled reassessment. This evidence creates no ACTIVE task and no new global blocker. Reconcile hard-cap/safety requirements before implementing TASK 3.
+
 ## IDEAS
 
 | Rank | Score | IDEA | Evidence / source | Promotion condition / risk |
