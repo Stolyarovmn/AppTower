@@ -16,7 +16,7 @@ Last competitor scan: 2026-09-07.
 
 **No TASK is ACTIVE.** TASK 2 is complete. This research process does not activate implementation work; only the AppTower Task Executor may move another TASK to `ACTIVE`.
 
-The current regression PR #2 head observed during this scan is `3ab8d31abd42335440e57b98bee02c5e23e061cb`. Its `validate` workflow run `34107440635` completed with conclusion **`success`**. READY TASKS are therefore not globally blocked by regression CI, while TASKS with unresolved functional dependencies remain `BLOCKED`. The previous backlog head `e9f20ee27b06d37a3bf18f3475dfe964de741643` also completed PR validation successfully in run `34133540898`.
+The current regression PR #2 head observed during this scan is `3ab8d31abd42335440e57b98bee02c5e23e061cb`; its `validate` workflow run `34107440635` completed with conclusion **`success`**. The previous backlog head `e9f20ee27b06d37a3bf18f3475dfe964de741643` also completed PR validation successfully in run `34133540898`. The current backlog head `c018fcfa2093aad3686e6e0335e5c05eb93277e6` has validation run `34138861410` queued, so under the global rule **READY TASKS must not start until this revalidation completes successfully**. TASKS with unresolved functional dependencies remain `BLOCKED` regardless of CI.
 
 ## Fresh research notes
 
