@@ -23,7 +23,7 @@ test("pane toolbar keeps secondary actions behind one compact overflow control",
   assert.match(pane,/atn-pane-more/);
   assert.match(pane,/atn-pane-close/);
   assert.match(pane,/width:30px/);
-  assert.match(pane,/#workspace\[data-layout=\\"split\\"\]/);
+  assert.match(pane,/#workspace\[data-layout="split"\]/);
   assert.match(pane,/background:transparent!important/);
 });
 
