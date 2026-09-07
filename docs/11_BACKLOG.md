@@ -16,7 +16,7 @@ Last competitor scan: 2026-09-07.
 
 **No TASK is ACTIVE.** TASK 2 is complete; the executor must select the next TASK in a later run.
 
-The current regression PR #2 head observed during this scan is `6ec579a64af0ba9d1346a04a0f3df854aaba839c`. Its `validate` workflow run `34061140457` completed with conclusion **`action_required`**, so CI is not green. READY TASKS remain blocked from activation until a successful validation run is observed. PR #1's previous head `e05c8e61c87269f776d13252791f1360d4d13e54` is an older backlog head and does not override the newer regression-branch gate.
+The current regression PR #2 head observed during this scan is `6ec579a64af0ba9d1346a04a0f3df854aaba839c`. Its `validate` workflow run `34061140457` completed with conclusion **`action_required`**, so CI is not green. READY TASKS remain blocked from activation until a successful validation run is observed. PR #1 head `1fc726fac69410d4ae313fed2c7e4d02a3a8f3a0` separately passed `validate` run `34076573657`, but that documentation-branch success does not override the newer regression-branch gate.
 
 ## TASKS
 
@@ -169,10 +169,11 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 | 4 | 73 | Favorites/pinned mini-row independent of workspace ordering | ddSideBar (MIT), Lunma, TabTree, ThisPanel | Promote if rail overflow is recurring UX pain |
 | 5 | 72 | Anchored Real Page/sidecar placement: remember monitor/window bounds and optionally reuse sidecar | Tab Anchor (MIT), QuickPanel | Promote after Real Page lifecycle is stable; normalize display changes; never reroute normal browsing globally |
 | 6 | 72 | Workspace/session import from other managers | VertiTab, Lunma, Tabwise | Promote after TASK 4 export/import schema; avoid mandatory history permission |
-| 7 | 70 | Recently accessed smart view | VertiTab, TabDog | Promote after current Recent is stable/searchable |
-| 8 | 68 | Optional browser-context actions over selected text/link | AI Side Panel / SuperchargeNavigation-style flows | Needs concrete non-AI use case and optional-permission review |
-| 9 | 65 | Portable workspace export/mirror to native browser bookmarks | Mooring | Explicit optional `bookmarks` only; pattern only where license unclear |
-| 10 | 65 | Focus mode: temporarily show only one group/workspace | TabTree, Tabwise | Promote if groups/templates overload rail |
-| 11 | 62 | Automatic domain grouping suggestions | VertiTab, TabDog, SuperchargeNavigation | Opt-in shortcut organizer only; do not become tab manager |
-| 12 | 58 | Optional AI organizer module | Leap/VertiTab-style products | Keep out of core until privacy-preserving provider/module contract and demand |
-| 13 | 54 | Full vertical-tab manager | VertiTab, TabTOC, ddSideBar, TabTree, Tabwise | Deliberately low; conflicts with product boundary |
+| 7 | 71 | Native browser Split View awareness/bridge: detect `splitViewId`, preserve existing split membership during tab moves/closes, and optionally route Real Page/reference opens into an already-existing sibling split pane | W3C WebExtensions split-tabs proposal; MDN; Chrome Web Store “Split View: Open Links in Other Pane” | Keep as IDEA until Chrome/Edge expose stable create/remove split-view APIs or AppTower has a concrete coexistence regression; no new permission; clean-room behavior only because the store extension source/license is unverified |
+| 8 | 70 | Recently accessed smart view | VertiTab, TabDog | Promote after current Recent is stable/searchable |
+| 9 | 68 | Optional browser-context actions over selected text/link | AI Side Panel / SuperchargeNavigation-style flows | Needs concrete non-AI use case and optional-permission review |
+| 10 | 65 | Portable workspace export/mirror to native browser bookmarks | Mooring | Explicit optional `bookmarks` only; pattern only where license unclear |
+| 11 | 65 | Focus mode: temporarily show only one group/workspace | TabTree, Tabwise | Promote if groups/templates overload rail |
+| 12 | 62 | Automatic domain grouping suggestions | VertiTab, TabDog, SuperchargeNavigation | Opt-in shortcut organizer only; do not become tab manager |
+| 13 | 58 | Optional AI organizer module | Leap/VertiTab-style products | Keep out of core until privacy-preserving provider/module contract and demand |
+| 14 | 54 | Full vertical-tab manager | VertiTab, TabTOC, ddSideBar, TabTree, Tabwise | Deliberately low; conflicts with product boundary |
