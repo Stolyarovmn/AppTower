@@ -1,4 +1,5 @@
 import "./manual-gate-fixes.js";
+import "./pane-ui-contract.js";
 
 const currentWindow = await chrome.windows.getCurrent();
 const params = new URLSearchParams(location.search);
@@ -59,9 +60,6 @@ const dialogObserver = new MutationObserver(records => {
 });
 dialogObserver.observe(document.documentElement, {childList:true, subtree:true});
 
-/* One icon language ---------------------------------------------------------
- * Toolbar actions are SVG-only. Mode letters and the active-pane dot are
- * semantic state indicators, so they intentionally remain text/shape based. */
 const ICONS = {
   go:'<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h10M10.5 6.5 14 10l-3.5 3.5"/></svg>',
   reload:'<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M15.4 7.2A6 6 0 1 0 16 11"/><path d="M15.4 3.8v3.9h-3.9"/></svg>',
@@ -107,17 +105,13 @@ if (workspace) {
   new MutationObserver(syncFocusButtons).observe(workspace,{attributes:true,attributeFilter:["data-layout"]});
 }
 
-/* Context-menu parity and separator hygiene -------------------------------- */
 const shortcutMenu = document.getElementById("shortcut-menu");
 let contextShortcut = null;
 let menuSyncQueued = false;
 
 document.addEventListener("contextmenu", event => {
   const shortcut = event.target?.closest?.(".rail-site[data-shortcut-id]");
-  contextShortcut = shortcut ? {
-    id:shortcut.dataset.shortcutId || "",
-    kind:shortcut.dataset.shortcutKind || ""
-  } : null;
+  contextShortcut = shortcut ? { id:shortcut.dataset.shortcutId || "", kind:shortcut.dataset.shortcutKind || "" } : null;
 }, true);
 
 function normalizeMenuSeparators() {
@@ -125,10 +119,7 @@ function normalizeMenuSeparators() {
   let previousWasSeparator = true;
   for (const child of [...shortcutMenu.children]) {
     const separator = child.classList.contains("separator");
-    if (separator && previousWasSeparator) {
-      child.remove();
-      continue;
-    }
+    if (separator && previousWasSeparator) { child.remove(); continue; }
     previousWasSeparator = separator;
   }
   const last = shortcutMenu.lastElementChild;
@@ -139,7 +130,6 @@ function injectTemplateDissolveAction() {
   if (!shortcutMenu || shortcutMenu.classList.contains("hidden")) return;
   if (contextShortcut?.kind !== "template" || !contextShortcut.id) return;
   if (shortcutMenu.querySelector('[data-ui-action="dissolve-template"]')) return;
-
   const button = document.createElement("button");
   button.type = "button";
   button.dataset.uiAction = "dissolve-template";
@@ -150,27 +140,15 @@ function injectTemplateDissolveAction() {
     if (!templateId) return;
     button.disabled = true;
     try {
-      const response = await chrome.runtime.sendMessage({
-        type:"MUTATE_SHORTCUTS",
-        windowId:hostWindowId,
-        action:"dissolve",
-        id:templateId
-      });
+      const response = await chrome.runtime.sendMessage({ type:"MUTATE_SHORTCUTS", windowId:hostWindowId, action:"dissolve", id:templateId });
       if (!response?.ok) throw new Error(response?.error || "Не удалось разобрать шаблон");
     } catch (error) {
       alert(`Не удалось разобрать шаблон: ${String(error?.message || error)}`);
-    } finally {
-      button.disabled = false;
-    }
+    } finally { button.disabled = false; }
   });
-
-  const duplicate = [...shortcutMenu.querySelectorAll("button")]
-    .find(item => item.textContent.trim() === "Дублировать");
-  const divider = duplicate?.previousElementSibling?.classList?.contains("separator")
-    ? duplicate.previousElementSibling
-    : duplicate;
-  if (divider) shortcutMenu.insertBefore(button, divider);
-  else shortcutMenu.append(button);
+  const duplicate = [...shortcutMenu.querySelectorAll("button")].find(item => item.textContent.trim() === "Дублировать");
+  const divider = duplicate?.previousElementSibling?.classList?.contains("separator") ? duplicate.previousElementSibling : duplicate;
+  if (divider) shortcutMenu.insertBefore(button, divider); else shortcutMenu.append(button);
 }
 
 function syncShortcutMenu() {
@@ -185,18 +163,9 @@ function queueShortcutMenuSync() {
   queueMicrotask(syncShortcutMenu);
 }
 if (shortcutMenu) {
-  new MutationObserver(queueShortcutMenuSync).observe(shortcutMenu,{
-    childList:true,
-    attributes:true,
-    attributeFilter:["class"]
-  });
+  new MutationObserver(queueShortcutMenuSync).observe(shortcutMenu,{ childList:true, attributes:true, attributeFilter:["class"] });
 }
 
-/* Collapse must hand off to a real compact rail ----------------------------
- * On normal web pages, make sure the injected rail receiver exists before
- * closing the browser-owned Side Panel. On restricted Edge pages no content
- * script can provide the compact rail, so keep App Tower open instead of
- * silently turning Collapse into Close. */
 async function activeHostTab() {
   const [tab] = await chrome.tabs.query({active:true,windowId:hostWindowId});
   return tab || null;
@@ -208,13 +177,11 @@ async function ensureCompactRailReady() {
   const url = String(tab.url || "");
   const ownNewTab = chrome.runtime.getURL("newtab/newtab.html");
   if (url.startsWith(ownNewTab)) return {ok:true,kind:"newtab"};
-
   if (/^https?:\/\//i.test(url)) {
     try {
       await chrome.tabs.sendMessage(tab.id,{type:"ATN_SET_RAIL_VISIBLE",visible:false});
       return {ok:true,kind:"web",injected:false};
     } catch {}
-
     try {
       await chrome.scripting.insertCSS({target:{tabId:tab.id},files:["content/rail.css"]}).catch(()=>{});
       await chrome.scripting.executeScript({target:{tabId:tab.id},files:["content/rail.js"]});
@@ -224,7 +191,6 @@ async function ensureCompactRailReady() {
       return {ok:false,reason:String(error?.message || error)};
     }
   }
-
   return {ok:false,reason:"restricted-page",url};
 }
 
@@ -237,7 +203,6 @@ async function collapseWithRail() {
       : `Не удалось подготовить компактную App Tower rail: ${ready.reason || "неизвестная ошибка"}`);
     return;
   }
-
   const response = await chrome.runtime.sendMessage({type:"COLLAPSE_PANEL",windowId:hostWindowId})
     .catch(error => ({ok:false,error:String(error?.message || error)}));
   if (!response?.ok) alert(response?.error || "Не удалось свернуть App Tower");
@@ -252,7 +217,6 @@ document.addEventListener("click", event => {
   void collapseWithRail();
 }, true);
 
-/* Keep Sync copy aligned with what the background actually persists. */
 for (const selector of [".home-sync-row small", "#settings-sync + span small"]) {
   const copy = document.querySelector(selector);
   if (copy) copy.textContent = "Синхронизируются ярлыки, модули и основные настройки. Открытые страницы и текущая раскладка остаются локальными.";
