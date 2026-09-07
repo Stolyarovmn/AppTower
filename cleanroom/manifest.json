@@ -4,7 +4,7 @@
   "version": "2.0.0",
   "description": "From-scratch AppTower lifecycle and side-panel implementation.",
   "minimum_chrome_version": "141",
-  "permissions": ["sidePanel", "storage", "tabs"],
+  "permissions": ["sidePanel", "storage", "tabs", "scripting"],
   "host_permissions": ["http://*/*", "https://*/*"],
   "background": {
     "service_worker": "background.js",
