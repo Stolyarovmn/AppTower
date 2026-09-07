@@ -20,6 +20,9 @@ The current regression PR #2 head observed during this scan is `3ab8d31abd423354
 
 ## Fresh research notes
 
+- `aminought/firefox-second-sidebar` is a mature adjacent web-panel implementation (583 GitHub stars observed in this scan, latest release v2.0.1 dated 2026-05-19) under **MPL-2.0**. Its per-panel loading controls include load-at-startup, restore-last-page and unload-after-close. This independently validates per-panel memory lifecycle as a user-facing web-panel concept rather than a tab-suspender-only concept. AppTower does not copy MPL-covered code; only the clean-room behavior pattern is used.
+- This new evidence promotes the former IDEA “Per-site sleep policy presets” from 74 to **TASK 20 — 76/100**. The AppTower version remains narrower: per-AppTower-site `default/aggressive/never` policy modifies existing lease deadlines only, must respect TASK 3 safety guards, must not add polling or broad host permissions, and must be measured against the resource baseline.
+- Portals Sidebar 16.26.92 was updated in the Chrome Web Store on 2026-09-06 and independently combines a native side-panel portal hub, floating overlay rail, groups, drag/drop, search, quick-add and floating windows. Its store description explicitly says it modifies `X-Frame-Options` so sites load in the panel. No current public source repository/license or exact manifest permission set was verified in this scan, so it is behavior-only evidence; header-stripping is recorded as an anti-pattern and is not copied.
 - Benjamin410/chrome-tab-manager is a 2026 Chrome Side Panel tab manager under the **ISC License**. Its manifest uses `tabs`, `tabGroups`, `sidePanel`, `storage`, and `sessions`, but not `history`; it nevertheless offers recency sorting and recently-closed history. The project does statically inject banner/page-metadata scripts on `<all_urls>`, so that injection pattern is an anti-pattern for AppTower and is not copied.
 - Chromium exposes `tabs.Tab.lastAccessed` as the timestamp when a tab last became active in its window. The WebExtensions `sessions` API separately exposes recently closed tabs/windows through `sessions.getRecentlyClosed()` and requires the narrow `sessions` permission rather than full browsing-history access.
 - This resolves the main privacy concern behind the former IDEA “Recently accessed smart view”. It is promoted to **TASK 19 — 80/100**. AppTower should prefer its own pane/shortcut recency for AppTower entities and may use the narrowly scoped `sessions` capability only for an explicitly labelled “Recently closed browser tabs” subsection. No `history`, `idle`, `<all_urls>`, or new content-script injection is justified.
@@ -29,6 +32,7 @@ The current regression PR #2 head observed during this scan is `3ab8d31abd423354
 - TabTOC and Nest remain behavior-only evidence for restricted-page fallback because current source/license could not be verified. AppTower uses its existing native Side Panel on browser-owned pages instead of trying to inject there.
 - Microsoft Edge documentation updated in July 2026 marks PWA `edge_side_panel` integration deprecated; AppTower compatibility therefore stays capability-driven and independent of that vendor-specific surface.
 - Tab Pilot / Tab Radar is MIT and useful UX evidence for fuzzy search/command palette/recent, but its broad permission/injection set remains an anti-pattern for AppTower core.
+- All existing TASKS and IDEAS were rescored after this scan. No existing numeric score changed other than the promoted per-site sleep policy item (74→76); ranks below the new TASK/removed IDEA shift accordingly.
 
 ## TASKS
 
@@ -51,8 +55,9 @@ The current regression PR #2 head observed during this scan is `3ab8d31abd423354
 | 15 | 79 | BLOCKED | Context-scoped pane bridge/PWA content-script injection instead of all-page/all-frame injection | Current script-role inventory; TASK 1 |
 | 16 | 79 | BLOCKED | Restorable split layout metadata in templates | TASK 2; TASK 4 preferred; stable split lifecycle |
 | 17 | 78 | BLOCKED | Native browser tab-group import/export bridge | Stable groups/workspaces; TASK 4 preferred |
-| 18 | 76 | BLOCKED | Glance preview in temporary bottom pane | Stable split-pane lifecycle |
-| 19 | 75 | BLOCKED | Optional resource-pressure-aware emergency pane eviction | TASK 3 + TASK 6; optional `system.memory`; measured baseline |
+| 18 | 76 | BLOCKED | Per-site pane sleep policy presets: default / aggressive / never | TASK 3; measured resource baseline; coordinate with TASK 6 |
+| 19 | 76 | BLOCKED | Glance preview in temporary bottom pane | Stable split-pane lifecycle |
+| 20 | 75 | BLOCKED | Optional resource-pressure-aware emergency pane eviction | TASK 3 + TASK 6; optional `system.memory`; measured baseline |
 
 Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 
@@ -131,7 +136,7 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 **Acceptance criteria:** Auto/Embedded/Mobile/Real Page; deterministic failure reason; diagnostics only on explicit action; site/pane-scoped fallback; unrelated pane remains live; no required `edge_side_panel` dependency.
 **Automated test plan:** successful embed/frame denial/navigation failure/Real Page fixtures; per-site persistence; two-window rule collision; permission prompts; capability-negative Edge PWA-sidebar fixture.
 **Dependencies:** stable renderer telemetry; TASK 1.
-**Sources/competitors:** Universal Split View; SplitView; SidePilot (Apache-2.0); QuickPanel behavior only; Microsoft Edge PWA-sidebar deprecation docs.
+**Sources/competitors:** Universal Split View; SplitView; SidePilot (Apache-2.0); QuickPanel behavior only; Portals Sidebar 16.26.92 behavior-only/header-stripping anti-pattern; Microsoft Edge PWA-sidebar deprecation docs.
 
 ### TASK 10 — Manifest permission budget + CI regression gate — 81/100 — BLOCKED
 **Rationale:** a CI allowlist prevents permission creep, unexpected warnings and store-review regressions.
@@ -176,6 +181,14 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 **Dependencies:** stable groups/workspaces; TASK 4 preferred.
 **Sources/competitors:** Lunma, TabTOC, SnapTabs, Tab Manager v2.
 
+### TASK 20 — Per-site pane sleep policy presets — 76/100 — BLOCKED
+**Score:** 18/25 user value + 12/20 real pain/regression + 14/15 AppTower fit + 11/15 measurable performance/UX + 8/10 low implementation risk + 5/5 privacy/permissions + 4/5 competitor maturity + 4/5 automated testability = **76**.
+**Rationale:** users need different lifecycle behavior for different web apps: a disposable reference page can sleep aggressively while chat/music/editing surfaces may need to stay resident. Drowzy proves per-site protection is useful in a modern MV3 suspender; `firefox-second-sidebar` independently proves that per-web-panel load/unload lifecycle is mature enough to expose directly in web-panel UX. The latter is MPL-2.0 and Firefox/userChrome-specific, so AppTower reuses no code and implements the behavior independently.
+**Acceptance criteria:** each AppTower site may select `default`, `aggressive`, or `never`; policy is stored against stable AppTower site identity rather than maintaining a browsing-history/domain profile; `default` exactly preserves the global policy; `aggressive` only shortens an existing eligible sleep deadline and never bypasses TASK 3 dirty-form/media/keep-awake guards; `never` suppresses automatic sleep but still allows explicit user close/unload; policy changes reschedule through the existing resource scheduler without adding periodic alarms; restart/export-import preserves policy through the versioned persistence pipeline when available; no new host permission, content script, telemetry, or network request is introduced.
+**Automated test plan:** default/aggressive/never deadline fixtures; precedence with dirty form, active media and explicit keep-awake; switch policy while lease is live; zero-resource case proves no new worker wakeup; restart persistence; delete/recreate site identity does not leak stale policy; two-pane isolation; export/import fixture after TASK 4; instrumentation compares wakeup count and eligible-live duration against baseline.
+**Dependencies:** TASK 3 safety guards; measured resource baseline; coordinate deadline semantics with TASK 6 and persistence with TASK 4 when implemented.
+**Sources/competitors:** Drowzy 1.5.0 (MIT) for per-site protection; `aminought/firefox-second-sidebar` v2.0.1 (MPL-2.0, behavior only) for per-panel preload/restore/unload lifecycle. No MPL-covered code is reused.
+
 ### TASK 15 — Glance preview in temporary bottom pane — 76/100 — BLOCKED
 **Rationale:** temporary reference preview reuses AppTower split model instead of spawning permanent tabs/windows.
 **Acceptance criteria:** temporary bottom pane; top unchanged; explicit promote; close restores layout; compatibility fallback applies.
@@ -195,15 +208,14 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 | Rank | Score | IDEA | Evidence / source | Promotion condition / risk |
 |---:|---:|---|---|---|
 | 1 | 74 | Anchored Real Page/sidecar placement: remember monitor/window bounds, restore extension-owned sidecar geometry after restart and optionally reuse an existing sidecar | Tab Anchor (MIT), QuickPanel; Split Workspace/splitescreen store behavior | Promote after Real Page lifecycle is stable; normalize display changes; never reroute normal browsing globally; store-only source/license remains unverified where noted. |
-| 2 | 74 | Per-site sleep policy presets: default/aggressive/never sleep | Drowzy (MIT); TabZen behavior-only | Promote after TASK 3 + measurable resource baseline; no required `<all_urls>`/all-page script. |
-| 3 | 74 | Panel navigation escape policy | QuickPanel | Promote after navigation telemetry proves accidental pane hijacking; clean-room only because QuickPanel is PolyForm Noncommercial. |
-| 4 | 73 | Favorites/pinned mini-row independent of workspace ordering | ddSideBar (MIT), Lunma, TabTree, ThisPanel | Promote if rail overflow is recurring UX pain. |
-| 5 | 72 | Workspace/session import from other managers | VertiTab, Lunma, Tabwise | Promote after TASK 4 export/import schema; avoid mandatory history permission. |
-| 6 | 71 | Native browser Split View awareness/bridge | W3C WebExtensions split-tabs proposal; MDN; Chrome Web Store split-view behavior | Keep as IDEA until stable create/remove split-view APIs or a concrete coexistence regression. |
-| 7 | 70 | Optional Document Picture-in-Picture companion mode | Chrome Document PiP; Super Pinned Windows (MIT) | Concrete compact-player/reference use case required; no CSP/XFO stripping or broad host access. |
-| 8 | 68 | Optional browser-context actions over selected text/link | AI Side Panel / SuperchargeNavigation patterns | Needs concrete non-AI use case and optional-permission review. |
-| 9 | 65 | Portable workspace export/mirror to native browser bookmarks | Mooring | Explicit optional `bookmarks` only; clean-room where license is unclear. |
-| 10 | 65 | Focus mode: temporarily show only one group/workspace | TabTree, Tabwise | Promote if groups/templates overload rail. |
-| 11 | 62 | Automatic domain grouping suggestions | VertiTab, TabDog, SuperchargeNavigation | Opt-in shortcut organizer only; do not become a tab manager. |
-| 12 | 58 | Optional AI organizer module | Leap/VertiTab-style products | Keep out of core until privacy-preserving provider/module contract and demand. |
-| 13 | 54 | Full vertical-tab manager | VertiTab, TabTOC, ddSideBar, TabTree, Tabwise | Deliberately low; conflicts with product boundary. |
+| 2 | 74 | Panel navigation escape policy | QuickPanel | Promote after navigation telemetry proves accidental pane hijacking; clean-room only because QuickPanel is PolyForm Noncommercial. |
+| 3 | 73 | Favorites/pinned mini-row independent of workspace ordering | ddSideBar (MIT), Lunma, TabTree, ThisPanel | Promote if rail overflow is recurring UX pain. |
+| 4 | 72 | Workspace/session import from other managers | VertiTab, Lunma, Tabwise | Promote after TASK 4 export/import schema; avoid mandatory history permission. |
+| 5 | 71 | Native browser Split View awareness/bridge | W3C WebExtensions split-tabs proposal; MDN; Chrome Web Store split-view behavior | Keep as IDEA until stable create/remove split-view APIs or a concrete coexistence regression. |
+| 6 | 70 | Optional Document Picture-in-Picture companion mode | Chrome Document PiP; Super Pinned Windows (MIT) | Concrete compact-player/reference use case required; no CSP/XFO stripping or broad host access. |
+| 7 | 68 | Optional browser-context actions over selected text/link | AI Side Panel / SuperchargeNavigation patterns | Needs concrete non-AI use case and optional-permission review. |
+| 8 | 65 | Portable workspace export/mirror to native browser bookmarks | Mooring | Explicit optional `bookmarks` only; clean-room where license is unclear. |
+| 9 | 65 | Focus mode: temporarily show only one group/workspace | TabTree, Tabwise | Promote if groups/templates overload rail. |
+| 10 | 62 | Automatic domain grouping suggestions | VertiTab, TabDog, SuperchargeNavigation | Opt-in shortcut organizer only; do not become a tab manager. |
+| 11 | 58 | Optional AI organizer module | Leap/VertiTab-style products | Keep out of core until privacy-preserving provider/module contract and demand. |
+| 12 | 54 | Full vertical-tab manager | VertiTab, TabTOC, ddSideBar, TabTree, Tabwise | Deliberately low; conflicts with product boundary. |
