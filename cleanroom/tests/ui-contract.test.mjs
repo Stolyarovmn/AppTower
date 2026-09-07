@@ -1,0 +1,16 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+
+const root=path.resolve(import.meta.dirname,"..");
+const html=fs.readFileSync(path.join(root,"sidepanel.html"),"utf8");
+const js=fs.readFileSync(path.join(root,"sidepanel.js"),"utf8");
+
+test("expanded right rail exposes a right-pointing collapse affordance",()=>{
+  assert.match(html,/id="collapse"[^>]*aria-label="Свернуть AppTower"/);
+  assert.match(html,/id="collapse"[\s\S]*?<path d="m7\.5 4\.5 5\.5 5\.5-5\.5 5\.5"\/?>/);
+  assert.doesNotMatch(html,/id="collapse"[\s\S]*?<path d="m12\.5 4\.5-5\.5 5\.5 5\.5 5\.5"\/?>/);
+  assert.match(js,/collapse\.addEventListener\("click"/);
+  assert.match(js,/type:"COLLAPSE_PANEL"/);
+});
