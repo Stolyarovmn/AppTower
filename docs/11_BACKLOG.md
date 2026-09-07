@@ -16,10 +16,15 @@ Last competitor scan: 2026-09-07.
 
 **No TASK is ACTIVE.** TASK 2 is complete. This research process does not activate implementation work; only the AppTower Task Executor may move another TASK to `ACTIVE`.
 
-The current regression PR #2 head observed during this scan is `3ab8d31abd42335440e57b98bee02c5e23e061cb`. Its `validate` workflow run `34107440635` completed with conclusion **`success`**. READY TASKS are therefore not globally blocked by CI, while TASKS with unresolved functional dependencies remain `BLOCKED`. The previous backlog head `fee38538b4ce5992b9568a257dd27f37a1b13347` also completed PR validation successfully in run `34122766710`.
+The current regression PR #2 head observed during this scan is `3ab8d31abd42335440e57b98bee02c5e23e061cb`. Its `validate` workflow run `34107440635` completed with conclusion **`success`**. READY TASKS are therefore not globally blocked by CI, while TASKS with unresolved functional dependencies remain `BLOCKED`. The previous backlog head `c92c46c14d3e94138a94007d7d1e3300f1e4598b` also completed PR validation successfully in run `34128608335`.
 
 ## Fresh research notes
 
+- `SwajanJain/tabwise` is a current MV3 Chrome/Edge workspace implementation whose background code uses an explicit durable `state.v1` storage key plus a monotonic `migrationVersion` and sequential migration function before normal runtime use. This is independent evidence for TASK 4's versioned/append-only persistence direction. The repository README says MIT, but there is no LICENSE file in the repository root observed in this scan, so AppTower treats it as **license-unverified behavior/architecture evidence only** and copies no code.
+- The same Tabwise manifest is a useful permission counterexample: it requires `history`, `bookmarks`, `downloads`, `offscreen`, `scripting`, `activeTab`, `tabs`, `sidePanel`, `storage`, `favicon`, `clipboardWrite`, plus `<all_urls>`. AppTower should not inherit that broad footprint merely to obtain workspace switching/search/migrations; TASK 10 and TASK 12 remain the guardrails.
+- TabTOC's current Chrome Web Store listing (retrieved 2026-09-07) now advertises three control surfaces (floating overlay, native Side Panel, New Tab), native tab-group sync, search/drag, tab suspend + auto-suspend, trash/recovery, saved URL groups, bookmark export/integration and history search. This strengthens behavior-level evidence for TASK 3, TASK 7, TASK 14 and TASK 17, but current source/license for the shipping build remains unverified and adoption is still small, so no maturity score increase is justified.
+- Tab Tiles 9.0 (Chrome Web Store, updated 2026-02-03) uses a native Chrome tab group as the visible workspace surface, supports manual snapshots/export/import, keeps pinned tabs visible across workspaces, and stores workspace data locally. This independently supports explicit native-group interoperability for TASK 14 and the existing pinned/favorites IDEA. No public source repository/license was verified in this scan, so it is behavior-only evidence and no code is reused.
+- WorkTab's current store listing exposes periodic workspace auto-save intervals down to 15 seconds alongside session restore, custom templates, suspension and performance features. The listing claims open-source transparency, but no source repository/license for the shipping build was verified in this scan. AppTower records the periodic autosave model as an **energy/write-amplification anti-pattern** for TASK 7: snapshots remain event-driven, with zero periodic writes/wakeups during read-only activity.
 - `Sid-1819/tab-wise` is an actively maintained Chrome Side Panel tab/workspace manager under **MIT** (repository push observed 2026-09-06). Version 2.4.0 declares required `tabs`, `tabGroups`, `storage`, `sidePanel`, `contextMenus`, `sessions`, `favicon`, optional `system.memory`, and broad `<all_urls>` host access. It is useful clean-room evidence that `system.memory` can be made optional and that sessions/recent UX can avoid a `history` permission, while its `<all_urls>` footprint is not copied into AppTower.
 - `touyou/sidepanel-fallback` is an **MIT** library that cleanly separates browser detection, mode persistence and panel launching, with an automatic side-panel→popup/window fallback and a large test suite claimed by the project. It is older/low-adoption evidence rather than a mature competitor, but it independently supports capability-based surface fallback and explicit per-browser mode persistence; no score increase is justified from it alone.
 - `aminought/firefox-second-sidebar` is a mature adjacent web-panel implementation (583 GitHub stars observed in this scan, latest release v2.0.1 dated 2026-05-19) under **MPL-2.0**. Its per-panel loading controls include load-at-startup, restore-last-page and unload-after-close. This independently validates per-panel memory lifecycle as a user-facing web-panel concept rather than a tab-suspender-only concept. AppTower does not copy MPL-covered code; only the clean-room behavior pattern is used.
@@ -34,7 +39,7 @@ The current regression PR #2 head observed during this scan is `3ab8d31abd423354
 - TabTOC and Nest remain behavior-only evidence for restricted-page fallback because current source/license could not be verified. AppTower uses its existing native Side Panel on browser-owned pages instead of trying to inject there.
 - Microsoft Edge documentation updated in July 2026 marks PWA `edge_side_panel` integration deprecated; AppTower compatibility therefore stays capability-driven and independent of that vendor-specific surface.
 - Tab Pilot / Tab Radar is MIT and useful UX evidence for fuzzy search/command palette/recent, but its broad permission/injection set remains an anti-pattern for AppTower core.
-- All existing TASKS and IDEAS were rescored after this scan. **No numeric score changed in this pass**: Tab Wise strengthens existing TASK 18/TASK 19/TASK 10 evidence but does not increase competitor maturity enough to justify another point, while sidepanel-fallback is too old/low-adoption to change TASK 17/TASK 9 maturity.
+- All existing TASKS and IDEAS were rescored after this scan. **No numeric score changed in this pass**: the new migration/native-group/snapshot evidence is either low-adoption or license-unverified, so it strengthens rationale without justifying a maturity point; WorkTab's periodic autosave is negative energy evidence rather than a reason to reward the snapshot score.
 
 ## TASKS
 
@@ -96,14 +101,14 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 **Acceptance criteria:** explicit version per durable family; one validation/normalization boundary; deterministic append-only migrations; safe corrupt/future handling; migration before runtime mutation; export/import uses same pipeline.
 **Automated test plan:** historical fixtures; golden/idempotent migrations; malformed/future cases; legacy-profile restart; export/import round trip; coordinator never sees pre-migration state.
 **Dependencies:** TASK 2; persisted-state inventory.
-**Sources/competitors:** Lunma (Apache-2.0), pattern only.
+**Sources/competitors:** Lunma (Apache-2.0), pattern only; SwajanJain/tabwise (license-unverified behavior evidence for explicit storage version + monotonic migrations, no code reuse).
 
 ### TASK 17 — Restricted-page control-surface fallback — 86/100 — BLOCKED
 **Rationale:** injected rail cannot exist on browser-owned/restricted pages; AppTower still needs a coherent control surface there.
 **Acceptance criteria:** eligible HTTP(S) pages keep exactly one rail; restricted pages do not receive injection attempts and action/toggle opens or focuses the existing native Side Panel; eligible↔restricted transitions preserve collapse/expand/close state; no `chrome_url_overrides`, broad host permission, or browser-page scripting workaround.
 **Automated test plan:** HTTP(S) → New Tab/`chrome://` → HTTP(S); zero restricted-page injection errors; action→Side Panel; duplicate-surface checks; restart on restricted page; unsupported schemes; Edge parity gate when automation is reliable.
 **Dependencies:** TASK 1; stable surface ownership; one shared eligibility predicate with TASK 12.
-**Sources/competitors:** TabTOC 1.2.0 and Nest 1.5.3 behavior only; source/license unverified; sidepanel-fallback (MIT) as low-adoption capability-fallback evidence.
+**Sources/competitors:** TabTOC current store behavior and Nest 1.5.3 behavior only; source/license unverified; sidepanel-fallback (MIT) as low-adoption capability-fallback evidence.
 
 ### TASK 5 — Command Palette — 86/100 — BLOCKED
 **Rationale:** keyboard-first command/search improves reach without permanent UI density.
@@ -124,7 +129,7 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 **Acceptance criteria:** snapshot only meaningful destructive mutations; bounded retention; one-step Undo without unrelated pane reload; versioned snapshot schema; no polling.
 **Automated test plan:** mutation fixtures; undo per destructive operation; retention; restart; zero snapshot writes during read-only activity.
 **Dependencies:** TASK 2; TASK 4 preferred.
-**Sources/competitors:** VertiTab, ArchTabs, SuperchargeBrowser, SnapTabs (MIT).
+**Sources/competitors:** VertiTab, ArchTabs, SuperchargeBrowser, SnapTabs (MIT); TabTOC trash/recovery and Tab Tiles manual snapshots as behavior-only evidence; WorkTab periodic autosave is an energy/write-amplification counterexample, source/license unverified.
 
 ### TASK 8 — Installed-extension lifecycle E2E harness — 83/100 — BLOCKED
 **Rationale:** several AppTower failures only reproduce after loading the real extension; browser-managed install/action/inspection closes that test gap.
@@ -145,7 +150,7 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 **Acceptance criteria:** reviewed required/optional/host sets per variant; fail on unreviewed addition or optional→required promotion; rationale per permission; generated fallback has narrower budget; removals remain allowed.
 **Automated test plan:** allowed/new required/new optional/new host/required↔optional/fallback-drift fixtures; package validation runs same gate.
 **Dependencies:** current manifest/variant inventory.
-**Sources/competitors:** Benjamin410/chrome-tab-manager (ISC); Drowzy (MIT); Tab Wise 2.4.0 (MIT; optional `system.memory` but broad `<all_urls>` host access); Tab Pilot/Tab Radar (MIT) as broad-footprint counterexample; Chrome Web Store minimum-permission guidance.
+**Sources/competitors:** Benjamin410/chrome-tab-manager (ISC); Drowzy (MIT); Tab Wise 2.4.0 (MIT; optional `system.memory` but broad `<all_urls>` host access); Tab Pilot/Tab Radar (MIT) and SwajanJain/tabwise (license-unverified) as broad-footprint counterexamples; Chrome Web Store minimum-permission guidance.
 
 ### TASK 11 — Duplicate shortcut detection — 80/100 — READY
 **Rationale:** prevents rail/workspace clutter with low implementation and permission risk.
@@ -181,7 +186,7 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 **Acceptance criteria:** explicit import/export; preserve title/color/order where API supports; AppTower remains authoritative; no history/bookmarks permission for basic bridge.
 **Automated test plan:** import/export native groups; duplicates; collapsed groups; restart; unsupported-browser fallback.
 **Dependencies:** stable groups/workspaces; TASK 4 preferred.
-**Sources/competitors:** Lunma, TabTOC, SnapTabs, Tab Manager v2.
+**Sources/competitors:** Lunma, TabTOC, SnapTabs, Tab Manager v2; Tab Tiles 9.0 behavior only (native tab-group workspace surface, source/license unverified).
 
 ### TASK 20 — Per-site pane sleep policy presets — 76/100 — BLOCKED
 **Score:** 18/25 user value + 12/20 real pain/regression + 14/15 AppTower fit + 11/15 measurable performance/UX + 8/10 low implementation risk + 5/5 privacy/permissions + 4/5 competitor maturity + 4/5 automated testability = **76**.
@@ -211,7 +216,7 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 |---:|---:|---|---|---|
 | 1 | 74 | Anchored Real Page/sidecar placement: remember monitor/window bounds, restore extension-owned sidecar geometry after restart and optionally reuse an existing sidecar | Tab Anchor (MIT), QuickPanel; Split Workspace/splitescreen store behavior | Promote after Real Page lifecycle is stable; normalize display changes; never reroute normal browsing globally; store-only source/license remains unverified where noted. |
 | 2 | 74 | Panel navigation escape policy | QuickPanel | Promote after navigation telemetry proves accidental pane hijacking; clean-room only because QuickPanel is PolyForm Noncommercial. |
-| 3 | 73 | Favorites/pinned mini-row independent of workspace ordering | ddSideBar (MIT), Lunma, TabTree, ThisPanel | Promote if rail overflow is recurring UX pain. |
+| 3 | 73 | Favorites/pinned mini-row independent of workspace ordering | ddSideBar (MIT), Lunma, TabTree, ThisPanel, Tab Tiles 9.0 behavior | Promote if rail overflow is recurring UX pain; Tab Tiles source/license unverified. |
 | 4 | 72 | Workspace/session import from other managers | VertiTab, Lunma, Tabwise | Promote after TASK 4 export/import schema; avoid mandatory history permission. |
 | 5 | 71 | Native browser Split View awareness/bridge | W3C WebExtensions split-tabs proposal; MDN; Chrome Web Store split-view behavior | Keep as IDEA until stable create/remove split-view APIs or a concrete coexistence regression. |
 | 6 | 70 | Optional Document Picture-in-Picture companion mode | Chrome Document PiP; Super Pinned Windows (MIT) | Concrete compact-player/reference use case required; no CSP/XFO stripping or broad host access. |
