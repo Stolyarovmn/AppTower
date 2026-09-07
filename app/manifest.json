@@ -32,7 +32,7 @@
   "content_scripts": [
     {
       "matches": ["http://*/*", "https://*/*"],
-      "js": ["content/rail.js"],
+      "js": ["content/rail-prelude.js", "content/rail.js", "content/rail-style-contract.js"],
       "css": ["content/rail.css"],
       "run_at": "document_start"
     },
