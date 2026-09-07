@@ -20,7 +20,6 @@
     {
       "matches": ["http://*/*", "https://*/*"],
       "js": ["rail.js"],
-      "css": ["rail.css"],
       "run_at": "document_start"
     }
   ],
