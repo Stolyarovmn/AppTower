@@ -16,19 +16,19 @@ Last competitor scan: 2026-09-07.
 
 **No TASK is ACTIVE.** TASK 2 is complete. This research process does not activate implementation work; only the AppTower Task Executor may move another TASK to `ACTIVE`.
 
-The current regression PR #2 head observed during this scan is `3ab8d31abd42335440e57b98bee02c5e23e061cb`. Its `validate` workflow run `34107440635` completed with conclusion **`success`**. The current regression head is therefore green; READY TASKS are not globally blocked by CI, while TASKS with unresolved functional dependencies remain `BLOCKED`.
+The current regression PR #2 head observed during this scan is `3ab8d31abd42335440e57b98bee02c5e23e061cb`. Its `validate` workflow run `34107440635` completed with conclusion **`success`**. READY TASKS are therefore not globally blocked by CI, while TASKS with unresolved functional dependencies remain `BLOCKED`.
 
 ## Fresh research notes
 
-- TabRest (`lamngockhuong/tabrest`) is a current MIT-licensed MV3 tab suspender/resource manager. Its manifest uses `system.memory`, `tabs`, `storage`, `alarms`, `tabGroups`, `idle`, `scripting`, `sidePanel` and other explicit capabilities while keeping ordinary HTTP(S) host access optional; the repository includes a dedicated memory monitor plus unit coverage for high-memory and memory-API failure cases. This materially improves maturity/testability evidence for coarse memory-pressure handling.
-- TabRest's full permission/runtime footprint is broader than AppTower should copy: `system.memory` is required in TabRest, it has a Sentry host permission, and it includes a YouTube-specific content script. AppTower should transfer only the clean-room pattern of coarse system-memory pressure + LRU safety decisions. If implemented, `system.memory` must be optional/user-enabled, pressure checks must piggyback on TASK 6 scheduling or explicit user actions rather than add a polling loop, and TASK 3 safety guards must remain authoritative.
-- The former IDEA "Resource-pressure-aware emergency eviction" therefore moves from 73 to **TASK 18 — 75/100**. The score increase comes from stronger competitor maturity and automated-test evidence, not from assuming unverified battery or RAM savings. All other TASK and IDEA scores were recalculated and remain numerically unchanged.
-- Drowzy 1.5.0 is a current MIT-licensed MV3 tab suspender updated in September 2026. Its manifest keeps `<all_urls>` optional rather than required, has no static all-page content script, and uses `tabs`, `storage`, `alarms`, `contextMenus`, `scripting`, `sidePanel`, and `favicon`. Its documented sleep model uses Chrome-native `tabs.discard()` and protects active/audible/pinned/whitelisted tabs plus unsaved-form cases. This is strong permission/privacy evidence for TASK 3: AppTower should keep pane sleep guard logic scoped and capability-driven, and should not add broad host access just to detect blockers. It also reinforces TASK 10's permission-budget direction. No code is copied.
-- TabZen provides useful independent product evidence for per-domain/per-group sleep timers, battery-aware aggressiveness, memory-pressure triggers, form-input protection, schedules and both native-discard and placeholder suspension strategies. However the repository contains no LICENSE file and GitHub reports no detected license even though the README says "MIT"; its manifest also requires `<all_urls>`, `system.memory`, notifications and a static all-page content script. Therefore TabZen is treated as behavior-only/clean-room evidence, not as a code source.
-- TabTOC 1.2.0 was updated in the Chrome Web Store on 2026-09-04 and explicitly exposes three workspace surfaces: floating overlay on ordinary pages, native Side Panel, and a New Tab workspace. Its product site states that the native Side Panel remains available on `chrome://` pages where an injected overlay cannot operate. Nest 1.5.3, updated 2026-09-03, independently uses the same broad pattern: injected overlay plus persistent native Side Panel/full-page surfaces, and explicitly notes that the Side Panel works on Chrome-owned pages where injection cannot. This directly matches AppTower's known start/new-tab availability requirement and motivates TASK 17: a clean-room restricted-page control-surface fallback using AppTower's existing native Side Panel instead of trying to inject the rail into browser-owned pages.
-- TabTOC's website describes the product as free/open source, but this scan did not locate a verifiable source repository or source license for the current extension build. Nest source/license was also not verified. Therefore neither implementation is a code source for AppTower; only the independently observable multi-surface behavior is used as evidence. TASK 17 is intentionally designed as an independent implementation and does not require new broad host permissions or `chrome_url_overrides`.
-- Microsoft Edge documentation updated in July 2026 explicitly marks the PWA `edge_side_panel` integration as **deprecated** and says it will soon no longer be supported. AppTower must not make PWA-sidebar metadata a required compatibility path. PWA discovery may remain useful for ordinary installability/app metadata, but panel compatibility must stay capability-driven and fall back to AppTower's own Embedded/Mobile/Real Page surfaces. This strengthens TASK 9 and adds a guardrail to TASK 12; it does not justify a separate TASK or a score change.
-- Tab Pilot / Tab Radar is a current MIT-licensed side-panel tab command center with fuzzy search, command palette, grouping, sessions/recently-closed and activity features. Its manifest currently requests `tabs`, `tabGroups`, `windows`, `sidePanel`, `storage`, `sessions`, `history`, `activeTab`, `scripting`, `nativeMessaging`, `idle`, `alarms`, `<all_urls>`, and an all-page content script. This is useful competitor evidence for Command Palette/search UX, but its broad permission/injection surface is an anti-pattern for AppTower's core and reinforces TASK 10 (permission budget) plus TASK 12 (context-scoped injection). No source code is needed or copied.
+- Benjamin410/chrome-tab-manager is a 2026 Chrome Side Panel tab manager under the **ISC License**. Its manifest uses `tabs`, `tabGroups`, `sidePanel`, `storage`, and `sessions`, but not `history`; it nevertheless offers recency sorting and recently-closed history. The project does statically inject banner/page-metadata scripts on `<all_urls>`, so that injection pattern is an anti-pattern for AppTower and is not copied.
+- Chromium exposes `tabs.Tab.lastAccessed` as the timestamp when a tab last became active in its window. The WebExtensions `sessions` API separately exposes recently closed tabs/windows through `sessions.getRecentlyClosed()` and requires the narrow `sessions` permission rather than full browsing-history access.
+- This resolves the main privacy concern behind the former IDEA “Recently accessed smart view”. It is promoted to **TASK 19 — 80/100**. AppTower should prefer its own pane/shortcut recency for AppTower entities and may use the narrowly scoped `sessions` capability only for an explicitly labelled “Recently closed browser tabs” subsection. No `history`, `idle`, `<all_urls>`, or new content-script injection is justified.
+- TabRest (`lamngockhuong/tabrest`) is a current MIT-licensed MV3 tab suspender/resource manager. Its coarse `system.memory` + LRU pattern remains clean-room evidence for TASK 18; AppTower keeps `system.memory` optional and does not add polling.
+- Drowzy 1.5.0 remains strong MIT evidence for native `tabs.discard()` and narrow blocker checks; its fixed 60-second alarm is not evidence of optimal energy behavior.
+- TabZen remains behavior-only evidence because the repository has no LICENSE file despite an MIT statement in README; its `<all_urls>`/all-page script footprint is not copied.
+- TabTOC and Nest remain behavior-only evidence for restricted-page fallback because current source/license could not be verified. AppTower uses its existing native Side Panel on browser-owned pages instead of trying to inject there.
+- Microsoft Edge documentation updated in July 2026 marks PWA `edge_side_panel` integration deprecated; AppTower compatibility therefore stays capability-driven and independent of that vendor-specific surface.
+- Tab Pilot / Tab Radar is MIT and useful UX evidence for fuzzy search/command palette/recent, but its broad permission/injection set remains an anti-pattern for AppTower core.
 
 ## TASKS
 
@@ -47,11 +47,12 @@ The current regression PR #2 head observed during this scan is `3ab8d31abd423354
 | 11 | 82 | BLOCKED | Compatibility ladder UX: Auto / Embedded / Mobile / Real Page | Stable renderer telemetry; TASK 1 |
 | 12 | 81 | BLOCKED | Manifest permission budget + CI regression gate | Current manifest/variant inventory |
 | 13 | 80 | READY | Duplicate shortcut detection and reuse prompt | Stable add flow |
-| 14 | 79 | BLOCKED | Context-scoped pane bridge/PWA content-script injection instead of all-page/all-frame injection | Current script-role inventory; TASK 1 |
-| 15 | 79 | BLOCKED | Restorable split layout metadata in templates | TASK 2; TASK 4 preferred; stable split lifecycle |
-| 16 | 78 | BLOCKED | Native browser tab-group import/export bridge | Stable groups/workspaces; TASK 4 preferred |
-| 17 | 76 | BLOCKED | Glance preview in temporary bottom pane | Stable split-pane lifecycle |
-| 18 | 75 | BLOCKED | Optional resource-pressure-aware emergency pane eviction | TASK 3 + TASK 6; optional `system.memory`; measured baseline |
+| 14 | 80 | BLOCKED | Privacy-scoped Recently accessed / Recently closed smart view | TASK 2; current Recent/search surface stable; TASK 10 preferred before adding `sessions` |
+| 15 | 79 | BLOCKED | Context-scoped pane bridge/PWA content-script injection instead of all-page/all-frame injection | Current script-role inventory; TASK 1 |
+| 16 | 79 | BLOCKED | Restorable split layout metadata in templates | TASK 2; TASK 4 preferred; stable split lifecycle |
+| 17 | 78 | BLOCKED | Native browser tab-group import/export bridge | Stable groups/workspaces; TASK 4 preferred |
+| 18 | 76 | BLOCKED | Glance preview in temporary bottom pane | Stable split-pane lifecycle |
+| 19 | 75 | BLOCKED | Optional resource-pressure-aware emergency pane eviction | TASK 3 + TASK 6; optional `system.memory`; measured baseline |
 
 Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 
@@ -65,54 +66,51 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 ### TASK 2 — Serialized state coordinator — 92/100 — DONE
 **Rationale:** one ordered mutation boundary reduces race-driven reload/reconnect bugs across user actions, storage events, ports and panel lifecycle.
 **Acceptance criteria/result:** shared-state mutations use one FIFO coordinator and lifecycle store/controller; persistence/render phases serialize; read barriers do not generate mutation commits; reconnect preserves rail/workspace state without reopening panel document.
-**Automated test plan/result:** delayed-async ordering/read barriers; coordinator/store/controller unit coverage; static wiring regression; headed Chromium rapid Search/Organize/Add + reconnect; live background panel routing/document reuse diagnostics.
+**Automated test plan/result:** delayed-async ordering/read barriers; coordinator/store/controller unit coverage; static wiring regression; headed Chromium rapid Search/Organize/Add + reconnect.
 **Dependencies:** TASK 1.
 **Sources/competitors:** Lunma (Apache-2.0) as architectural evidence only; AppTower implementation clean-room.
 
 ### TASK 16 — Deterministic drag/drop interaction model — 90/100 — BLOCKED
-**Score:** 23/25 user value + 19/20 real pain/regression + 15/15 AppTower fit + 13/15 measurable UX/reliability + 7/10 low implementation risk + 5/5 privacy/permissions + 3/5 competitor maturity + 5/5 automated testability = **90**.
-**Rationale:** fixes the known prohibited-drop/group/template interaction regression. SuperSplit supplies clean-room evidence for explicit drop zones; Tab Canopy supplies evidence for declaring move intent before background/UI synchronization.
+**Rationale:** fixes the known prohibited-drop/group/template interaction regression and removes race-prone implicit drop semantics.
 **Acceptance criteria:** deterministic reorder/group/template targets; deterministic insertion into existing groups; explicit top/bottom template target; invalid/self/cross-workspace drop never mutates state; Esc/pointercancel/lost capture rolls back; mouse/pointer semantics agree; unrelated pane does not reload.
-**Automated test plan:** hit-test boundary fixtures; reorder; site→group; site→site→Group; site→site→Template; invalid/self/cross-workspace rejection; cancellation; race with storage/render update; in-flight move plus browser event; headed Chromium real drag/pointer E2E and persisted-state assertions.
-**Dependencies:** TASK 2 completed; stable pointer/drag lifecycle. Coordinate with TASK 13 so layout metadata does not create a second drag model.
-**Sources/competitors:** AppTower known P0; SuperSplit (`schappim/supersplit-js`, MIT); Tab Canopy (`firtoz/tab-canopy`, MIT, alpha). Clean-room behavior only.
+**Automated test plan:** hit-test boundary fixtures; reorder; site→group; site→site→Group; site→site→Template; invalid/self/cross-workspace rejection; cancellation; race with storage/render/browser event; headed Chromium real drag/pointer E2E.
+**Dependencies:** TASK 2 completed; stable pointer/drag lifecycle; coordinate with split metadata so there is one interaction model.
+**Sources/competitors:** AppTower known P0; SuperSplit (MIT); Tab Canopy (MIT, alpha), behavior/architecture only.
 
 ### TASK 3 — Safe pane sleep guards — 89/100 — READY
 **Rationale:** automatic sleep must not destroy unsaved edits or interrupt active media while retaining resource savings.
 **Acceptance criteria:** dirty form/contenteditable and active media block auto-sleep; `Keep awake` persists without polling; blockers clear after submit/reset/pause/end; pane-scoped cleanup on navigation/removal; no broad permission.
-**Automated test plan:** dirty text/checkbox/contenteditable; playing/paused media; keep-awake restart; blocker cleanup; unchanged idle/max-live semantics for normal panes.
+**Automated test plan:** dirty text/checkbox/contenteditable; playing/paused media; keep-awake restart; blocker cleanup; unchanged idle/max-live semantics.
 **Dependencies:** embedded-frame bridge and resource lease/sleep path.
-**Sources/competitors:** Drowzy 1.5.0 (MIT; native `tabs.discard()`, optional `<all_urls>`, no static all-page content script); QuickPanel Lite Mode/Keep Alive as behavior evidence only because QuickPanel is PolyForm Noncommercial; TabZen behavior-only because its repository licensing is incomplete/ambiguous despite an MIT statement in README.
+**Sources/competitors:** Drowzy 1.5.0 (MIT); QuickPanel behavior only (PolyForm Noncommercial); TabZen behavior only (license incomplete/ambiguous).
 
 ### TASK 4 — Versioned persistence schema + append-only migrations — 88/100 — BLOCKED
-**Score:** 23+17+15+10+8+5+5+5 = **88**.
 **Rationale:** durable workspaces/settings/templates/layout/export state needs explicit evolution rather than silent reset/defaulting.
-**Acceptance criteria:** explicit version per durable family; one validation/normalization boundary; deterministic append-only migrations; safe corrupt/future handling; migration before runtime mutation; export/import uses the same pipeline.
+**Acceptance criteria:** explicit version per durable family; one validation/normalization boundary; deterministic append-only migrations; safe corrupt/future handling; migration before runtime mutation; export/import uses same pipeline.
 **Automated test plan:** historical fixtures; golden/idempotent migrations; malformed/future cases; legacy-profile restart; export/import round trip; coordinator never sees pre-migration state.
-**Dependencies:** TASK 2, persisted-state inventory.
+**Dependencies:** TASK 2; persisted-state inventory.
 **Sources/competitors:** Lunma (Apache-2.0), pattern only.
 
 ### TASK 17 — Restricted-page control-surface fallback — 86/100 — BLOCKED
-**Score:** 21/25 user value + 17/20 real pain/regression + 15/15 AppTower fit + 11/15 measurable UX/reliability + 8/10 low implementation risk + 5/5 privacy/permissions + 4/5 competitor maturity + 5/5 automated testability = **86**.
-**Rationale:** AppTower's injected rail cannot exist on browser-owned/restricted pages, while the product requirement includes availability on start/new-tab/browser pages. The correct boundary is capability-driven surface selection: keep the injected rail on eligible web pages, but route the same AppTower controls through the existing native Side Panel/action on restricted pages. This avoids futile injection, missing controls, and duplicate surface ownership.
-**Acceptance criteria:** on eligible HTTP(S) pages the injected rail remains the primary control surface; on browser-owned/restricted pages (`chrome://`, `edge://`, browser New Tab and other non-scriptable targets) AppTower does not attempt content-script injection and its action/toggle opens or focuses the existing native Side Panel; returning to an eligible page restores exactly one rail; collapse/expand/close state remains coherent across eligible↔restricted transitions; no second AppTower panel document is created; no `chrome_url_overrides`, new broad host permission or browser-page scripting workaround is required.
-**Automated test plan:** headed Chromium fixtures for normal HTTP(S) page → New Tab/`chrome://` → normal page; assert zero injection attempts/errors on restricted targets; extension action opens/focuses native Side Panel there; exactly one rail after returning; repeated transitions do not duplicate panel/rail; restart while last active tab is restricted; collapse/expand/close persistence; negative fixture for unsupported URL schemes. Add Edge manual/E2E parity gate when browser automation can reliably address `edge://`/New Tab.
-**Dependencies:** TASK 1 completed; stable rail/panel ownership; explicit browser-page capability detection. Coordinate with TASK 12 so scoped injection and restricted-page fallback share one eligibility predicate rather than competing allow/deny logic.
-**Sources/competitors:** TabTOC 1.2.0 (Chrome Web Store updated 2026-09-04; product site behavior only, current source repository/license not verified); Nest 1.5.3 (Chrome Web Store updated 2026-09-03; behavior only, source/license not verified). Independent AppTower implementation only.
+**Rationale:** injected rail cannot exist on browser-owned/restricted pages; AppTower still needs a coherent control surface there.
+**Acceptance criteria:** eligible HTTP(S) pages keep exactly one rail; restricted pages do not receive injection attempts and action/toggle opens or focuses the existing native Side Panel; eligible↔restricted transitions preserve collapse/expand/close state; no `chrome_url_overrides`, broad host permission, or browser-page scripting workaround.
+**Automated test plan:** HTTP(S) → New Tab/`chrome://` → HTTP(S); zero restricted-page injection errors; action→Side Panel; duplicate-surface checks; restart on restricted page; unsupported schemes; Edge parity gate when automation is reliable.
+**Dependencies:** TASK 1; stable surface ownership; one shared eligibility predicate with TASK 12.
+**Sources/competitors:** TabTOC 1.2.0 and Nest 1.5.3 behavior only; source/license unverified.
 
 ### TASK 5 — Command Palette — 86/100 — BLOCKED
 **Rationale:** keyboard-first command/search improves reach without permanent UI density.
-**Acceptance criteria:** unified search over shortcuts/templates/workspaces/recent; keyboard execution; deterministic ranking; no history permission for core results; `/` search remains compatible or migrates cleanly.
+**Acceptance criteria:** unified search over shortcuts/templates/workspaces/recent; keyboard execution; deterministic ranking; no history permission for core results; `/` remains compatible or migrates cleanly.
 **Automated test plan:** keyboard-only E2E; ranking fixtures; empty/no-match; execute each entity type; no panel-document reload on open/close.
 **Dependencies:** TASK 2.
-**Sources/competitors:** ArchTabs, SuperchargeBrowser, Tab Manager v2, Tablio; Tab Pilot/Tab Radar (MIT) adds fresh 2026 behavior evidence but its broad permission model must not be copied.
+**Sources/competitors:** ArchTabs, SuperchargeBrowser, Tab Manager v2, Tablio, Tab Pilot/Tab Radar (MIT); broad competitor permissions are not copied.
 
 ### TASK 6 — Event-driven resource budget scheduling — 85/100 — BLOCKED
-**Rationale:** fixed periodic alarms wake the MV3 worker when no work exists; nearest-deadline scheduling reduces idle wakeups.
-**Acceptance criteria:** no recurring alarm with zero leases; next check is earliest meaningful deadline; create/touch/remove reschedules deterministically; current idle/max-live behavior is preserved; restart restores deadline.
-**Automated test plan:** zero/one/many lease scheduler; touch/remove; pane-isolation E2E; instrument service-worker wakeups before/after.
+**Rationale:** fixed periodic alarms wake the MV3 worker when no work exists; nearest-deadline scheduling should reduce idle wakeups.
+**Acceptance criteria:** no recurring alarm with zero leases; next check is earliest meaningful deadline; create/touch/remove reschedules deterministically; current idle/max-live behavior preserved; restart restores deadline.
+**Automated test plan:** zero/one/many lease scheduler; touch/remove; pane-isolation E2E; instrument worker wakeups before/after.
 **Dependencies:** performance baseline.
-**Sources/competitors:** AppTower implementation; MV3 event-driven guidance; QuickPanel behavior evidence. Drowzy's documented fixed 60-second alarm is evidence of a common simple design, not evidence of lower idle energy. Tab Pilot's simultaneous `idle` + `alarms` activity model is also not evidence of lower energy use and must not be treated as such.
+**Sources/competitors:** AppTower implementation; MV3 event-driven guidance; QuickPanel behavior evidence; fixed 60s Drowzy alarm is comparison only.
 
 ### TASK 7 — Event-based workspace snapshots + Undo — 84/100 — BLOCKED
 **Rationale:** recovery from destructive workspace/group/template mutations has high value without periodic background work.
@@ -122,27 +120,25 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 **Sources/competitors:** VertiTab, ArchTabs, SuperchargeBrowser, SnapTabs (MIT).
 
 ### TASK 8 — Installed-extension lifecycle E2E harness — 83/100 — BLOCKED
-**Score:** 20+18+14+10+7+5+4+5 = **83**.
-**Rationale:** AppTower has repeatedly reproduced failures only after loading the real extension. Browser-managed install/action/inspection closes the gap between unit/page tests and live extension behavior.
-**Acceptance criteria:** install exact package in clean Chrome profile; verify id/version; trigger real extension action; smoke open/collapse/expand/Add/Search/Organize; detect duplicate panel/rail; capture deterministic diagnostics; dispose profile; no new runtime permission.
-**Automated test plan:** clean install/action; reload/reinstall; restart persistence; one rail; native side panel; Add Current Page; collapse/expand; diagnostics; stale/wrong package negative case.
-**Dependencies:** reproducible exact-head package/provenance; supported Chrome DevTools-for-agents/MCP environment.
-**Sources/competitors:** Chrome for Developers, “Debug Chrome extensions with AI agents” (2026-09-04; docs CC BY 4.0, samples Apache-2.0). AppTower harness is independent.
+**Rationale:** several AppTower failures only reproduce after loading the real extension; browser-managed install/action/inspection closes that test gap.
+**Acceptance criteria:** install exact package in clean profile; verify id/version; trigger real action; smoke open/collapse/expand/Add/Search/Organize; detect duplicate panel/rail; capture deterministic diagnostics; dispose profile.
+**Automated test plan:** clean install/action; reload/reinstall; restart persistence; native side panel; Add Current Page; collapse/expand; stale/wrong package negative case.
+**Dependencies:** reproducible exact-head package/provenance; supported Chrome toolchain.
+**Sources/competitors:** Chrome for Developers extension-debugging documentation/samples; independent AppTower harness.
 
 ### TASK 9 — Compatibility ladder — 82/100 — BLOCKED
-**Rationale:** explainable fallback is better than exposing renderer internals when sites cannot embed cleanly. Edge's July 2026 deprecation of PWA `edge_side_panel` further argues against relying on browser-vendor PWA sidebar integration as a durable compatibility surface.
-**Acceptance criteria:** Auto/Embedded/Mobile/Real Page; deterministic failure reason; diagnostics only on explicit action; site/pane-scoped fallback; unrelated pane remains live; no required dependency on `edge_side_panel` or another deprecated PWA-sidebar surface.
-**Automated test plan:** successful embed/frame denial/navigation failure/Real Page fixtures; per-site persistence; two-window compatibility-rule collision; permission prompts; capability-negative fixture where Edge PWA-sidebar support is unavailable/deprecated and AppTower still selects its own supported surface.
-**Dependencies:** stable renderer telemetry, TASK 1.
-**Sources/competitors:** Universal Split View; SplitView; SidePilot (Apache-2.0); QuickPanel behavior evidence only (PolyForm Noncommercial); Microsoft Edge PWA-sidebar documentation updated July 2026, deprecating `edge_side_panel`.
+**Rationale:** explainable fallback is better than exposing renderer internals; deprecated vendor-specific PWA sidebars must not become a dependency.
+**Acceptance criteria:** Auto/Embedded/Mobile/Real Page; deterministic failure reason; diagnostics only on explicit action; site/pane-scoped fallback; unrelated pane remains live; no required `edge_side_panel` dependency.
+**Automated test plan:** successful embed/frame denial/navigation failure/Real Page fixtures; per-site persistence; two-window rule collision; permission prompts; capability-negative Edge PWA-sidebar fixture.
+**Dependencies:** stable renderer telemetry; TASK 1.
+**Sources/competitors:** Universal Split View; SplitView; SidePilot (Apache-2.0); QuickPanel behavior only; Microsoft Edge PWA-sidebar deprecation docs.
 
 ### TASK 10 — Manifest permission budget + CI regression gate — 81/100 — BLOCKED
-**Score:** 18+16+15+8+9+5+5+5 = **81**.
-**Rationale:** AppTower already removed unneeded permissions; a CI allowlist prevents permission creep, unexpected warnings and store-review regressions.
-**Acceptance criteria:** reviewed required/optional/host sets per variant; fail on unreviewed addition or optional→required promotion; rationale per permission; generated fallback has its own narrower budget; removals remain allowed.
-**Automated test plan:** allowed/new required/new optional/new host/required↔optional/fallback-drift fixtures; package validation runs the same gate.
+**Rationale:** a CI allowlist prevents permission creep, unexpected warnings and store-review regressions.
+**Acceptance criteria:** reviewed required/optional/host sets per variant; fail on unreviewed addition or optional→required promotion; rationale per permission; generated fallback has narrower budget; removals remain allowed.
+**Automated test plan:** allowed/new required/new optional/new host/required↔optional/fallback-drift fixtures; package validation runs same gate.
 **Dependencies:** current manifest/variant inventory.
-**Sources/competitors:** Benjamin410/chrome-tab-manager (ISC); Chrome Web Store minimum-permission guidance; Drowzy (MIT) as evidence for keeping `<all_urls>` optional when only specific blocker checks need host access; Tab Pilot/Tab Radar (MIT) as fresh evidence of how a feature-rich side-panel manager can accumulate `history`, `nativeMessaging`, `idle`, `alarms`, `<all_urls>` and all-page injection — a boundary AppTower should avoid unless separately justified.
+**Sources/competitors:** Benjamin410/chrome-tab-manager (ISC); Drowzy (MIT); Tab Pilot/Tab Radar (MIT) as broad-footprint counterexample; Chrome Web Store minimum-permission guidance.
 
 ### TASK 11 — Duplicate shortcut detection — 80/100 — READY
 **Rationale:** prevents rail/workspace clutter with low implementation and permission risk.
@@ -151,21 +147,27 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 **Dependencies:** stable add flow.
 **Sources/competitors:** Tab Wise, Tabwise, TabDog, Tab Manager v2, Tablio.
 
+### TASK 19 — Privacy-scoped Recently accessed / Recently closed smart view — 80/100 — BLOCKED
+**Score:** 20/25 user value + 13/20 real pain/regression + 15/15 AppTower fit + 10/15 measurable UX + 8/10 low implementation risk + 5/5 privacy/permissions + 4/5 competitor maturity + 5/5 automated testability = **80**.
+**Rationale:** Recent is a requested navigation surface, but the earlier IDEA was held back because competitor implementations often pull full browser history/activity. Chromium now provides enough narrower primitives to implement the useful part without that expansion: AppTower can rank its own sites/templates by AppTower-owned `lastUsedAt`, while open browser tabs expose native `Tab.lastAccessed`; recently closed browser tabs/windows can be an explicitly labelled optional subsection via `sessions.getRecentlyClosed()`. Benjamin410/chrome-tab-manager provides current ISC-licensed evidence for a side-panel recency + recently-closed UX without `history` permission.
+**Acceptance criteria:** primary Recent list uses AppTower-owned recency only; opening/activating a shortcut/template updates recency deterministically without polling; stable tie-break is preserved; optional “Recently closed browser tabs” requests/uses only `sessions` and is clearly separated from AppTower Recent; no `history`, `idle`, `<all_urls>`, or content-script expansion; turning the optional browser subsection off removes the need to query sessions; search can filter Recent without changing ranking state; restoring a closed browser session is explicit and never silently imports it into an AppTower workspace.
+**Automated test plan:** deterministic `lastUsedAt` ordering/ties; open/activate updates; restart persistence; same entity in group/template; search filtering; optional sessions denied/unavailable/empty; recently closed tab and window restore fixtures; ensure manifest/permission gate rejects accidental `history`/`idle` additions; E2E confirms opening Recent does not reload pane documents or wake unrelated resources.
+**Dependencies:** TASK 2 completed; current Recent/search surface stable; TASK 10 preferred before introducing optional `sessions`; coordinate with TASK 5 so Command Palette consumes the same recency model rather than maintaining a second index.
+**Sources/competitors:** Chromium `tabs.Tab.lastAccessed`; WebExtensions `sessions.getRecentlyClosed()`; Benjamin410/chrome-tab-manager (ISC, 2026) for recency/recently-closed side-panel UX. Its `<all_urls>` content-script design is explicitly not copied. Side Tab Manager and Vertical SidePanel Tab Group Manager are additional store-level behavior evidence only.
+
 ### TASK 12 — Context-scoped pane bridge/PWA content-script injection — 79/100 — BLOCKED
-**Score:** 19+14+15+11+7+5+3+5 = **79**.
-**Rationale:** pane bridge/PWA discovery currently run too broadly. Narrowing execution reduces injection surface and avoidable work. Edge's deprecation of `edge_side_panel` means PWA discovery must not evolve into a required Edge-sidebar integration dependency.
-**Acceptance criteria:** inventory rail/pane/PWA roles; pane bridge only in AppTower-owned pane contexts; PWA discovery on-demand/bounded to inspected page; sensitive contexts are not broadened; Add Current Page/PWA metadata detection still works; no new permission; no required dependency on `edge_side_panel`; measure helper initializations before/after.
-**Automated test plan:** static manifest assertion; ordinary page has no pane/PWA helper initialization; top/bottom pane isolation; on-demand PWA fixture; auth/payment fixtures; restart/reconnect/fallback; capability-negative Edge PWA-sidebar fixture; before/after initialization count.
-**Dependencies:** current content-script inventory; TASK 1. Coordinate with TASK 9.
-**Sources/competitors:** Side Link Preview (MIT) behavior/privacy evidence; Chrome `scripting` API docs; Microsoft Edge July 2026 PWA-sidebar deprecation. Drowzy's absence of a static all-page content script is additional privacy-surface evidence; Tab Pilot's `<all_urls>` plus all-page content script is a current anti-pattern comparison, not an implementation source.
+**Rationale:** pane bridge/PWA discovery currently run too broadly; narrowing execution reduces injection surface and avoidable work.
+**Acceptance criteria:** inventory rail/pane/PWA roles; pane bridge only in AppTower-owned pane contexts; PWA discovery on-demand/bounded; no new permission; no required `edge_side_panel`; measure helper initializations before/after.
+**Automated test plan:** static manifest assertion; ordinary page has no pane/PWA helper initialization; top/bottom isolation; on-demand PWA fixture; auth/payment fixtures; restart/reconnect/fallback; capability-negative Edge fixture; initialization count.
+**Dependencies:** current content-script inventory; TASK 1; coordinate with TASK 9/17.
+**Sources/competitors:** Side Link Preview (MIT); Chrome `scripting` docs; Microsoft Edge PWA-sidebar deprecation; Drowzy as narrow-injection evidence; Tab Pilot as broad-injection counterexample.
 
 ### TASK 13 — Restorable split layout metadata — 79/100 — BLOCKED
-**Score:** 21+12+14+12+7+5+4+4 = **79**.
 **Rationale:** layout ratios are durable workflow state; AppTower can gain repeatability without arbitrary tiling.
 **Acceptance criteria:** bounded ratio; legacy default; restore without unnecessary pane reload; rebalance/reset; restart/export-import; exactly two panes.
 **Automated test plan:** schema bounds/defaults; non-default ratio with stable document tokens; reset/save; restart/export-import; pane isolation.
-**Dependencies:** TASK 2, TASK 4 preferred, stable split lifecycle.
-**Sources/competitors:** Chromium Split View/session restore; SideSplit; Split Workspace store behavior. Split Workspace source/license unverified, behavior only.
+**Dependencies:** TASK 2; TASK 4 preferred; stable split lifecycle.
+**Sources/competitors:** Chromium Split View/session restore; SideSplit; Split Workspace behavior only where source/license unverified.
 
 ### TASK 14 — Native tab-group import/export bridge — 78/100 — BLOCKED
 **Rationale:** native interoperability without turning AppTower into a full tab manager.
@@ -182,28 +184,26 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 **Sources/competitors:** SuperchargeBrowser Glance-style preview.
 
 ### TASK 18 — Optional resource-pressure-aware emergency pane eviction — 75/100 — BLOCKED
-**Score:** 18/25 user value + 10/20 real pain/regression + 14/15 AppTower fit + 11/15 measurable performance/UX + 8/10 low implementation risk + 5/5 privacy/permissions + 4/5 competitor maturity + 5/5 automated testability = **75**.
-**Rationale:** under genuine system-memory pressure AppTower should be able to tighten eviction of otherwise sleep-eligible panes without introducing continuous monitoring or bypassing safety. TabRest provides current MIT-licensed evidence that coarse `system.memory` pressure can be combined with LRU decisions and tested deterministically. The gain is conditional resource resilience, not a claimed universal battery improvement.
-**Acceptance criteria:** feature is opt-in and requests `system.memory` only when enabled; no new recurring timer/polling loop is introduced; pressure sampling occurs only on an already-scheduled TASK 6 resource check or explicit user diagnostics/action; coarse threshold + hysteresis prevents thrashing; only TASK 3-safe panes participate; dirty forms/contenteditable, active media and explicit keep-awake always win over pressure; victim ordering uses AppTower-owned LRU/lease state rather than per-pane heap inspection; disabling the feature removes pressure influence cleanly; unsupported/denied `system.memory` degrades to normal sleep policy; no broad host permission or network dependency.
-**Automated test plan:** mocked low/normal/high pressure boundaries and hysteresis; denied/unavailable memory API; zero-leases/no-scheduled-check case proves no extra worker wakeup; LRU victim order; all-protected case performs no eviction; dirty/media/keep-awake safety cases; enable/disable + permission denial/restart; E2E pressure fixture verifies only eligible pane unloads and sibling state remains intact; before/after instrumentation confirms wakeup count does not increase when no resource deadline exists.
-**Dependencies:** TASK 3 safe pane sleep guards; TASK 6 event-driven resource scheduling; TASK 10 permission-budget gate preferred; measured performance/resource baseline.
-**Sources/competitors:** TabRest (`lamngockhuong/tabrest`, MIT; clean-room behavioral/architecture evidence only); TabZen behavior-only because licensing remains incomplete/ambiguous. Chrome `system.memory` API is the capability boundary. No competitor source code is copied.
+**Rationale:** under genuine system-memory pressure AppTower may tighten eviction of otherwise sleep-eligible panes without continuous monitoring or bypassing safety.
+**Acceptance criteria:** opt-in; `system.memory` requested only when enabled; no new polling; sampling only on TASK 6 check or explicit diagnostics; hysteresis; only TASK 3-safe panes; AppTower-owned LRU; denied/unavailable API degrades cleanly; no broad host permission/network dependency.
+**Automated test plan:** low/normal/high pressure + hysteresis; denied API; zero-leases proves no extra wakeup; LRU order; all-protected case; enable/disable/restart; pane-isolation E2E; wakeup count before/after.
+**Dependencies:** TASK 3; TASK 6; TASK 10 preferred; measured baseline.
+**Sources/competitors:** TabRest (MIT, clean-room evidence); TabZen behavior only; Chrome `system.memory` capability boundary.
 
 ## IDEAS
 
 | Rank | Score | IDEA | Evidence / source | Promotion condition / risk |
 |---:|---:|---|---|---|
 | 1 | 74 | Anchored Real Page/sidecar placement: remember monitor/window bounds, restore extension-owned sidecar geometry after restart and optionally reuse an existing sidecar | Tab Anchor (MIT), QuickPanel; Split Workspace/splitescreen store behavior | Promote after Real Page lifecycle is stable; normalize display changes; never reroute normal browsing globally; store-only source/license remains unverified where noted. |
-| 2 | 74 | Per-site sleep policy presets: default/aggressive/never sleep | Drowzy (MIT); TabZen behavior-only due incomplete license declaration | Promote after TASK 3 + measurable resource baseline; do not inherit TabZen's required `<all_urls>`/all-page script. |
+| 2 | 74 | Per-site sleep policy presets: default/aggressive/never sleep | Drowzy (MIT); TabZen behavior-only | Promote after TASK 3 + measurable resource baseline; no required `<all_urls>`/all-page script. |
 | 3 | 74 | Panel navigation escape policy | QuickPanel | Promote after navigation telemetry proves accidental pane hijacking; clean-room only because QuickPanel is PolyForm Noncommercial. |
 | 4 | 73 | Favorites/pinned mini-row independent of workspace ordering | ddSideBar (MIT), Lunma, TabTree, ThisPanel | Promote if rail overflow is recurring UX pain. |
 | 5 | 72 | Workspace/session import from other managers | VertiTab, Lunma, Tabwise | Promote after TASK 4 export/import schema; avoid mandatory history permission. |
 | 6 | 71 | Native browser Split View awareness/bridge | W3C WebExtensions split-tabs proposal; MDN; Chrome Web Store split-view behavior | Keep as IDEA until stable create/remove split-view APIs or a concrete coexistence regression. |
-| 7 | 70 | Recently accessed smart view | VertiTab, TabDog; Tab Pilot adds fresh recency/activity UX evidence but uses `history`/`idle` and does not justify those permissions for AppTower | Promote after current Recent is stable/searchable; prefer AppTower-owned recency data before requesting history. |
-| 8 | 70 | Optional Document Picture-in-Picture companion mode | Chrome Document PiP; Super Pinned Windows (MIT) | Concrete compact-player/reference use case required; no CSP/XFO stripping or broad host access. |
-| 9 | 68 | Optional browser-context actions over selected text/link | AI Side Panel / SuperchargeNavigation patterns | Needs concrete non-AI use case and optional-permission review. |
-| 10 | 65 | Portable workspace export/mirror to native browser bookmarks | Mooring | Explicit optional `bookmarks` only; clean-room where license is unclear. |
-| 11 | 65 | Focus mode: temporarily show only one group/workspace | TabTree, Tabwise | Promote if groups/templates overload rail. |
-| 12 | 62 | Automatic domain grouping suggestions | VertiTab, TabDog, SuperchargeNavigation | Opt-in shortcut organizer only; do not become a tab manager. |
-| 13 | 58 | Optional AI organizer module | Leap/VertiTab-style products | Keep out of core until privacy-preserving provider/module contract and demand. |
-| 14 | 54 | Full vertical-tab manager | VertiTab, TabTOC, ddSideBar, TabTree, Tabwise | Deliberately low; conflicts with product boundary. |
+| 7 | 70 | Optional Document Picture-in-Picture companion mode | Chrome Document PiP; Super Pinned Windows (MIT) | Concrete compact-player/reference use case required; no CSP/XFO stripping or broad host access. |
+| 8 | 68 | Optional browser-context actions over selected text/link | AI Side Panel / SuperchargeNavigation patterns | Needs concrete non-AI use case and optional-permission review. |
+| 9 | 65 | Portable workspace export/mirror to native browser bookmarks | Mooring | Explicit optional `bookmarks` only; clean-room where license is unclear. |
+| 10 | 65 | Focus mode: temporarily show only one group/workspace | TabTree, Tabwise | Promote if groups/templates overload rail. |
+| 11 | 62 | Automatic domain grouping suggestions | VertiTab, TabDog, SuperchargeNavigation | Opt-in shortcut organizer only; do not become a tab manager. |
+| 12 | 58 | Optional AI organizer module | Leap/VertiTab-style products | Keep out of core until privacy-preserving provider/module contract and demand. |
+| 13 | 54 | Full vertical-tab manager | VertiTab, TabTOC, ddSideBar, TabTree, Tabwise | Deliberately low; conflicts with product boundary. |
