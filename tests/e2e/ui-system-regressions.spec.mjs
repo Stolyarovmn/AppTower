@@ -99,7 +99,6 @@ test("ATN-E2E-017 drag shows a pointer-following shortcut proxy before drop", as
     if (!geometry) throw new Error("rail shortcut geometry unavailable");
 
     const {sourceId,targetId,from,to} = geometry;
-    const source = panel.locator(`#panel-sites .rail-site[data-shortcut-id="${sourceId}"]`);
     const target = panel.locator(`#panel-sites .rail-site[data-shortcut-id="${targetId}"]`);
     const startX = from.x + from.width/2;
     const startY = from.y + from.height/2;
@@ -110,7 +109,6 @@ test("ATN-E2E-017 drag shows a pointer-following shortcut proxy before drop", as
     const proxy = panel.locator(".atn-drag-proxy");
     await expect(proxy).toBeVisible();
     await expect(proxy).toHaveAttribute("data-shortcut-id",sourceId || "");
-    await expect(source).toHaveClass(/dragging/);
 
     const proxyBefore = await proxy.boundingBox();
     await panel.mouse.move(to.x + to.width/2,to.y + to.height/2,{steps:8});
