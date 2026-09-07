@@ -13,10 +13,12 @@ test("native Edge action and compact rail lifecycle repairs are wired", () => {
   assert.match(backgroundEntry,/edge-manual-gate-fixes\.js/);
   assert.match(edgeFixes,/openPanelOnActionClick:true/);
   assert.match(edgeFixes,/message\.type === "OPEN_PANEL"/);
-  assert.match(edgeFixes,/chrome\.sidePanel\?\.open\?\.\(\{tabId:sender\.tab\.id\}\)/);
+  assert.match(edgeFixes,/chrome\.sidePanel\?\.open\?\.\(\{windowId\}\)/);
+  assert.doesNotMatch(edgeFixes,/chrome\.sidePanel\?\.open\?\.\(\{tabId:/);
   assert.match(edgeFixes,/message\.type === "COLLAPSE_PANEL"/);
   assert.match(edgeFixes,/COLLAPSE_MARKER_KEY/);
   assert.match(edgeFixes,/ATN_SET_RAIL_VISIBLE/);
+  assert.match(edgeFixes,/onOpened/);
   assert.match(edgeFixes,/onClosed/);
 });
 
