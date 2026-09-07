@@ -16,7 +16,7 @@ Last competitor scan: 2026-09-07.
 
 **No TASK is ACTIVE.** TASK 2 is complete; the executor must select the next TASK in a later run.
 
-The current regression PR #2 head observed during this scan is `6ec579a64af0ba9d1346a04a0f3df854aaba839c`. Its `validate` workflow run `34061140457` completed with conclusion **`action_required`**, so CI is not green. READY TASKS remain blocked from activation until a successful validation run is observed. PR #1 head `1fc726fac69410d4ae313fed2c7e4d02a3a8f3a0` separately passed `validate` run `34076573657`, but that documentation-branch success does not override the newer regression-branch gate.
+The current regression PR #2 head observed during this scan is `6ec579a64af0ba9d1346a04a0f3df854aaba839c`. Its `validate` workflow run `34061140457` completed with conclusion **`action_required`**, so CI is not green. READY TASKS remain blocked from activation until a successful validation run is observed. PR #1 head `d37cdb6daf9e2b1c84b4cfca585c93db274b445c` separately passed `validate` run `34083691950`, but that documentation-branch success does not override the regression-branch gate.
 
 ## TASKS
 
@@ -100,7 +100,7 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 **Sources/competitors:** VertiTab, ArchTabs, SuperchargeBrowser, SnapTabs (MIT).
 
 ### TASK 8 — Installed-extension lifecycle E2E harness — 83/100 — BLOCKED
-**Score:** 20/25 user value + 18/20 real pain/regression + 14/15 AppTower fit + 10/15 measurable UX/reliability gain + 7/10 low implementation risk + 5/5 privacy/permissions + 4/5 maturity + 5/5 automated testability = **83**.
+**Score:** 20/25 user value + 18/20 real pain/regression + 14/15 AppTower fit + 10/15 measurable UX/reliability gain + 7/10 low implementation risk + 5/5 privacy/permissions + 4/5 competitor maturity + 5/5 automated testability = **83**.
 **Rationale:** AppTower has repeatedly reproduced failures only after loading the real extension in a browser. Chrome's official DevTools-for-agents extension tooling, documented on 2026-09-04, can install an unpacked extension, list installed extensions, trigger its toolbar action and then inspect the live browser state. That provides a browser-managed E2E layer between unit/headed-page tests and the remaining Edge manual gate.
 **Acceptance criteria:** test harness installs the exact packaged AppTower build into a fresh Chrome profile; verifies the expected extension id/version metadata; triggers the extension action through the browser-managed extension lifecycle rather than DOM-mocking it; executes P0 smoke flows for open/collapse/expand/Add Current Page/Search/Organize; detects duplicate panel/rail instances; captures deterministic failure diagnostics; uninstalls or disposes the profile after the run; does not add runtime manifest permissions to AppTower.
 **Automated test plan:** clean-profile install and action-trigger smoke; extension reload/reinstall; restart with persisted workspace; one injected rail; native side-panel open; add-current-page source resolution; collapse/expand; failure artifact capture; negative case for wrong/stale package provenance. Keep Edge-specific verification separate until equivalent Edge automation is proven.
@@ -171,9 +171,10 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 | 6 | 72 | Workspace/session import from other managers | VertiTab, Lunma, Tabwise | Promote after TASK 4 export/import schema; avoid mandatory history permission |
 | 7 | 71 | Native browser Split View awareness/bridge: detect `splitViewId`, preserve existing split membership during tab moves/closes, and optionally route Real Page/reference opens into an already-existing sibling split pane | W3C WebExtensions split-tabs proposal; MDN; Chrome Web Store “Split View: Open Links in Other Pane” | Keep as IDEA until Chrome/Edge expose stable create/remove split-view APIs or AppTower has a concrete coexistence regression; no new permission; clean-room behavior only because the store extension source/license is unverified |
 | 8 | 70 | Recently accessed smart view | VertiTab, TabDog | Promote after current Recent is stable/searchable |
-| 9 | 68 | Optional browser-context actions over selected text/link | AI Side Panel / SuperchargeNavigation-style flows | Needs concrete non-AI use case and optional-permission review |
-| 10 | 65 | Portable workspace export/mirror to native browser bookmarks | Mooring | Explicit optional `bookmarks` only; pattern only where license unclear |
-| 11 | 65 | Focus mode: temporarily show only one group/workspace | TabTree, Tabwise | Promote if groups/templates overload rail |
-| 12 | 62 | Automatic domain grouping suggestions | VertiTab, TabDog, SuperchargeNavigation | Opt-in shortcut organizer only; do not become tab manager |
-| 13 | 58 | Optional AI organizer module | Leap/VertiTab-style products | Keep out of core until privacy-preserving provider/module contract and demand |
-| 14 | 54 | Full vertical-tab manager | VertiTab, TabTOC, ddSideBar, TabTree, Tabwise | Deliberately low; conflicts with product boundary |
+| 9 | 70 | Optional Document Picture-in-Picture companion mode for AppTower-owned/compatible content: user-triggered always-on-top compact view with safe fallback to bottom pane or Real Page | Chrome Document Picture-in-Picture API; Super Pinned Windows (MIT); PiP Anything / PiP Anywhere behavior evidence | Score 17+8+13+11+7+5+5+4 = 70. Keep out of core until a concrete compact-player/reference use case is chosen. No global iframe-enabling rules, no CSP/X-Frame-Options stripping, and no new broad host permission. Respect API constraints: explicit user gesture, one PiP window per opener, non-navigable PiP document, opener lifetime. Test feature-detection, open/close/pagehide restore, unsupported-browser fallback and no unrelated pane reload. Super Pinned Windows' broad `<all_urls>` + DNR header stripping is an anti-pattern, not reusable architecture. |
+| 10 | 68 | Optional browser-context actions over selected text/link | AI Side Panel / SuperchargeNavigation-style flows | Needs concrete non-AI use case and optional-permission review |
+| 11 | 65 | Portable workspace export/mirror to native browser bookmarks | Mooring | Explicit optional `bookmarks` only; pattern only where license unclear |
+| 12 | 65 | Focus mode: temporarily show only one group/workspace | TabTree, Tabwise | Promote if groups/templates overload rail |
+| 13 | 62 | Automatic domain grouping suggestions | VertiTab, TabDog, SuperchargeNavigation | Opt-in shortcut organizer only; do not become tab manager |
+| 14 | 58 | Optional AI organizer module | Leap/VertiTab-style products | Keep out of core until privacy-preserving provider/module contract and demand |
+| 15 | 54 | Full vertical-tab manager | VertiTab, TabTOC, ddSideBar, TabTree, Tabwise | Deliberately low; conflicts with product boundary |
