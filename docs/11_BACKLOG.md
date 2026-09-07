@@ -16,10 +16,15 @@ Last competitor scan: 2026-09-07.
 
 **No TASK is ACTIVE.** TASK 2 is complete. This research process does not activate implementation work; only the AppTower Task Executor may move another TASK to `ACTIVE`.
 
-The current regression PR #2 head observed during this scan is `3ab8d31abd42335440e57b98bee02c5e23e061cb`. Its `validate` workflow run `34107440635` completed with conclusion **`success`**. READY TASKS are therefore not globally blocked by CI, while TASKS with unresolved functional dependencies remain `BLOCKED`. The previous backlog head `c92c46c14d3e94138a94007d7d1e3300f1e4598b` also completed PR validation successfully in run `34128608335`.
+The current regression PR #2 head observed during this scan is `3ab8d31abd42335440e57b98bee02c5e23e061cb`. Its `validate` workflow run `34107440635` completed with conclusion **`success`**. READY TASKS are therefore not globally blocked by regression CI, while TASKS with unresolved functional dependencies remain `BLOCKED`. The previous backlog head `e9f20ee27b06d37a3bf18f3475dfe964de741643` also completed PR validation successfully in run `34133540898`.
 
 ## Fresh research notes
 
+- `Tai-ch0802/arc-like-chrome-extension` (shipping as Sidebar for Tabs/Bookmarks v1.20.0) is a current MIT-licensed Chrome side-panel workspace project with 41 GitHub stars observed in this scan and repository push activity on 2026-09-07. Its current product exposes local-by-default AI grouping/search via Chrome's on-device model, optional cloud providers, workspaces, command palette, native tab-group integration, linked tab/bookmark state and hibernate/restore flows. This is stronger evidence that an AI organizer can be privacy-scoped and optional rather than requiring a remote service.
+- Its manifest is simultaneously a permission anti-pattern for AppTower core: required `tabs`, `sidePanel`, `bookmarks`, `tabGroups`, `storage`, `readingList`, `alarms`, `offscreen`, `scripting`, `identity`, `notifications` plus `*://*/*` host access and Google Drive OAuth. AppTower must not inherit that footprint merely for local grouping/search. Any future AI organizer stays modular, capability-gated and outside the core permission budget.
+- TabSweep 0.1.0 is a small current Chrome Side Panel implementation that sends only open-tab titles/URLs for intent grouping, filters browser-internal pages, and declares only `sidePanel`, `tabs`, `tabGroups` plus one explicit backend host. This is useful evidence for a narrow metadata-only organizer contract, but the repository has no declared license and zero GitHub stars observed in this scan, so AppTower treats it as behavior-only evidence and copies no code.
+- The stronger local-AI evidence rescored the existing Optional AI organizer IDEA from **58 to 66/100**: 17/25 user value + 8/20 real pain + 11/15 AppTower fit + 11/15 measurable UX + 6/10 low implementation risk + 5/5 privacy/permissions + 4/5 competitor maturity + 4/5 automated testability = 66. It remains an IDEA because Chrome's on-device model availability/hardware requirements are not universal and AI remains outside AppTower's core product path.
+- Automatic domain/grouping suggestions rise from **62 to 64/100** because the same current MIT project independently ships persistent site rules plus optional local-AI fallback, increasing competitor maturity without changing the product-fit or privacy constraints. It remains an IDEA and must be suggestion-only for AppTower shortcuts/groups, not a full-tab-manager autopilot.
 - `SwajanJain/tabwise` is a current MV3 Chrome/Edge workspace implementation whose background code uses an explicit durable `state.v1` storage key plus a monotonic `migrationVersion` and sequential migration function before normal runtime use. This is independent evidence for TASK 4's versioned/append-only persistence direction. The repository README says MIT, but there is no LICENSE file in the repository root observed in this scan, so AppTower treats it as **license-unverified behavior/architecture evidence only** and copies no code.
 - The same Tabwise manifest is a useful permission counterexample: it requires `history`, `bookmarks`, `downloads`, `offscreen`, `scripting`, `activeTab`, `tabs`, `sidePanel`, `storage`, `favicon`, `clipboardWrite`, plus `<all_urls>`. AppTower should not inherit that broad footprint merely to obtain workspace switching/search/migrations; TASK 10 and TASK 12 remain the guardrails.
 - TabTOC's current Chrome Web Store listing (retrieved 2026-09-07) now advertises three control surfaces (floating overlay, native Side Panel, New Tab), native tab-group sync, search/drag, tab suspend + auto-suspend, trash/recovery, saved URL groups, bookmark export/integration and history search. This strengthens behavior-level evidence for TASK 3, TASK 7, TASK 14 and TASK 17, but current source/license for the shipping build remains unverified and adoption is still small, so no maturity score increase is justified.
@@ -39,7 +44,7 @@ The current regression PR #2 head observed during this scan is `3ab8d31abd423354
 - TabTOC and Nest remain behavior-only evidence for restricted-page fallback because current source/license could not be verified. AppTower uses its existing native Side Panel on browser-owned pages instead of trying to inject there.
 - Microsoft Edge documentation updated in July 2026 marks PWA `edge_side_panel` integration deprecated; AppTower compatibility therefore stays capability-driven and independent of that vendor-specific surface.
 - Tab Pilot / Tab Radar is MIT and useful UX evidence for fuzzy search/command palette/recent, but its broad permission/injection set remains an anti-pattern for AppTower core.
-- All existing TASKS and IDEAS were rescored after this scan. **No numeric score changed in this pass**: the new migration/native-group/snapshot evidence is either low-adoption or license-unverified, so it strengthens rationale without justifying a maturity point; WorkTab's periodic autosave is negative energy evidence rather than a reason to reward the snapshot score.
+- All existing TASKS and IDEAS were rescored after this scan. **No TASK score changed.** Two IDEAS changed: Optional AI organizer 58→66 and Automatic domain grouping suggestions 62→64, based on current MIT/local-AI shipping evidence; neither crosses the TASK threshold.
 
 ## TASKS
 
@@ -150,14 +155,14 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 **Acceptance criteria:** reviewed required/optional/host sets per variant; fail on unreviewed addition or optional→required promotion; rationale per permission; generated fallback has narrower budget; removals remain allowed.
 **Automated test plan:** allowed/new required/new optional/new host/required↔optional/fallback-drift fixtures; package validation runs same gate.
 **Dependencies:** current manifest/variant inventory.
-**Sources/competitors:** Benjamin410/chrome-tab-manager (ISC); Drowzy (MIT); Tab Wise 2.4.0 (MIT; optional `system.memory` but broad `<all_urls>` host access); Tab Pilot/Tab Radar (MIT) and SwajanJain/tabwise (license-unverified) as broad-footprint counterexamples; Chrome Web Store minimum-permission guidance.
+**Sources/competitors:** Benjamin410/chrome-tab-manager (ISC); Drowzy (MIT); Tab Wise 2.4.0 (MIT; optional `system.memory` but broad `<all_urls>` host access); `Tai-ch0802/arc-like-chrome-extension` (MIT; useful local-AI UX but broad required permission/host footprint); Tab Pilot/Tab Radar (MIT) and SwajanJain/tabwise (license-unverified) as broad-footprint counterexamples; Chrome Web Store minimum-permission guidance.
 
 ### TASK 11 — Duplicate shortcut detection — 80/100 — READY
 **Rationale:** prevents rail/workspace clutter with low implementation and permission risk.
 **Acceptance criteria:** canonical URL matching; reuse/open existing or intentionally duplicate; group/template identity not merged accidentally; no network lookup.
 **Automated test plan:** canonical URL/query/hash fixtures; same URL across workspaces/groups; Add Current Page E2E; keyboard confirmation.
 **Dependencies:** stable add flow.
-**Sources/competitors:** Tab Wise (MIT), Tabwise, TabDog, Tab Manager v2, Tablio.
+**Sources/competitors:** Tab Wise (MIT), Tabwise, TabDog, Tab Manager v2, Tablio; Sidebar for Tabs/Bookmarks linked-tab behavior (MIT) as additional clean-room evidence.
 
 ### TASK 19 — Privacy-scoped Recently accessed / Recently closed smart view — 80/100 — BLOCKED
 **Score:** 20/25 user value + 13/20 real pain/regression + 15/15 AppTower fit + 10/15 measurable UX + 8/10 low implementation risk + 5/5 privacy/permissions + 4/5 competitor maturity + 5/5 automated testability = **80**.
@@ -221,8 +226,8 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 | 5 | 71 | Native browser Split View awareness/bridge | W3C WebExtensions split-tabs proposal; MDN; Chrome Web Store split-view behavior | Keep as IDEA until stable create/remove split-view APIs or a concrete coexistence regression. |
 | 6 | 70 | Optional Document Picture-in-Picture companion mode | Chrome Document PiP; Super Pinned Windows (MIT) | Concrete compact-player/reference use case required; no CSP/XFO stripping or broad host access. |
 | 7 | 68 | Optional browser-context actions over selected text/link | AI Side Panel / SuperchargeNavigation patterns | Needs concrete non-AI use case and optional-permission review. |
-| 8 | 65 | Portable workspace export/mirror to native browser bookmarks | Mooring | Explicit optional `bookmarks` only; clean-room where license is unclear. |
-| 9 | 65 | Focus mode: temporarily show only one group/workspace | TabTree, Tabwise | Promote if groups/templates overload rail. |
-| 10 | 62 | Automatic domain grouping suggestions | VertiTab, TabDog, SuperchargeNavigation | Opt-in shortcut organizer only; do not become a tab manager. |
-| 11 | 58 | Optional AI organizer module | Leap/VertiTab-style products | Keep out of core until privacy-preserving provider/module contract and demand. |
+| 8 | 66 | Optional on-device AI organizer/search module | Sidebar for Tabs/Bookmarks (`Tai-ch0802/arc-like-chrome-extension`, MIT); TabSweep behavior only | Keep optional and capability-gated; prefer local metadata-only inference; no new core broad host access; provide deterministic non-AI fallback; Chrome on-device model availability/hardware remains a portability risk. |
+| 9 | 65 | Portable workspace export/mirror to native browser bookmarks | Mooring | Explicit optional `bookmarks` only; clean-room where license is unclear. |
+| 10 | 65 | Focus mode: temporarily show only one group/workspace | TabTree, Tabwise | Promote if groups/templates overload rail. |
+| 11 | 64 | Automatic domain/grouping suggestions | VertiTab, TabDog, SuperchargeNavigation; Sidebar for Tabs/Bookmarks (MIT) | Opt-in shortcut organizer only; deterministic site rules first, optional local AI fallback; do not become a tab manager. |
 | 12 | 54 | Full vertical-tab manager | VertiTab, TabTOC, ddSideBar, TabTree, Tabwise | Deliberately low; conflicts with product boundary. |
