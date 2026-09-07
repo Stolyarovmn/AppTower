@@ -1,6 +1,6 @@
 # AppTower ranked backlog
 
-Last competitor scan: 2026-09-07.
+Last competitor scan: 2026-09-08.
 
 ## Rules
 
@@ -16,10 +16,16 @@ Last competitor scan: 2026-09-07.
 
 **No TASK is ACTIVE.** TASK 2 is complete. This research process does not activate implementation work; only the AppTower Task Executor may move another TASK to `ACTIVE`.
 
-The current regression PR #2 head observed during this scan is `3ab8d31abd42335440e57b98bee02c5e23e061cb`; its `validate` workflow run `34107440635` completed with conclusion **`success`**. The pre-scan backlog head `cadf8621285116e0d00e019afa29ed1687fd7e40` completed PR validation successfully in run `34151979891`. Because this scan changes the backlog again, the new documentation head must revalidate successfully before READY TASKS may start. TASKS with unresolved functional dependencies remain `BLOCKED` regardless of CI.
+The current regression PR #2 head observed during this scan is `3ab8d31abd42335440e57b98bee02c5e23e061cb`; its `validate` workflow run `34107440635` completed with conclusion **`success`**. The pre-scan backlog/PR #1 head is `b54a9cbf38ef510aa18dc76e1f728dbbdc6629e5`; its `validate` workflow run `34161722045` also completed with conclusion **`success`**. Because this scan changes the backlog again, the new documentation head must revalidate successfully before READY TASKS may start. TASKS with unresolved functional dependencies remain `BLOCKED` regardless of CI.
 
 ## Fresh research notes
 
+- The requested Cleanroom reassessment was performed against the current `feature/cleanroom-functions` branch, not only legacy `app/`. On 2026-09-08 the GitHub blob SHA for each relevant file still exactly matched baseline commit `2c1073b3d83e7a2d294a1621ce23f3a3b62220a1`: `cleanroom/ui/panes.js` = `4a0f3a66c10661d9f2e1764900b9b99e209265cf`, `cleanroom/core/services.js` = `6074f23bd87bc6785d3e0bebaba48293b48498fd`, and `cleanroom/core/model.js` = `45646e9970e7e39e0e17a5205b66dec585ffa1e3`. Therefore the previously recorded risks remain present in current branch code. This is **source-confirmed risk, not a reproduced user incident**.
+- Cleanroom still clears an iframe to `about:blank` on sleep, runs a fixed 15-second eligibility scan, checks only `neverSleep` before idle sleep, and evicts oldest leases after a `maxLive` reduction without dirty-form/media/keep-awake/never-sleep eligibility. This rescoring raises **TASK 3 from 89 to 93/100**, **TASK 6 from 85 to 88/100**, and **TASK 20 from 76 to 78/100**. TASK 3 receives the largest increase because silent unload can destroy unsaved state; its real-pain component stops below maximum because no user incident was reproduced. TASK 6 rises because the periodic wakeup is now a concrete current Cleanroom code path rather than only competitor comparison. TASK 20 rises because current `neverSleep` and hard-cap semantics demonstrably conflict.
+- Cleanroom `mergeSync()` still accepts the whole remote sync projection solely when its organization-level `updatedAt` is newer, replacing the full remote workspace/module families while grafting some local pane layout fields back in. Two devices editing different durable entities can therefore overwrite one another. This raises **TASK 4 from 88 to 91/100** and adds entity-granular merge/conflict preservation, deterministic tie handling, and crash-safe pre-merge recovery fixtures. Again, this is a code-derived lost-update scenario, not a confirmed incident, and no form values, passwords or tokens are collected or logged.
+- **TASK 18 remains 76/100** after explicit reassessment. The unsafe hard-cap path strengthens its BLOCKED dependency on TASK 3/TASK 6 but does not improve the value, maturity or safety of optional memory-pressure eviction itself. Pressure must never bypass protected/unknown-state handling, `never`/keep-awake policy or an all-protected refusal path.
+- Sharp Tabs 3.2.0 is a current Chrome Side Panel/popup workspace manager, updated in the Chrome Web Store on 2026-03-04 and observed at 499 users/13 ratings on 2026-09-08. It combines native tab discard, per-site suspension whitelist, event-qualified ten-minute session backups, granular restore, workspaces, recent navigation and compact pinned tabs. Its MV3 manifest uses `windows`, `tabs`, `tabGroups`, `sessions`, `sidePanel`, `storage`, `unlimitedStorage`, `alarms`, `contextMenus`, `favicon`, `bookmarks`, `activeTab`, and `search`, with content scripts limited to its own two service domains and no `<all_urls>` host access.
+- Sharp Tabs is licensed GPL-3.0 with an additional attribution term in `LICENSING.md`. AppTower copies no code or protected fragments from it. Its behavior provides independent evidence for native-discard/whitelist/recovery/workspace patterns, while the ten-minute alarm remains an energy comparison rather than a pattern to adopt: AppTower snapshots and resource checks stay event/deadline-driven. Adoption is still modest, so it does not add further competitor-maturity points beyond the Cleanroom-driven score changes.
 - Chrome's current Side Panel API now exposes explicit lifecycle primitives (`sidePanel.close()`, `sidePanel.onOpened`, `sidePanel.onClosed`; introduced across Chrome 141/142). Current AppTower already uses the open/closed lifecycle events and wraps the close/open/options calls in its browser adapter, so this finding does **not** justify a new task or score change. It is recorded as confirmation that panel lifecycle should stay API-driven rather than inferred indirectly.
 - Lunma 0.6.0 is a current Chrome/Edge vertical-tabs/Spaces implementation whose pinned sites behave like apps: same-app navigation stays in the pinned surface, while a normal same-tab click that leaves the configured allow-set is diverted to a temporary tab. Its implementation deliberately does not trap redirects/programmatic navigation, so OAuth/SSO flows can continue. The repository is confirmed **Apache-2.0** and ships a Playwright/Vitest test setup.
 - Lunma's permission model is **not** copied. Its MV3 manifest requires `tabs`, `tabGroups`, `storage`, `sidePanel`, `alarms`, `favicon`, and `scripting`, statically injects launcher/boundary scripts on all HTTP(S) pages, and offers HTTP(S) host access as optional. AppTower's version must be narrower: enforcement is limited to AppTower-owned pane contexts, adds no broad host permission, does not require all-page injection, and is independently implemented.
@@ -55,20 +61,20 @@ The current regression PR #2 head observed during this scan is `3ab8d31abd423354
 - TabTOC and Nest remain behavior-only evidence for restricted-page fallback because current source/license could not be verified. AppTower uses its existing native Side Panel on browser-owned pages instead of trying to inject there.
 - Microsoft Edge documentation updated in July 2026 marks PWA `edge_side_panel` integration deprecated; AppTower compatibility therefore stays capability-driven and independent of that vendor-specific surface.
 - Tab Pilot / Tab Radar is MIT and useful UX evidence for fuzzy search/command palette/recent, but its broad permission/injection set remains an anti-pattern for AppTower core.
-- All existing TASKS and IDEAS were rescored after this scan. **Panel navigation escape changed 74→75 and was promoted to TASK 22. No other TASK or IDEA score changed in this scan.**
+- All existing TASKS and IDEAS were rescored after the 2026-09-08 scan. **TASK 3 changed 89→93, TASK 4 88→91, TASK 6 85→88, and TASK 20 76→78. TASK 18 was explicitly reassessed and remains 76; every other TASK and IDEA score is unchanged.**
 
 ## TASKS
 
 | Rank | Score | Status | TASK | Dependencies |
 |---:|---:|---|---|---|
 | 1 | 97 | DONE | Deterministic Side Panel command routing and Add Current Page source resolution | Completed; regression suite green at completion |
-| 2 | 92 | DONE | Serialized state coordinator for panel/rail/workspace mutations | TASK 1; completed on green CI |
-| 3 | 90 | BLOCKED | Deterministic drag/drop interaction model for reorder, groups and two-pane templates | TASK 2; stable pointer/drag lifecycle |
-| 4 | 89 | READY | Safe pane sleep guards for unsaved input, active media and explicit keep-awake | Embedded-frame bridge; resource lease/sleep path |
-| 5 | 88 | BLOCKED | Versioned persistence schema + append-only migrations | TASK 2; persisted-state inventory |
-| 6 | 86 | BLOCKED | Restricted-page control-surface fallback to native Side Panel | TASK 1; stable rail/panel ownership and browser-page capability detection |
-| 7 | 86 | BLOCKED | Command Palette across shortcuts/templates/workspaces/recent | TASK 2 |
-| 8 | 85 | BLOCKED | Event-driven nearest-deadline resource scheduling | Performance baseline |
+| 2 | 93 | READY | Safe pane sleep guards for unsaved input, active media and explicit keep-awake | Embedded-frame bridge; resource lease/sleep path |
+| 3 | 92 | DONE | Serialized state coordinator for panel/rail/workspace mutations | TASK 1; completed on green CI |
+| 4 | 91 | BLOCKED | Versioned persistence schema + append-only migrations | TASK 2; persisted-state inventory; sync conflict policy |
+| 5 | 90 | BLOCKED | Deterministic drag/drop interaction model for reorder, groups and two-pane templates | TASK 2; stable pointer/drag lifecycle |
+| 6 | 88 | BLOCKED | Event-driven nearest-deadline resource scheduling | Performance baseline |
+| 7 | 86 | BLOCKED | Restricted-page control-surface fallback to native Side Panel | TASK 1; stable rail/panel ownership and browser-page capability detection |
+| 8 | 86 | BLOCKED | Command Palette across shortcuts/templates/workspaces/recent | TASK 2 |
 | 9 | 84 | BLOCKED | Event-based workspace snapshots + Undo | TASK 2; TASK 4 preferred |
 | 10 | 83 | BLOCKED | Installed-extension lifecycle E2E harness using browser-managed install/action/inspection | Reproducible package; Chrome toolchain availability |
 | 11 | 82 | BLOCKED | Compatibility ladder UX: Auto / Embedded / Mobile / Real Page | Stable renderer telemetry; TASK 1 |
@@ -77,8 +83,8 @@ The current regression PR #2 head observed during this scan is `3ab8d31abd423354
 | 14 | 80 | BLOCKED | Privacy-scoped Recently accessed / Recently closed smart view | TASK 2; current Recent/search surface stable; TASK 10 preferred before adding `sessions` |
 | 15 | 79 | BLOCKED | Context-scoped pane bridge/PWA content-script injection instead of all-page/all-frame injection | Current script-role inventory; TASK 1 |
 | 16 | 79 | BLOCKED | Restorable split layout metadata in templates | TASK 2; TASK 4 preferred; stable split lifecycle |
-| 17 | 78 | BLOCKED | Native browser tab-group import/export bridge | Stable groups/workspaces; TASK 4 preferred |
-| 18 | 76 | BLOCKED | Per-site pane sleep policy presets: default / aggressive / never | TASK 3; measured resource baseline; coordinate with TASK 6 |
+| 17 | 78 | BLOCKED | Per-site pane sleep policy presets: default / aggressive / never | TASK 3; measured resource baseline; coordinate with TASK 6 |
+| 18 | 78 | BLOCKED | Native browser tab-group import/export bridge | Stable groups/workspaces; TASK 4 preferred |
 | 19 | 76 | BLOCKED | Anchored Real Page/sidecar placement and geometry restore | TASK 9; stable Real Page lifecycle; TASK 4 preferred |
 | 20 | 76 | BLOCKED | Optional resource-pressure-aware emergency pane eviction | TASK 3 + TASK 6; optional `system.memory`; measured baseline |
 | 21 | 76 | BLOCKED | Glance preview in temporary bottom pane | Stable split-pane lifecycle |
@@ -107,19 +113,21 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 **Dependencies:** TASK 2 completed; stable pointer/drag lifecycle; coordinate with split metadata so there is one interaction model.
 **Sources/competitors:** AppTower known P0; SuperSplit (MIT); Tab Canopy (MIT, alpha), behavior/architecture only.
 
-### TASK 3 — Safe pane sleep guards — 89/100 — READY
-**Rationale:** automatic sleep must not destroy unsaved edits or interrupt active media while retaining resource savings.
-**Acceptance criteria:** dirty form/contenteditable and active media block auto-sleep; `Keep awake` persists without polling; blockers clear after submit/reset/pause/end; pane-scoped cleanup on navigation/removal; no broad permission.
-**Automated test plan:** dirty text/checkbox/contenteditable; playing/paused media; keep-awake restart; blocker cleanup; unchanged idle/max-live semantics.
-**Dependencies:** embedded-frame bridge and resource lease/sleep path.
-**Sources/competitors:** Drowzy 1.5.0 (MIT); QuickPanel behavior only (PolyForm Noncommercial); TabZen behavior only (license incomplete/ambiguous); The Great Suspender Reloaded 2.0.1 (GPL-2.0, behavior only) for mature active/pinned/media/unsaved-form guard UX.
+### TASK 3 — Safe pane sleep guards — 93/100 — READY
+**Score:** 24/25 user value + 18/20 real pain/regression + 15/15 AppTower fit + 14/15 measurable performance/UX + 8/10 low implementation risk + 5/5 privacy/permissions + 4/5 competitor maturity + 5/5 automated testability = **93**.
+**Rationale:** automatic sleep must not destroy unsaved edits or interrupt active media while retaining resource savings. Current Cleanroom source still resets the iframe to `about:blank` without dirty/media guards, and hard-cap eviction selects oldest leases without protected-state eligibility. This is a source-confirmed information-loss risk, not a reproduced user incident; the pain score therefore remains below 20/20.
+**Acceptance criteria:** dirty form/contenteditable, active media and explicit keep-awake/never-sleep block every automatic idle, cap and pressure eviction; inaccessible/unknown bridge state is fail-safe and not treated as clean; blocker precedence is explicit; when all candidates are protected, refuse/defer a new load or require explicit user victim selection instead of silently unloading; blockers clear after confirmed submit/reset/pause/end; pane-scoped cleanup on navigation/removal; explicit user unload remains distinct; no broad permission; diagnostics log blocker class/state only and never form contents, passwords, tokens or media data.
+**Automated test plan:** dirty text/checkbox/contenteditable; playing/paused media; keep-awake restart; unknown/cross-origin bridge; blocker cleanup; idle deadline; full protected capacity; maxLive reduction; pressure event; workspace switch/navigation race; assert no automatic `src` reset or unrelated pane reload; explicit unload positive control; diagnostics content-safety assertion.
+**Dependencies:** embedded-frame bridge and resource lease/sleep path; coordinate deadline/cap semantics with TASK 6 and TASK 20.
+**Sources/competitors:** current AppTower Cleanroom source at baseline/current matching blobs; Drowzy 1.5.0 (MIT); Sharp Tabs 3.2.0 (GPL-3.0 plus additional term, behavior only); QuickPanel behavior only (PolyForm Noncommercial); TabZen behavior only (license incomplete/ambiguous); The Great Suspender Reloaded 2.0.1 (GPL-2.0, behavior only). No incompatible competitor code is reused.
 
-### TASK 4 — Versioned persistence schema + append-only migrations — 88/100 — BLOCKED
-**Rationale:** durable workspaces/settings/templates/layout/export state needs explicit evolution rather than silent reset/defaulting.
-**Acceptance criteria:** explicit version per durable family; one validation/normalization boundary; deterministic append-only migrations; safe corrupt/future handling; migration before runtime mutation; export/import uses same pipeline.
-**Automated test plan:** historical fixtures; golden/idempotent migrations; malformed/future cases; legacy-profile restart; export/import round trip; coordinator never sees pre-migration state.
-**Dependencies:** TASK 2; persisted-state inventory.
-**Sources/competitors:** Lunma (Apache-2.0), pattern only; SwajanJain/tabwise (license-unverified behavior evidence for explicit storage version + monotonic migrations, no code reuse).
+### TASK 4 — Versioned persistence schema + append-only migrations — 91/100 — BLOCKED
+**Score:** 23/25 user value + 17/20 real pain/regression + 15/15 AppTower fit + 13/15 measurable performance/UX + 8/10 low implementation risk + 5/5 privacy/permissions + 5/5 competitor maturity + 5/5 automated testability = **91**.
+**Rationale:** durable workspaces/settings/templates/layout/export/sync state needs explicit evolution and conflict-safe merging rather than silent reset/defaulting or whole-family last-writer-wins replacement. Current Cleanroom `mergeSync()` accepts the entire remote sync projection solely by organization-level `updatedAt`; concurrent edits to different workspaces/modules can therefore become lost updates. This is source-confirmed risk, not a reproduced incident.
+**Acceptance criteria:** explicit version per durable family; one validation/normalization boundary; deterministic append-only migrations; safe corrupt/future handling; migration before runtime mutation; export/import uses the same pipeline; sync identity/revision is granular enough that independent entity edits converge without replacing unrelated newer local data; same-entity conflicts have deterministic documented resolution or preserve both sides for explicit choice; timestamp ties/clock skew do not silently discard one side; pre-merge/import recovery snapshot is committed atomically and bounded; no user content is written to diagnostics.
+**Automated test plan:** historical fixtures; golden/idempotent migrations; malformed/future cases; legacy-profile restart; export/import round trip; coordinator never sees pre-migration state; simultaneous offline edits to different workspaces/items/modules; same-entity edit/delete conflict; equal/reversed timestamps; retry/reordered sync delivery; crash between recovery snapshot and commit; corrupt remote/import leaves original state intact.
+**Dependencies:** TASK 2; persisted-state inventory; explicit sync conflict policy; TASK 7 preferred for user-visible recovery.
+**Sources/competitors:** current AppTower Cleanroom `mergeSync()` source; Lunma (Apache-2.0), pattern only; SwajanJain/tabwise (license-unverified behavior evidence for explicit storage version + monotonic migrations, no code reuse).
 
 ### TASK 17 — Restricted-page control-surface fallback — 86/100 — BLOCKED
 **Rationale:** injected rail cannot exist on browser-owned/restricted pages; AppTower still needs a coherent control surface there.
@@ -135,12 +143,13 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 **Dependencies:** TASK 2.
 **Sources/competitors:** ArchTabs, SuperchargeBrowser, Tab Manager v2, Tablio, Tab Pilot/Tab Radar (MIT); broad competitor permissions are not copied.
 
-### TASK 6 — Event-driven resource budget scheduling — 85/100 — BLOCKED
-**Rationale:** fixed periodic alarms wake the MV3 worker when no work exists; nearest-deadline scheduling should reduce idle wakeups.
-**Acceptance criteria:** no recurring alarm with zero leases; next check is earliest meaningful deadline; create/touch/remove reschedules deterministically; current idle/max-live behavior preserved; restart restores deadline.
-**Automated test plan:** zero/one/many lease scheduler; touch/remove; pane-isolation E2E; instrument worker wakeups before/after.
-**Dependencies:** performance baseline.
-**Sources/competitors:** AppTower implementation; MV3 event-driven guidance; QuickPanel behavior evidence; fixed 60s Drowzy alarm is comparison only; mature suspenders that periodically scan tabs remain energy counterexamples rather than architecture to copy.
+### TASK 6 — Event-driven resource budget scheduling — 88/100 — BLOCKED
+**Score:** 20/25 user value + 16/20 real pain/regression + 15/15 AppTower fit + 15/15 measurable performance/UX + 8/10 low implementation risk + 5/5 privacy/permissions + 4/5 competitor maturity + 5/5 automated testability = **88**.
+**Rationale:** current Cleanroom runs a 15-second `setInterval` eligibility scan even when no resource deadline exists. Fixed periodic work can keep producing avoidable panel/worker activity; nearest-deadline scheduling should reduce wakeups while preserving idle/max-live behavior. This is a current source-confirmed energy/performance path, not a measured battery incident.
+**Acceptance criteria:** no recurring timer/alarm with zero leases or deadlines; next check is the earliest meaningful deadline; create/touch/remove/policy change reschedules deterministically; maxLive reduction is serialized with safety eligibility and cannot bypass TASK 3; stale callbacks are generation-checked; current idle/max-live behavior is preserved where safe; restart restores one deadline; no new polling for pressure or diagnostics.
+**Automated test plan:** fake-clock zero/one/many lease scheduler; touch/remove/policy change; stale callback/generation race; maxLive reduction with all candidates protected; restart restore; pane-isolation E2E; instrument wakeup/check count and prove zero checks during an idle no-lease window compared with the current 15-second baseline.
+**Dependencies:** performance baseline; TASK 3 safety contract for cap eviction.
+**Sources/competitors:** current AppTower Cleanroom 15-second interval; MV3 event-driven guidance; QuickPanel behavior evidence; fixed 60-second Drowzy alarm and Sharp Tabs ten-minute alarm are comparisons only; mature suspenders that periodically scan tabs remain energy counterexamples rather than architecture to copy.
 
 ### TASK 7 — Event-based workspace snapshots + Undo — 84/100 — BLOCKED
 **Rationale:** recovery from destructive workspace/group/template mutations has high value without periodic background work.
@@ -206,13 +215,13 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 **Dependencies:** stable groups/workspaces; TASK 4 preferred.
 **Sources/competitors:** Lunma, TabTOC, SnapTabs, Tab Manager v2; Tab Tiles 9.0 behavior only (native tab-group workspace surface, source/license unverified).
 
-### TASK 20 — Per-site pane sleep policy presets — 76/100 — BLOCKED
-**Score:** 18/25 user value + 12/20 real pain/regression + 14/15 AppTower fit + 11/15 measurable performance/UX + 8/10 low implementation risk + 5/5 privacy/permissions + 4/5 competitor maturity + 4/5 automated testability = **76**.
-**Rationale:** users need different lifecycle behavior for different web apps: a disposable reference page can sleep aggressively while chat/music/editing surfaces may need to stay resident. Drowzy proves per-site protection is useful in a modern MV3 suspender; `firefox-second-sidebar` independently proves that per-web-panel load/unload lifecycle is mature enough to expose directly in web-panel UX. The latter is MPL-2.0 and Firefox/userChrome-specific, so AppTower reuses no code and implements the behavior independently.
-**Acceptance criteria:** each AppTower site may select `default`, `aggressive`, or `never`; policy is stored against stable AppTower site identity rather than maintaining a browsing-history/domain profile; `default` exactly preserves the global policy; `aggressive` only shortens an existing eligible sleep deadline and never bypasses TASK 3 dirty-form/media/keep-awake guards; `never` suppresses automatic sleep but still allows explicit user close/unload; policy changes reschedule through the existing resource scheduler without adding periodic alarms; restart/export-import preserves policy through the versioned persistence pipeline when available; no new host permission, content script, telemetry, or network request is introduced.
-**Automated test plan:** default/aggressive/never deadline fixtures; precedence with dirty form, active media and explicit keep-awake; switch policy while lease is live; zero-resource case proves no new worker wakeup; restart persistence; delete/recreate site identity does not leak stale policy; two-pane isolation; export/import fixture after TASK 4; instrumentation compares wakeup count and eligible-live duration against baseline.
-**Dependencies:** TASK 3 safety guards; measured resource baseline; coordinate deadline semantics with TASK 6 and persistence with TASK 4 when implemented.
-**Sources/competitors:** Drowzy 1.5.0 (MIT) for per-site protection; `aminought/firefox-second-sidebar` v2.0.1 (MPL-2.0, behavior only) for per-panel preload/restore/unload lifecycle. No MPL-covered code is reused.
+### TASK 20 — Per-site pane sleep policy presets — 78/100 — BLOCKED
+**Score:** 18/25 user value + 14/20 real pain/regression + 14/15 AppTower fit + 11/15 measurable performance/UX + 8/10 low implementation risk + 5/5 privacy/permissions + 4/5 competitor maturity + 4/5 automated testability = **78**.
+**Rationale:** users need different lifecycle behavior for different web apps: a disposable reference page can sleep aggressively while chat/music/editing surfaces may need to stay resident. Current Cleanroom proves a semantic conflict: idle sleep honors `neverSleep`, but maxLive reduction evicts oldest leases without checking it. This source-confirmed risk raises the pain component by 2; no user incident was reproduced. Drowzy and Sharp Tabs prove per-site protection is useful in modern MV3 suspenders; `firefox-second-sidebar` independently proves that per-web-panel load/unload lifecycle is mature enough to expose directly.
+**Acceptance criteria:** each AppTower site may select `default`, `aggressive`, or `never`; policy is stored against stable AppTower site identity rather than maintaining a browsing-history/domain profile; `default` exactly preserves the global policy; `aggressive` only shortens an existing eligible sleep deadline and never bypasses TASK 3 guards; `never` blocks all automatic idle, hard-cap and pressure eviction but still allows explicit user close/unload; when capacity is full of protected/`never` resources, refuse/defer or ask for explicit victim rather than override policy; policy changes reschedule through TASK 6 without periodic alarms; restart/export-import preserves policy through TASK 4; no new host permission, content script, telemetry, network request or logged form data.
+**Automated test plan:** default/aggressive/never deadline fixtures; precedence with dirty form, active media and explicit keep-awake; maxLive reduction and pressure while every lease is `never`; explicit unload positive control; switch policy while lease is live; zero-resource case proves no new wakeup; restart persistence; delete/recreate identity does not leak policy; two-pane isolation; export/import fixture after TASK 4; wakeup count and eligible-live duration against baseline.
+**Dependencies:** TASK 3 safety guards; measured resource baseline; coordinate deadline/cap semantics with TASK 6 and persistence with TASK 4.
+**Sources/competitors:** current AppTower Cleanroom idle/cap paths; Drowzy 1.5.0 (MIT); Sharp Tabs 3.2.0 (GPL-3.0 plus additional term, behavior only); `aminought/firefox-second-sidebar` v2.0.1 (MPL-2.0, behavior only). No copyleft-covered code is reused.
 
 ### TASK 21 — Anchored Real Page/sidecar placement and geometry restore — 76/100 — BLOCKED
 **Score:** 18/25 user value + 10/20 real pain/regression + 14/15 AppTower fit + 12/15 measurable UX + 8/10 low implementation risk + 5/5 privacy/permissions + 4/5 competitor maturity + 5/5 automated testability = **76**.
@@ -224,9 +233,9 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 
 ### TASK 18 — Optional resource-pressure-aware emergency pane eviction — 76/100 — BLOCKED
 **Score:** 18/25 user value + 10/20 real pain/regression + 14/15 AppTower fit + 11/15 measurable performance/UX + 8/10 low implementation risk + 5/5 privacy/permissions + 5/5 competitor maturity + 5/5 automated testability = **76**.
-**Rationale:** under genuine system-memory pressure AppTower may tighten eviction of otherwise sleep-eligible panes without continuous monitoring or bypassing safety. TabRest and Tab Wise establish the narrow `system.memory`/LRU capability pattern; The Great Suspender Reloaded adds substantially stronger production adoption evidence for memory-pressure-triggered suspension guarded by active/pinned/media/dirty-form rules. AppTower implements this independently and does not reuse GPL-covered code.
-**Acceptance criteria:** opt-in; `system.memory` requested only when enabled; no new polling; sampling only on TASK 6 check or explicit diagnostics; hysteresis; only TASK 3-safe panes; AppTower-owned LRU; denied/unavailable API degrades cleanly; no broad host permission/network dependency; pressure never overrides dirty-form/contenteditable, active-media or explicit keep-awake guards; charging/offline policies are not added unless separately justified and scored.
-**Automated test plan:** low/normal/high pressure + hysteresis; denied API; zero-leases proves no extra wakeup; LRU order; all-protected case; enable/disable/restart; pane-isolation E2E; wakeup count before/after; pressure+dirty-form/media/keep-awake precedence fixture.
+**Rationale:** under genuine system-memory pressure AppTower may tighten eviction of otherwise sleep-eligible panes without continuous monitoring or bypassing safety. Current Cleanroom hard-cap eviction confirms why this must remain BLOCKED behind TASK 3/TASK 6: an unguarded pressure path would amplify the same source-confirmed information-loss risk; no incident was reproduced. TabRest and Tab Wise establish the narrow `system.memory`/LRU capability pattern; The Great Suspender Reloaded adds substantially stronger production adoption evidence for memory-pressure-triggered suspension guarded by active/pinned/media/dirty-form rules. AppTower implements this independently and does not reuse GPL-covered code.
+**Acceptance criteria:** opt-in; `system.memory` requested only when enabled; no new polling; sampling only on TASK 6 check or explicit diagnostics; hysteresis; only TASK 3-safe panes; AppTower-owned LRU; denied/unavailable API degrades cleanly; no broad host permission/network dependency; pressure never overrides dirty-form/contenteditable, active-media, unknown bridge state, explicit keep-awake or per-site `never`; an all-protected set causes refusal/defer/explicit-victim flow rather than forced eviction; charging/offline policies are not added unless separately justified and scored.
+**Automated test plan:** low/normal/high pressure + hysteresis; denied API; zero-leases proves no extra wakeup; LRU order; all-protected case; enable/disable/restart; pane-isolation E2E; wakeup count before/after; pressure+dirty-form/media/unknown/keep-awake/never precedence fixture; all-protected refusal fixture.
 **Dependencies:** TASK 3; TASK 6; TASK 10 preferred; measured baseline.
 **Sources/competitors:** TabRest (MIT, clean-room evidence); Tab Wise 2.4.0 (MIT; optional `system.memory` demonstrates narrow permission gating, but its broad host access is not copied); The Great Suspender Reloaded 2.0.1 (GPL-2.0, behavior/adoption evidence only; no code reuse); TabZen behavior only; Chrome `system.memory` capability boundary.
 
@@ -246,11 +255,11 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 **Sources/competitors:** Lunma 0.6.0 (Apache-2.0, current licensed Chromium evidence); QuickPanel (PolyForm Noncommercial, behavior only). No competitor code is copied; AppTower's policy is clean-room and intentionally avoids Lunma's static all-HTTP(S) content-script footprint.
 
 
-### Cleanroom evidence for TASK 3 / next scheduled reassessment
+### Cleanroom evidence and completed reassessment for TASKS 3/4/6/18/20
 
 User direction (2026-09-07): record information-loss risk in the planned work and let the scheduled ranking process reassess it; do not manufacture an immediate priority override or duplicate TASK.
 
-**Target:** `feature/cleanroom-functions`, baseline commit `2c1073b3d83e7a2d294a1621ce23f3a3b62220a1`. Historical DONE statuses above describe their original implementation, not Cleanroom acceptance.
+**Target checked:** current `feature/cleanroom-functions` on 2026-09-08 against baseline commit `2c1073b3d83e7a2d294a1621ce23f3a3b62220a1`. Historical DONE statuses above describe their original implementation, not Cleanroom acceptance. The three relevant current-branch blobs exactly match the baseline blobs, so the risks below remain present.
 **Observed source evidence (not a reproduced user data-loss incident):**
 - `cleanroom/ui/panes.js`: sleep replaces iframe src with about:blank; idle eligibility does not check dirty forms/contenteditable or playing media.
 - `cleanroom/core/services.js`: capacity eviction requests APP_SLEEP and removes leases; no protected-pane eligibility filter.
@@ -259,7 +268,7 @@ Sources: https://github.com/Stolyarovmn/AppTower/blob/2c1073b3d83e7a2d294a1621ce
 
 **TASK 3 acceptance additions:** define precedence of dirty/unknown state, active media, keep-awake, idle timeout and hard cap. Recommended design to evaluate: when all resources are protected, refuse/defer a new load or request an explicit victim instead of silently evicting one. Do not claim universal dirty-state detection. Do not capture form contents, passwords or tokens into diagnostics.
 **Regression plan:** type unsaved input and contenteditable text; advance idle deadline; request a load at full protected capacity; lower capacity; change workspace; test iframe navigation and inaccessible/unknown bridge. Assert no automatic src reset for protected/unknown panes and no unrelated pane reload. Explicit user unload remains a separate operation. For TASK 4 test simultaneous offline organization edits and import failure without overwriting the original state.
-**Scheduling:** retain existing TASK identifiers/statuses/scores pending the next scheduled reassessment. This evidence creates no ACTIVE task and no new global blocker. Reconcile hard-cap/safety requirements before implementing TASK 3.
+**Completed reassessment (2026-09-08):** TASK 3 89→93, TASK 4 88→91, TASK 6 85→88, TASK 20 76→78; TASK 18 remains 76 but its guard dependency is strengthened. No duplicate TASK was created and no TASK was made ACTIVE. Rankings use code-risk evidence without claiming a user incident. Reconcile hard-cap/safety requirements before implementing TASK 3.
 
 ## IDEAS
 
