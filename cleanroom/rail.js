@@ -1,8 +1,5 @@
 (()=>{
   if(window.top!==window) return;
-  // Keep the installation guard inside the content-script JS world, not in page DOM.
-  // A DOM marker survives extension reloads while the old content-script listener does not,
-  // which made executeScript() return early and caused "Receiving end does not exist" forever.
   if(globalThis.__atv2RailInstalled) return;
   globalThis.__atv2RailInstalled=true;
 
@@ -17,26 +14,15 @@
     settings:svg('<circle cx="10" cy="10" r="3"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M15.3 4.7l-1.4 1.4M6.1 13.9l-1.4 1.4"/>')
   };
 
-  function open(command=null){
-    chrome.runtime.sendMessage({type:"OPEN_PANEL",command}).catch(()=>{});
-  }
-
-  function button(label,icon,handler){
-    const b=document.createElement("button");
-    b.type="button";
-    b.setAttribute("aria-label",label);
-    b.title=label;
-    b.innerHTML=icon;
-    b.addEventListener("click",handler);
-    return b;
-  }
+  function open(command=null){chrome.runtime.sendMessage({type:"OPEN_PANEL",command}).catch(()=>{});}
+  function button(label,icon,handler){const b=document.createElement("button");b.type="button";b.setAttribute("aria-label",label);b.title=label;b.innerHTML=icon;b.addEventListener("click",handler);return b;}
 
   function ensure(){
     if(host?.isConnected) return;
-    // Remove a stale visual host left behind by a previous extension context/reload.
     document.getElementById("atv2-rail-host")?.remove();
     host=document.createElement("div");
     host.id="atv2-rail-host";
+    host.style.display="none";
     const root=host.attachShadow({mode:"closed"});
     const style=document.createElement("style");
     style.textContent=`
@@ -52,31 +38,19 @@
     const rail=document.createElement("div");rail.className="rail";
     const sep=document.createElement("div");sep.className="sep";
     const spacer=document.createElement("div");spacer.className="spacer";
-    rail.append(
-      button("Развернуть AppTower",icons.expand,()=>open()),
-      sep,
-      spacer,
-      button("Добавить текущую страницу",icons.add,()=>open({type:"add-current"})),
-      button("Поиск",icons.search,()=>open({type:"search"})),
-      button("Настройки",icons.settings,()=>open({type:"settings"}))
-    );
+    rail.append(button("Развернуть AppTower",icons.expand,()=>open()),sep,spacer,button("Добавить текущую страницу",icons.add,()=>open({type:"add-current"})),button("Поиск",icons.search,()=>open({type:"search"})),button("Настройки",icons.settings,()=>open({type:"settings"})));
     root.append(style,rail);
     document.documentElement.append(host);
   }
 
-  function setVisible(visible){
-    if(visible){ensure();host.style.display="block";}
-    else if(host) host.style.display="none";
-  }
+  function setVisible(visible){if(visible){ensure();host.style.display="block";}else if(host)host.style.display="none";}
 
   chrome.runtime.onMessage.addListener((message,_sender,sendResponse)=>{
     if(message?.type!=="RAIL_PREPARE_COLLAPSE") return;
     ensure();
-    setVisible(true);
-    sendResponse({ok:true});
+    setVisible(false);
+    sendResponse({ok:true,ready:true,visible:false});
   });
 
-  port.onMessage.addListener(message=>{
-    if(message?.type==="RAIL_VISIBILITY") setVisible(Boolean(message.visible));
-  });
+  port.onMessage.addListener(message=>{if(message?.type==="RAIL_VISIBILITY")setVisible(Boolean(message.visible));});
 })();
