@@ -22,3 +22,7 @@ test("compact rail prepares hidden and becomes visible only via lifecycle visibi
   assert.match(rail,/message\?\.type==="RAIL_VISIBILITY"/);
   assert.doesNotMatch(rail,/RAIL_PREPARE_COLLAPSE[\s\S]{0,160}setVisible\(true\)/);
 });
+
+ test("compact expand arrow points left, opposite to expanded collapse",()=>{
+  assert.match(rail,/M12\.5 4\.5 7 10 12\.5 15\.5/);
+ });

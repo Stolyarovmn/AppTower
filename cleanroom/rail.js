@@ -8,7 +8,7 @@
 
   const svg=path=>`<svg viewBox="0 0 20 20" aria-hidden="true">${path}</svg>`;
   const icons={
-    expand:svg('<path d="M7 4.5 12.5 10 7 15.5"/>'),
+    expand:svg('<path d="M12.5 4.5 7 10 12.5 15.5"/>'),
     add:svg('<path d="M10 4v12M4 10h12"/>'),
     search:svg('<circle cx="8.5" cy="8.5" r="4.5"/><path d="m12 12 4 4"/>'),
     settings:svg('<circle cx="10" cy="10" r="3"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M15.3 4.7l-1.4 1.4M6.1 13.9l-1.4 1.4"/>')
@@ -46,11 +46,21 @@
   function setVisible(visible){if(visible){ensure();host.style.display="block";}else if(host)host.style.display="none";}
 
   chrome.runtime.onMessage.addListener((message,_sender,sendResponse)=>{
+    if(message?.type==="RAIL_VISIBILITY"){
+      setVisible(Boolean(message.visible));
+      sendResponse({ok:true,visible:host?.style.display==="block"});
+      return;
+    }
     if(message?.type!=="RAIL_PREPARE_COLLAPSE") return;
     ensure();
     setVisible(false);
     sendResponse({ok:true,ready:true,visible:false});
   });
+
+  function requestState(){chrome.runtime.sendMessage({type:"RAIL_STATE_REQUEST"}).catch(()=>{});}
+  window.addEventListener("pageshow",requestState);
+  port.onDisconnect.addListener(()=>{setVisible(false);try{requestState();}catch{}});
+  requestState();
 
   port.onMessage.addListener(message=>{if(message?.type==="RAIL_VISIBILITY")setVisible(Boolean(message.visible));});
 })();

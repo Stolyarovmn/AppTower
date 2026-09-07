@@ -11,7 +11,7 @@ export function createWindowLifecycle() {
 }
 
 export function railVisible(state) {
-  return state.phase === PHASE.COLLAPSED || state.phase === PHASE.CLOSING;
+  return state.phase === PHASE.COLLAPSED;
 }
 
 export function reduceLifecycle(state,event) {

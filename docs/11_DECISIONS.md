@@ -5,6 +5,15 @@ without new evidence.
 
 ## Accepted
 
+### Cleanroom close completion reconciliation (2.0.1)
+The bec410bd diagnostic trace records successful close Promise completion without
+an onClosed event. For explicit Cleanroom close requests, successful API completion
+may settle a still-closing state; rail remains hidden before completion. This
+supplements browser events, and does not infer closure from a disconnected port.
+The close Promise contract is documented at
+https://developer.chrome.com/docs/extensions/reference/api/sidePanel#method-close.
+Live Edge verification remains outstanding.
+
 ### Native Side Panel when available
 Use Edge/Chrome native Side Panel for the main build.
 
@@ -89,3 +98,12 @@ Rejected for current module architecture.
 - richer provider notification categories
 - Firefox adapter
 - true integration with browser-native Workspaces if a stable API appears
+
+
+### Cleanroom worker restart (2.0.2)
+Runtime Ports are not a durable delivery registry. Rail visibility must also
+reach existing content scripts through tab messages, including after worker
+restart with zero registered rail ports. Unknown state is reconciled against
+runtime.getContexts rather than a 250 ms assumption. Existing Side Panel documents
+re-register without renderer reload. The attached user trace was inspected but
+is not stored in the repository because it contains browsing history.

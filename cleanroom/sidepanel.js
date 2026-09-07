@@ -8,7 +8,7 @@ const DEFAULT_DATA={
 
 const currentWindow=await chrome.windows.getCurrent();
 const windowId=currentWindow.id;
-const port=chrome.runtime.connect({name:`ATV2_PANEL:${windowId}`});
+let port=null;
 
 const panes=document.getElementById("panes");
 const splitToggle=document.getElementById("split-toggle");
@@ -276,15 +276,25 @@ addForm.addEventListener("submit",event=>{
 });
 searchInput.addEventListener("input",()=>renderSearch(searchInput.value));
 
-port.onMessage.addListener(message=>{
+function handleCommand(message){
   if(message?.type!=="COMMAND") return;
   const command=message.command;
   if(command?.type==="search") openSearch();
   else if(command?.type==="add-current") void openAddCurrent();
   else if(command?.type==="settings") showToast("Настройки v2 пока не перенесены намеренно.");
-});
+}
+
+function reconnectPanel(){
+  const previous=port;
+  port=chrome.runtime.connect({name:`ATV2_PANEL:${windowId}`});
+  port.onMessage.addListener(handleCommand);
+  previous?.disconnect();
+}
+chrome.runtime.onMessage.addListener(message=>{if(message?.type==="PANEL_RECONNECT")reconnectPanel();});
 
 await load();
 renderLayout();
 renderPanes();
 renderShortcuts();
+
+reconnectPanel();

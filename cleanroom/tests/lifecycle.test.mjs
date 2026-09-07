@@ -25,7 +25,7 @@ test("unknown settles to collapsed and rail visibility is derived from lifecycle
   assert.equal(railVisible(state),false);
   state=reduceLifecycle(state,{type:"CLOSE_REQUEST"});
   assert.equal(state.phase,PHASE.CLOSING);
-  assert.equal(railVisible(state),true);
+  assert.equal(railVisible(state),false);
   state=reduceLifecycle(state,{type:"PANEL_CLOSED"});
   assert.equal(state.phase,PHASE.COLLAPSED);
   assert.equal(railVisible(state),true);
