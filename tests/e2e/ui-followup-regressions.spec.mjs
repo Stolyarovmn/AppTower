@@ -75,8 +75,10 @@ test("ATN-E2E-021 drag proxy is unique, stays left of the pointer, and remains i
     await addCustomSite(panel,"Drag B",`${baseUrl}/b`);
 
     const source = panel.locator("#panel-sites .rail-site").nth(0);
+    await expect(source).toBeVisible();
+    await expect.poll(async () => Boolean(await source.boundingBox())).toBe(true);
     const box = await source.boundingBox();
-    if (!box) throw new Error("shortcut geometry unavailable");
+    if (!box) throw new Error("shortcut geometry unavailable after visible wait");
     const startX = box.x + box.width/2;
     const startY = box.y + box.height/2;
     const pointerX = Math.min(1270,startX + 18);
@@ -105,7 +107,7 @@ test("ATN-E2E-021 drag proxy is unique, stays left of the pointer, and remains i
   }
 });
 
-test("ATN-E2E-022 pane focus control only appears when it can change the layout", async () => {
+test("ATN-E2E-022 secondary pane focus action lives in overflow and still changes layout", async () => {
   const {server,baseUrl} = await startFixtureServer();
   const profile = fs.mkdtempSync(path.join(os.tmpdir(),"app-tower-focus-control-"));
   const context = await launch(profile);
@@ -115,16 +117,27 @@ test("ATN-E2E-022 pane focus control only appears when it can change the layout"
     const panel = await openPanel(context);
     await addCustomSite(panel,"Focus layout",`${baseUrl}/focus`,{fromHome:true});
 
-    const topFocus = panel.locator('.pane[data-pane="top"] [data-action="focus"]');
+    const topPane = panel.locator('.pane[data-pane="top"]');
+    const topFocus = topPane.locator('[data-action="focus"]');
+    const more = topPane.locator('.atn-pane-more');
     await expect(topFocus).toBeHidden();
+    await expect(more).toBeVisible();
 
     await panel.locator("#toggle-split").click();
     await expect(panel.locator("#workspace")).toHaveAttribute("data-layout","split");
-    await expect(topFocus).toBeVisible();
-    await topFocus.click();
+    await expect(topFocus).toBeHidden();
+
+    await more.click();
+    const menu = panel.locator('.atn-pane-menu').filter({has:panel.locator('[data-proxy-action="focus"]')}).first();
+    await expect(menu).toBeVisible();
+    const focusItem = menu.locator('[data-proxy-action="focus"]');
+    await expect(focusItem).toBeEnabled();
+    await focusItem.click();
     await expect(panel.locator("#workspace")).toHaveAttribute("data-layout","focus-top");
-    await expect(topFocus).toHaveAttribute("title","Вернуть две области");
-    await topFocus.click();
+
+    await more.click();
+    await expect(menu).toBeVisible();
+    await menu.locator('[data-proxy-action="focus"]').click();
     await expect(panel.locator("#workspace")).toHaveAttribute("data-layout","split");
   } finally {
     await context.close().catch(()=>{});
@@ -164,21 +177,23 @@ test("ATN-E2E-023 empty group context menu never starts with a separator", async
   }
 });
 
-test("ATN-E2E-024 pane toolbar actions use SVG icons instead of text glyphs", async () => {
+test("ATN-E2E-024 pane primary toolbar uses SVG icons and secondary actions stay out of the row", async () => {
   const profile = fs.mkdtempSync(path.join(os.tmpdir(),"app-tower-pane-icons-"));
   const context = await launch(profile);
   try {
     const panel = await openPanel(context);
-    for (const action of ["go","reload","external","focus"]) {
-      const button = panel.locator(`.pane[data-pane="top"] [data-action="${action}"]`);
+    const topPane = panel.locator('.pane[data-pane="top"]');
+    for (const action of ["go","reload"]) {
+      const button = topPane.locator(`[data-action="${action}"]`);
       await expect(button.locator("svg").first()).toBeAttached();
-      const text = await button.evaluate(element => [...element.childNodes]
-        .filter(node => node.nodeType === Node.TEXT_NODE)
-        .map(node => node.textContent)
-        .join("")
-        .trim());
-      expect(text).toBe("");
+      await expect(button).toBeVisible();
     }
+    await expect(topPane.locator('[data-action="mode"]')).toBeHidden();
+    await expect(topPane.locator('[data-action="pwa"]')).toBeHidden();
+    await expect(topPane.locator('[data-action="external"]')).toBeHidden();
+    await expect(topPane.locator('[data-action="focus"]')).toBeHidden();
+    await expect(topPane.locator('.atn-pane-more')).toBeVisible();
+    await expect(topPane.locator('.atn-pane-close')).toBeAttached();
   } finally {
     await context.close().catch(()=>{});
     fs.rmSync(profile,{recursive:true,force:true});
