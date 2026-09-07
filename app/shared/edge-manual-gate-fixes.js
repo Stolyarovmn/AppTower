@@ -10,9 +10,7 @@ function nativeSidePanelAvailable() {
 
 async function enableNativeActionOpen() {
   if (!nativeSidePanelAvailable() || !chrome.sidePanel?.setPanelBehavior) return;
-  try {
-    await chrome.sidePanel.setPanelBehavior({openPanelOnActionClick:true});
-  } catch {}
+  try { await chrome.sidePanel.setPanelBehavior({openPanelOnActionClick:true}); } catch {}
 }
 
 function reinforceNativeActionOpen() {
@@ -27,9 +25,19 @@ async function activeTab(windowId) {
   try {
     const [tab] = await chrome.tabs.query({active:true,windowId:Number(windowId)});
     return Number.isInteger(tab?.id) ? tab : null;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
+}
+
+async function setRailsVisible(windowId,visible,{activeOnly=false}={}) {
+  if (!Number.isInteger(Number(windowId))) return;
+  let tabs=[];
+  try { tabs=await chrome.tabs.query({windowId:Number(windowId)}); } catch { return; }
+  const active=tabs.find(tab=>tab.active);
+  const targets=activeOnly ? (active?[active]:[]) : tabs;
+  await Promise.allSettled(targets
+    .filter(tab=>Number.isInteger(tab?.id) && /^https?:\/\//i.test(String(tab.url||"")))
+    .map(tab=>chrome.tabs.sendMessage(tab.id,{type:"ATN_SET_RAIL_VISIBLE",visible:Boolean(visible),reason:"native-panel-lifecycle"}))
+  );
 }
 
 async function showCompactRail(windowId) {
@@ -42,9 +50,7 @@ async function showCompactRail(windowId) {
       reason:"manual-gate-collapse-handoff"
     });
     return response?.ok === true;
-  } catch {
-    return false;
-  }
+  } catch { return false; }
 }
 
 async function rememberCollapse(windowId) {
@@ -68,9 +74,7 @@ async function consumeCollapse(windowId) {
     if (ids.size) await chrome.storage.session.set({[COLLAPSE_MARKER_KEY]:[...ids]});
     else await chrome.storage.session.remove(COLLAPSE_MARKER_KEY);
     return true;
-  } catch {
-    return false;
-  }
+  } catch { return false; }
 }
 
 reinforceNativeActionOpen();
@@ -80,8 +84,11 @@ chrome.runtime.onStartup?.addListener?.(reinforceNativeActionOpen);
 chrome.runtime.onMessage.addListener((message,sender) => {
   if (!message || typeof message !== "object") return false;
 
-  if (message.type === "OPEN_PANEL" && message.intent !== "settings" && Number.isInteger(sender?.tab?.id)) {
-    try { chrome.sidePanel?.open?.({tabId:sender.tab.id})?.catch?.(() => {}); } catch {}
+  if (message.type === "OPEN_PANEL" && message.intent !== "settings") {
+    const windowId=Number(message.windowId ?? sender?.tab?.windowId);
+    if (!Number.isInteger(windowId)) return false;
+    void setRailsVisible(windowId,false);
+    try { chrome.sidePanel?.open?.({windowId})?.catch?.(() => {}); } catch {}
     return false;
   }
 
@@ -89,6 +96,7 @@ chrome.runtime.onMessage.addListener((message,sender) => {
     const windowId = Number(message.windowId);
     if (!Number.isInteger(windowId)) return false;
     void rememberCollapse(windowId);
+    void setRailsVisible(windowId,false);
     void showCompactRail(windowId);
     setTimeout(() => { void showCompactRail(windowId); }, 120);
     setTimeout(() => { void showCompactRail(windowId); }, 420);
@@ -96,9 +104,16 @@ chrome.runtime.onMessage.addListener((message,sender) => {
   return false;
 });
 
+chrome.sidePanel?.onOpened?.addListener?.(({windowId}) => {
+  void setRailsVisible(windowId,false);
+  setTimeout(() => { void setRailsVisible(windowId,false); }, 120);
+  setTimeout(() => { void setRailsVisible(windowId,false); }, 400);
+});
+
 chrome.sidePanel?.onClosed?.addListener?.(({windowId}) => {
   void (async () => {
     if (!await consumeCollapse(windowId)) return;
+    await setRailsVisible(windowId,false);
     await showCompactRail(windowId);
     setTimeout(() => { void showCompactRail(windowId); }, 180);
   })();
