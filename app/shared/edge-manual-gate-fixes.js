@@ -15,6 +15,13 @@ async function enableNativeActionOpen() {
   } catch {}
 }
 
+function reinforceNativeActionOpen() {
+  void enableNativeActionOpen();
+  setTimeout(enableNativeActionOpen, 60);
+  setTimeout(enableNativeActionOpen, 250);
+  setTimeout(enableNativeActionOpen, 800);
+}
+
 async function activeTab(windowId) {
   if (!Number.isInteger(Number(windowId))) return null;
   try {
@@ -66,9 +73,9 @@ async function consumeCollapse(windowId) {
   }
 }
 
-void enableNativeActionOpen();
-chrome.runtime.onInstalled?.addListener?.(() => { setTimeout(enableNativeActionOpen,0); });
-chrome.runtime.onStartup?.addListener?.(() => { setTimeout(enableNativeActionOpen,0); });
+reinforceNativeActionOpen();
+chrome.runtime.onInstalled?.addListener?.(reinforceNativeActionOpen);
+chrome.runtime.onStartup?.addListener?.(reinforceNativeActionOpen);
 
 chrome.runtime.onMessage.addListener((message,sender) => {
   if (!message || typeof message !== "object") return false;
