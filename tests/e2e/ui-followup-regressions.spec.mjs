@@ -63,9 +63,9 @@ async function addCustomSite(panel,title,url,{fromHome=false}={}) {
   await expect.poll(() => isDialogOpen(panel,"#site-dialog")).toBe(false);
 }
 
-test("ATN-E2E-021 drag proxy is unique and stays to the right of the pointer", async () => {
+test("ATN-E2E-021 drag proxy is unique, stays left of the pointer, and remains in bounds", async () => {
   const {server,baseUrl} = await startFixtureServer();
-  const profile = fs.mkdtempSync(path.join(os.tmpdir(),"app-tower-drag-right-"));
+  const profile = fs.mkdtempSync(path.join(os.tmpdir(),"app-tower-drag-left-"));
   const context = await launch(profile);
   try {
     const web = context.pages()[0] || await context.newPage();
@@ -79,20 +79,21 @@ test("ATN-E2E-021 drag proxy is unique and stays to the right of the pointer", a
     if (!box) throw new Error("shortcut geometry unavailable");
     const startX = box.x + box.width/2;
     const startY = box.y + box.height/2;
-    const pointerX = startX + 18;
+    const pointerX = Math.min(1270,startX + 18);
     const pointerY = startY + 12;
 
     await panel.mouse.move(startX,startY);
     await panel.mouse.down();
     await panel.mouse.move(pointerX,pointerY,{steps:5});
-    await panel.mouse.move(pointerX + 2,pointerY,{steps:2});
+    await panel.mouse.move(Math.min(1274,pointerX + 2),pointerY,{steps:2});
 
     const proxy = panel.locator(".atn-drag-proxy");
     await expect(proxy).toHaveCount(1);
     await expect(proxy).toBeVisible();
     const proxyBox = await proxy.boundingBox();
     expect(proxyBox).toBeTruthy();
-    expect(proxyBox.x).toBeGreaterThan(pointerX + 10);
+    expect(proxyBox.x + proxyBox.width).toBeLessThan(pointerX - 10);
+    expect(proxyBox.x).toBeGreaterThanOrEqual(0);
     const proxyCenterY = proxyBox.y + proxyBox.height/2;
     expect(Math.abs(proxyCenterY - pointerY)).toBeLessThan(5);
     await panel.mouse.up();
@@ -183,4 +184,3 @@ test("ATN-E2E-024 pane toolbar actions use SVG icons instead of text glyphs", as
     fs.rmSync(profile,{recursive:true,force:true});
   }
 });
-
