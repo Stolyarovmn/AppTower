@@ -1,3 +1,5 @@
+import "./manual-gate-fixes.js";
+
 const currentWindow = await chrome.windows.getCurrent();
 const params = new URLSearchParams(location.search);
 
