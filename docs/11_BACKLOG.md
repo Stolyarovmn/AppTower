@@ -16,10 +16,14 @@ Last competitor scan: 2026-09-07.
 
 **No TASK is ACTIVE.** TASK 2 is complete. This research process does not activate implementation work; only the AppTower Task Executor may move another TASK to `ACTIVE`.
 
-The current regression PR #2 head observed during this scan is `3ab8d31abd42335440e57b98bee02c5e23e061cb`; its `validate` workflow run `34107440635` completed with conclusion **`success`**. The previous backlog head `eb70236cd9118a7416d7a33e4491a6483cb3c56d` completed PR validation successfully in run `34139013992`. Because this scan changes the backlog again, the new documentation head must revalidate successfully before READY TASKS may start. TASKS with unresolved functional dependencies remain `BLOCKED` regardless of CI.
+The current regression PR #2 head observed during this scan is `3ab8d31abd42335440e57b98bee02c5e23e061cb`; its `validate` workflow run `34107440635` completed with conclusion **`success`**. The previous backlog head `c66c3d4a26f792c2ca8572ab38de7de9bb2f4511` completed PR validation successfully in run `34148102208`. Because this scan changes the backlog again, the new documentation head must revalidate successfully before READY TASKS may start. TASKS with unresolved functional dependencies remain `BLOCKED` regardless of CI.
 
 ## Fresh research notes
 
+- The Great Suspender Reloaded (`tim-dim-ext/The-Great-Suspender-Reloaded`) is a current Chromium MV3 suspender whose Chrome Web Store listing was observed at version 2.0.1, updated 2026-06-15, with about 40,000 users and 84 ratings. Its user-facing policy explicitly includes low-memory auto-suspend plus protections for active tabs, pinned tabs, audio/video, unsaved forms, offline state and charging state. This is substantially stronger adoption evidence for pressure-aware suspension and safety guards than the small projects previously available in this research stream.
+- Its repository/store materials state **GPL-2.0**. AppTower therefore copies no source code or protected implementation fragments from it. Only the independently implementable behavior pattern is used: pressure may tighten eviction of already-safe resources, but safety guards remain authoritative. The store listing also exposes session screenshots/custom suspended pages and many global suspension actions; those broader design choices are not evidence that AppTower should adopt placeholder pages, screenshot capture, broad page access, or periodic polling.
+- This evidence raises **TASK 18 — Optional resource-pressure-aware emergency pane eviction from 75 to 76/100** solely by increasing competitor maturity from 4/5 to 5/5: 18/25 user value + 10/20 real pain/regression + 14/15 AppTower fit + 11/15 measurable performance/UX + 8/10 low implementation risk + 5/5 privacy/permissions + 5/5 competitor maturity + 5/5 automated testability = 76. The task remains BLOCKED and keeps `system.memory` optional, event-driven sampling, hysteresis and TASK 3 safety precedence.
+- Sidearc 2.1.9 is a current Featured Chrome Side Panel workspace listing updated 2026-09-02. It combines spaces, favorites, pins, folders, saved tabs, search, domain grouping, bookmark import, a shortcut to the most-recent tab, drag/drop structure and local-by-default state with optional account sync. This independently supports the existing pinned/favorites and recent/workspace UX patterns, but no public source repository/license for the shipping build was verified in this scan, so it remains behavior-only evidence and does not change those scores.
 - `bishwanathjha/split-screen` is a Chromium MV3 extension under a confirmed **MIT License**. It implements a real-window split rather than iframe embedding: the current tab is duplicated into browser windows, windows are automatically rearranged as splits are added/removed, display geometry is read for multi-monitor placement, and split state is persisted through browser storage. Its manifest uses `tabs`, `windows`, `notifications`, `storage`, and `system.display`, with no host permissions or content scripts. This is the first licensed Chromium implementation found in this research stream that directly closes the evidence gap behind the former Anchored Real Page/sidecar IDEA.
 - AppTower does not copy its implementation. The transferable pattern is narrower: an AppTower-owned Real Page sidecar may remember window/display geometry, restore only extension-owned sidecars, and reflow safely when monitor topology changes. `notifications` is not justified for AppTower. `system.display` should be optional/capability-gated; without it, AppTower should fall back to current-window bounds rather than expanding permissions.
 - This new evidence promotes the former IDEA “Anchored Real Page/sidecar placement” from **74 to TASK 21 — 76/100**: 18/25 user value + 10/20 real pain/regression + 14/15 AppTower fit + 12/15 measurable UX + 8/10 low implementation risk + 5/5 privacy/permissions + 4/5 competitor maturity + 5/5 automated testability = 76. Promotion remains BLOCKED until the Real Page lifecycle is stable and automated geometry/restart tests exist.
@@ -47,7 +51,7 @@ The current regression PR #2 head observed during this scan is `3ab8d31abd423354
 - TabTOC and Nest remain behavior-only evidence for restricted-page fallback because current source/license could not be verified. AppTower uses its existing native Side Panel on browser-owned pages instead of trying to inject there.
 - Microsoft Edge documentation updated in July 2026 marks PWA `edge_side_panel` integration deprecated; AppTower compatibility therefore stays capability-driven and independent of that vendor-specific surface.
 - Tab Pilot / Tab Radar is MIT and useful UX evidence for fuzzy search/command palette/recent, but its broad permission/injection set remains an anti-pattern for AppTower core.
-- All existing TASKS and IDEAS were rescored after this scan. **TASK 21 was promoted from IDEA 74→76. No other TASK or IDEA score changed.**
+- All existing TASKS and IDEAS were rescored after this scan. **TASK 18 changed 75→76 from stronger competitor maturity. No other TASK or IDEA score changed.**
 
 ## TASKS
 
@@ -72,8 +76,8 @@ The current regression PR #2 head observed during this scan is `3ab8d31abd423354
 | 17 | 78 | BLOCKED | Native browser tab-group import/export bridge | Stable groups/workspaces; TASK 4 preferred |
 | 18 | 76 | BLOCKED | Per-site pane sleep policy presets: default / aggressive / never | TASK 3; measured resource baseline; coordinate with TASK 6 |
 | 19 | 76 | BLOCKED | Anchored Real Page/sidecar placement and geometry restore | TASK 9; stable Real Page lifecycle; TASK 4 preferred |
-| 20 | 76 | BLOCKED | Glance preview in temporary bottom pane | Stable split-pane lifecycle |
-| 21 | 75 | BLOCKED | Optional resource-pressure-aware emergency pane eviction | TASK 3 + TASK 6; optional `system.memory`; measured baseline |
+| 20 | 76 | BLOCKED | Optional resource-pressure-aware emergency pane eviction | TASK 3 + TASK 6; optional `system.memory`; measured baseline |
+| 21 | 76 | BLOCKED | Glance preview in temporary bottom pane | Stable split-pane lifecycle |
 
 Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 
@@ -103,7 +107,7 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 **Acceptance criteria:** dirty form/contenteditable and active media block auto-sleep; `Keep awake` persists without polling; blockers clear after submit/reset/pause/end; pane-scoped cleanup on navigation/removal; no broad permission.
 **Automated test plan:** dirty text/checkbox/contenteditable; playing/paused media; keep-awake restart; blocker cleanup; unchanged idle/max-live semantics.
 **Dependencies:** embedded-frame bridge and resource lease/sleep path.
-**Sources/competitors:** Drowzy 1.5.0 (MIT); QuickPanel behavior only (PolyForm Noncommercial); TabZen behavior only (license incomplete/ambiguous).
+**Sources/competitors:** Drowzy 1.5.0 (MIT); QuickPanel behavior only (PolyForm Noncommercial); TabZen behavior only (license incomplete/ambiguous); The Great Suspender Reloaded 2.0.1 (GPL-2.0, behavior only) for mature active/pinned/media/unsaved-form guard UX.
 
 ### TASK 4 — Versioned persistence schema + append-only migrations — 88/100 — BLOCKED
 **Rationale:** durable workspaces/settings/templates/layout/export state needs explicit evolution rather than silent reset/defaulting.
@@ -131,7 +135,7 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 **Acceptance criteria:** no recurring alarm with zero leases; next check is earliest meaningful deadline; create/touch/remove reschedules deterministically; current idle/max-live behavior preserved; restart restores deadline.
 **Automated test plan:** zero/one/many lease scheduler; touch/remove; pane-isolation E2E; instrument worker wakeups before/after.
 **Dependencies:** performance baseline.
-**Sources/competitors:** AppTower implementation; MV3 event-driven guidance; QuickPanel behavior evidence; fixed 60s Drowzy alarm is comparison only.
+**Sources/competitors:** AppTower implementation; MV3 event-driven guidance; QuickPanel behavior evidence; fixed 60s Drowzy alarm is comparison only; mature suspenders that periodically scan tabs remain energy counterexamples rather than architecture to copy.
 
 ### TASK 7 — Event-based workspace snapshots + Undo — 84/100 — BLOCKED
 **Rationale:** recovery from destructive workspace/group/template mutations has high value without periodic background work.
@@ -174,7 +178,7 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 **Acceptance criteria:** primary Recent list uses AppTower-owned recency only; opening/activating a shortcut/template updates recency deterministically without polling; stable tie-break is preserved; optional “Recently closed browser tabs” requests/uses only `sessions` and is clearly separated from AppTower Recent; no `history`, `idle`, `<all_urls>`, or content-script expansion; turning the optional browser subsection off removes the need to query sessions; search can filter Recent without changing ranking state; restoring a closed browser session is explicit and never silently imports it into an AppTower workspace.
 **Automated test plan:** deterministic `lastUsedAt` ordering/ties; open/activate updates; restart persistence; same entity in group/template; search filtering; optional sessions denied/unavailable/empty; recently closed tab and window restore fixtures; ensure manifest/permission gate rejects accidental `history`/`idle` additions; E2E confirms opening Recent does not reload pane documents or wake unrelated resources.
 **Dependencies:** TASK 2 completed; current Recent/search surface stable; TASK 10 preferred before introducing optional `sessions`; coordinate with TASK 5 so Command Palette consumes the same recency model rather than maintaining a second index.
-**Sources/competitors:** Chromium `tabs.Tab.lastAccessed`; WebExtensions `sessions.getRecentlyClosed()`; Benjamin410/chrome-tab-manager (ISC, 2026) and Tab Wise 2.4.0 (MIT) for recency/recently-closed side-panel UX. Broad host access in Tab Wise and `<all_urls>` content scripts in chrome-tab-manager are explicitly not copied. Side Tab Manager and Vertical SidePanel Tab Group Manager are additional store-level behavior evidence only.
+**Sources/competitors:** Chromium `tabs.Tab.lastAccessed`; WebExtensions `sessions.getRecentlyClosed()`; Benjamin410/chrome-tab-manager (ISC, 2026) and Tab Wise 2.4.0 (MIT) for recency/recently-closed side-panel UX. Broad host access in Tab Wise and `<all_urls>` content scripts in chrome-tab-manager are explicitly not copied. Side Tab Manager and Vertical SidePanel Tab Group Manager are additional store-level behavior evidence only; Sidearc 2.1.9 provides current behavior-only evidence for a most-recent-tab shortcut but shipping source/license remains unverified.
 
 ### TASK 12 — Context-scoped pane bridge/PWA content-script injection — 79/100 — BLOCKED
 **Rationale:** pane bridge/PWA discovery currently run too broadly; narrowing execution reduces injection surface and avoidable work.
@@ -213,6 +217,14 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 **Dependencies:** TASK 9 compatibility ladder; stable Real Page window lifecycle; TASK 4 preferred for persisted geometry schema; TASK 10 permission gate preferred before optional `system.display`.
 **Sources/competitors:** `bishwanathjha/split-screen` (MIT) as licensed Chromium implementation evidence; Tab Anchor (MIT) as earlier sidecar/anchor evidence; Sift and SplitView behavior-only because shipping source/license was not verified. No competitor code is copied.
 
+### TASK 18 — Optional resource-pressure-aware emergency pane eviction — 76/100 — BLOCKED
+**Score:** 18/25 user value + 10/20 real pain/regression + 14/15 AppTower fit + 11/15 measurable performance/UX + 8/10 low implementation risk + 5/5 privacy/permissions + 5/5 competitor maturity + 5/5 automated testability = **76**.
+**Rationale:** under genuine system-memory pressure AppTower may tighten eviction of otherwise sleep-eligible panes without continuous monitoring or bypassing safety. TabRest and Tab Wise establish the narrow `system.memory`/LRU capability pattern; The Great Suspender Reloaded adds substantially stronger production adoption evidence for memory-pressure-triggered suspension guarded by active/pinned/media/dirty-form rules. AppTower implements this independently and does not reuse GPL-covered code.
+**Acceptance criteria:** opt-in; `system.memory` requested only when enabled; no new polling; sampling only on TASK 6 check or explicit diagnostics; hysteresis; only TASK 3-safe panes; AppTower-owned LRU; denied/unavailable API degrades cleanly; no broad host permission/network dependency; pressure never overrides dirty-form/contenteditable, active-media or explicit keep-awake guards; charging/offline policies are not added unless separately justified and scored.
+**Automated test plan:** low/normal/high pressure + hysteresis; denied API; zero-leases proves no extra wakeup; LRU order; all-protected case; enable/disable/restart; pane-isolation E2E; wakeup count before/after; pressure+dirty-form/media/keep-awake precedence fixture.
+**Dependencies:** TASK 3; TASK 6; TASK 10 preferred; measured baseline.
+**Sources/competitors:** TabRest (MIT, clean-room evidence); Tab Wise 2.4.0 (MIT; optional `system.memory` demonstrates narrow permission gating, but its broad host access is not copied); The Great Suspender Reloaded 2.0.1 (GPL-2.0, behavior/adoption evidence only; no code reuse); TabZen behavior only; Chrome `system.memory` capability boundary.
+
 ### TASK 15 — Glance preview in temporary bottom pane — 76/100 — BLOCKED
 **Rationale:** temporary reference preview reuses AppTower split model instead of spawning permanent tabs/windows.
 **Acceptance criteria:** temporary bottom pane; top unchanged; explicit promote; close restores layout; compatibility fallback applies.
@@ -220,19 +232,12 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 **Dependencies:** stable split-pane lifecycle.
 **Sources/competitors:** SuperchargeBrowser Glance-style preview.
 
-### TASK 18 — Optional resource-pressure-aware emergency pane eviction — 75/100 — BLOCKED
-**Rationale:** under genuine system-memory pressure AppTower may tighten eviction of otherwise sleep-eligible panes without continuous monitoring or bypassing safety.
-**Acceptance criteria:** opt-in; `system.memory` requested only when enabled; no new polling; sampling only on TASK 6 check or explicit diagnostics; hysteresis; only TASK 3-safe panes; AppTower-owned LRU; denied/unavailable API degrades cleanly; no broad host permission/network dependency.
-**Automated test plan:** low/normal/high pressure + hysteresis; denied API; zero-leases proves no extra wakeup; LRU order; all-protected case; enable/disable/restart; pane-isolation E2E; wakeup count before/after.
-**Dependencies:** TASK 3; TASK 6; TASK 10 preferred; measured baseline.
-**Sources/competitors:** TabRest (MIT, clean-room evidence); Tab Wise 2.4.0 (MIT; optional `system.memory` demonstrates narrow permission gating, but its broad host access is not copied); TabZen behavior only; Chrome `system.memory` capability boundary.
-
 ## IDEAS
 
 | Rank | Score | IDEA | Evidence / source | Promotion condition / risk |
 |---:|---:|---|---|---|
 | 1 | 74 | Panel navigation escape policy | QuickPanel | Promote after navigation telemetry proves accidental pane hijacking; clean-room only because QuickPanel is PolyForm Noncommercial. |
-| 2 | 73 | Favorites/pinned mini-row independent of workspace ordering | ddSideBar (MIT), Lunma, TabTree, ThisPanel, Tab Tiles 9.0 behavior | Promote if rail overflow is recurring UX pain; Tab Tiles source/license unverified. |
+| 2 | 73 | Favorites/pinned mini-row independent of workspace ordering | ddSideBar (MIT), Lunma, TabTree, ThisPanel, Tab Tiles 9.0 behavior, Sidearc 2.1.9 behavior | Promote if rail overflow is recurring UX pain; Tab Tiles and Sidearc shipping source/license unverified. |
 | 3 | 72 | Workspace/session import from other managers | VertiTab, Lunma, Tabwise | Promote after TASK 4 export/import schema; avoid mandatory history permission. |
 | 4 | 71 | Native browser Split View awareness/bridge | W3C WebExtensions split-tabs proposal; MDN; Chrome Web Store split-view behavior | Keep as IDEA until stable create/remove split-view APIs or a concrete coexistence regression. |
 | 5 | 70 | Optional Document Picture-in-Picture companion mode | Chrome Document PiP; Super Pinned Windows (MIT) | Concrete compact-player/reference use case required; no CSP/XFO stripping or broad host access. |
