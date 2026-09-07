@@ -30,10 +30,11 @@ The current regression PR #2 head observed during this scan is `6ec579a64af0ba9d
 | 7 | 84 | BLOCKED | Event-based workspace snapshots + Undo | TASK 2; TASK 4 preferred |
 | 8 | 83 | BLOCKED | Installed-extension lifecycle E2E harness using browser-managed install/action/inspection | Green CI; reproducible packaged build; Chrome DevTools-for-agents toolchain availability |
 | 9 | 82 | BLOCKED | Compatibility ladder UX: Auto / Embedded / Mobile / Real Page | Stable renderer telemetry; Task 1 |
-| 10 | 80 | READY | Duplicate shortcut detection and reuse prompt | Stable add flow; green CI |
-| 11 | 79 | BLOCKED | Restorable split layout metadata in templates | TASK 2; TASK 4 preferred; stable split lifecycle |
-| 12 | 78 | BLOCKED | Native browser tab-group import/export bridge | Stable groups/workspaces; TASK 4 preferred |
-| 13 | 76 | BLOCKED | Glance preview in temporary bottom pane | Stable split-pane lifecycle |
+| 10 | 81 | BLOCKED | Manifest permission budget + CI regression gate | Current manifest/variant inventory; green CI before executor activation |
+| 11 | 80 | READY | Duplicate shortcut detection and reuse prompt | Stable add flow; green CI |
+| 12 | 79 | BLOCKED | Restorable split layout metadata in templates | TASK 2; TASK 4 preferred; stable split lifecycle |
+| 13 | 78 | BLOCKED | Native browser tab-group import/export bridge | Stable groups/workspaces; TASK 4 preferred |
+| 14 | 76 | BLOCKED | Glance preview in temporary bottom pane | Stable split-pane lifecycle |
 
 Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 
@@ -102,14 +103,22 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 **Dependencies:** stable renderer telemetry, TASK 1.
 **Sources/competitors:** Universal Split View; SplitView; SidePilot (Apache-2.0); QuickPanel WebView2 demonstrates why a Real Page/native sidecar remains necessary for iframe-blocked sites, but QuickPanel source is PolyForm Noncommercial and not reusable.
 
-### TASK 10 — Duplicate shortcut detection — 80/100 — READY
+### TASK 10 — Manifest permission budget + CI regression gate — 81/100 — BLOCKED
+**Score:** 18/25 user value + 16/20 real pain/regression + 15/15 AppTower fit + 8/15 measurable UX/reliability gain + 9/10 low implementation risk + 5/5 privacy/permissions + 5/5 maturity + 5/5 automated testability = **81**.
+**Rationale:** AppTower has already removed runtime permissions that were not backed by confirmed API use, but the current validator does not enforce a manifest permission allowlist/budget. A small CI contract prevents accidental permission creep, unexpected install/update warnings and review regressions without changing runtime behavior or adding any permission.
+**Acceptance criteria:** define reviewed required permissions, optional permissions and host-pattern sets for each generated/browser variant; validation fails on any unreviewed addition or required↔optional promotion; each allowlisted permission has a short repository rationale; generated fallback manifests are checked against their own narrower budget; removals are allowed without special approval; no runtime code or manifest permission is added by this TASK.
+**Automated test plan:** manifest fixtures for allowed set, new required permission, new optional permission, new host pattern, required↔optional movement and fallback-only drift; validator must fail deterministic negative fixtures and pass current manifests; package validation runs the same gate so generated artifacts cannot bypass it.
+**Dependencies:** current manifest/variant inventory; green CI before executor activation.
+**Sources/competitors:** Benjamin410/chrome-tab-manager (ISC) enforces a documented permission set in CI; Chrome Web Store privacy guidance requires the minimum permissions consistent with the extension purpose and notes broader-than-necessary permissions may cause rejection. Pattern is independently implemented; no competitor source needs to be copied.
+
+### TASK 11 — Duplicate shortcut detection — 80/100 — READY
 **Rationale:** prevents rail/workspace clutter with low implementation and permission risk.
 **Acceptance criteria:** canonical URL matching; reuse/open existing or intentionally duplicate; group/template identity not merged accidentally; no network lookup.
 **Automated test plan:** canonical URL/query/hash fixtures; same URL across workspaces/groups; Add Current Page E2E; keyboard confirmation.
 **Dependencies:** stable add flow, green CI.
 **Sources/competitors:** Tab Wise, Tabwise, TabDog, Tab Manager v2, Tablio.
 
-### TASK 11 — Restorable split layout metadata — 79/100 — BLOCKED
+### TASK 12 — Restorable split layout metadata — 79/100 — BLOCKED
 **Score:** 21+12+14+12+7+5+4+4 = **79**.
 **Rationale:** layout ratios are durable workflow state; AppTower can gain repeatability without going beyond two panes.
 **Acceptance criteria:** bounded ratio in template; legacy default; restore without unnecessary pane reload; rebalance/reset; restart/export-import; exactly two panes.
@@ -117,14 +126,14 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 **Dependencies:** TASK 2, TASK 4 preferred, stable split lifecycle.
 **Sources/competitors:** Chromium Split View/session restore and persisted side-panel resizing; Split View; SideSplit.
 
-### TASK 12 — Native tab-group import/export bridge — 78/100 — BLOCKED
+### TASK 13 — Native tab-group import/export bridge — 78/100 — BLOCKED
 **Rationale:** native interoperability without turning AppTower into a full tab manager.
 **Acceptance criteria:** explicit import/export; preserve title/color/order where API supports; AppTower remains authoritative; no history/bookmarks permission for basic bridge.
 **Automated test plan:** import/export native groups; duplicates; collapsed groups; restart; unsupported-browser fallback.
 **Dependencies:** stable groups/workspaces; TASK 4 preferred.
 **Sources/competitors:** Lunma, TabTOC, SnapTabs, Tab Manager v2.
 
-### TASK 13 — Glance preview in temporary bottom pane — 76/100 — BLOCKED
+### TASK 14 — Glance preview in temporary bottom pane — 76/100 — BLOCKED
 **Rationale:** temporary reference preview reuses AppTower split model instead of spawning permanent tabs/windows.
 **Acceptance criteria:** temporary bottom pane; top unchanged; explicit promote; close restores layout; compatibility fallback applies.
 **Automated test plan:** preview/close/promote; repeated previews; blocked-embed fallback; stable top-pane document token.
@@ -163,10 +172,10 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 
 ## Research notes — 2026-09-07
 
-- **Chrome DevTools for agents / extension lifecycle tooling** is the main new finding in this scan. The official Chrome documentation, updated 2026-09-04, explicitly supports installing unpacked extensions, listing installed extensions and triggering extension actions in an agent-controlled browser session. For AppTower this is strong evidence for an installed-extension regression layer, not a product runtime dependency. No AppTower manifest permission needs to be added.
-- **Silo** is a recent MIT MV3 side-panel project that keeps its core validators pure and local while using the persistent side panel, content script and service worker as separate entry points. Its architecture reinforces separation of browser lifecycle/DOM extraction from pure logic, but AppTower already follows sufficiently similar separation and no new backlog item is justified.
-- Chromium Split View continues to evolve in 2026, including recent work around choosing existing tabs in split creation and earlier session-restore support. This strengthens existing split-layout/session-restore evidence but does not justify another AppTower TASK beyond TASK 11.
-- No newly discovered competitor justified changing the scores of existing product TASKS or IDEAS in this pass. All items were reconsidered under the same weighted rubric; their numeric scores remain unchanged apart from insertion of TASK 8 at 83.
+- **Manifest permission budget / CI regression gate** is the new finding in this scan. `Benjamin410/chrome-tab-manager` (ISC) keeps a documented required-permission set and its quality workflow rejects undocumented permission additions. AppTower's current `tools/validate.mjs` validates manifest structure/resources and fallback `sidePanel` removal, but does not currently enforce an allowlisted permission/host budget. This becomes TASK 10 at 81/100 because AppTower has already experienced permission drift during store-readiness cleanup, the solution adds no runtime permission, and it is completely automatable.
+- **Tab Wise** (MIT) keeps `system.memory` optional while core side-panel/tab features use a separate required set. This reinforces the existing resource-pressure guardrail: system memory must remain optional/justified rather than becoming a default dependency. It does not justify a second resource TASK.
+- **Chrome Tab Manager** also demonstrates a relatively narrow permission surface (`tabs`, `tabGroups`, `sidePanel`, `storage`, `sessions`) for its core tab-management UI despite extensive search/group/history UI. Its page-label feature is designed so additions such as `activeTab`, `scripting`, `webRequest` or host permissions require explicit justification. This reinforces TASK 10 rather than expanding AppTower's permission surface.
+- Existing TASKS and IDEAS were all reconsidered under the weighted rubric. Their numeric scores remain unchanged; only the new TASK at 81 was inserted and lower ranks shifted.
 
 ## Product guardrails
 
@@ -177,6 +186,7 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 - Prefer event-driven lifecycle/snapshot/resource handling over polling.
 - System-memory pressure may only tighten eviction policy after measurement; never bypass pane safety guards or justify default per-pane heap polling/broad host access.
 - Prefer optional permissions for optional integrations; do not require history/bookmarks merely for onboarding.
+- CI must fail on unreviewed manifest permission/host-pattern expansion; optional features should not silently become required permissions.
 - Do not make native bookmarks the authoritative AppTower store.
 - Real Page/sidecar geometry must be scoped to AppTower-owned fallback windows only; never globally reroute normal tabs/pop-ups.
 - Cross-domain pane navigation policy must preserve authentication/SSO flows and remain user-overridable.
