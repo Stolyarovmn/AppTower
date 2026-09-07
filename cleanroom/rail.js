@@ -1,7 +1,10 @@
 (()=>{
   if(window.top!==window) return;
-  if(document.documentElement.dataset.atv2RailInstalled==="1") return;
-  document.documentElement.dataset.atv2RailInstalled="1";
+  // Keep the installation guard inside the content-script JS world, not in page DOM.
+  // A DOM marker survives extension reloads while the old content-script listener does not,
+  // which made executeScript() return early and caused "Receiving end does not exist" forever.
+  if(globalThis.__atv2RailInstalled) return;
+  globalThis.__atv2RailInstalled=true;
 
   let host=null;
   const port=chrome.runtime.connect({name:"ATV2_RAIL"});
@@ -30,6 +33,8 @@
 
   function ensure(){
     if(host?.isConnected) return;
+    // Remove a stale visual host left behind by a previous extension context/reload.
+    document.getElementById("atv2-rail-host")?.remove();
     host=document.createElement("div");
     host.id="atv2-rail-host";
     const root=host.attachShadow({mode:"closed"});
