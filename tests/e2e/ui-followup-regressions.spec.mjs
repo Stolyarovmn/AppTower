@@ -185,7 +185,7 @@ test("ATN-E2E-023 empty group context menu never starts with a separator", async
   }
 });
 
-test("ATN-E2E-024 pane primary toolbar uses SVG icons and secondary actions stay out of the row", async () => {
+test("ATN-E2E-024 pane primary toolbar stays compact and close appears only for split layout", async () => {
   const {server,baseUrl} = await startFixtureServer();
   const profile = fs.mkdtempSync(path.join(os.tmpdir(),"app-tower-pane-icons-"));
   const context = await launch(profile);
@@ -205,8 +205,27 @@ test("ATN-E2E-024 pane primary toolbar uses SVG icons and secondary actions stay
     await expect(topPane.locator('[data-action="pwa"]')).toBeHidden();
     await expect(topPane.locator('[data-action="external"]')).toBeHidden();
     await expect(topPane.locator('[data-action="focus"]')).toBeHidden();
-    await expect(topPane.locator('.atn-pane-more')).toBeVisible();
-    await expect(topPane.locator('.atn-pane-close')).toBeVisible();
+
+    const more=topPane.locator('.atn-pane-more');
+    const close=topPane.locator('.atn-pane-close');
+    await expect(more).toBeVisible();
+    await expect(close).toBeHidden();
+
+    const moreBox=await more.boundingBox();
+    expect(moreBox).toBeTruthy();
+    expect(moreBox.width).toBeLessThanOrEqual(31);
+    expect(moreBox.height).toBeLessThanOrEqual(31);
+
+    await panel.locator("#toggle-split").click();
+    await expect(panel.locator("#workspace")).toHaveAttribute("data-layout","split");
+    await expect(close).toBeVisible();
+    const closeBox=await close.boundingBox();
+    expect(closeBox).toBeTruthy();
+    expect(closeBox.width).toBeLessThanOrEqual(31);
+    expect(closeBox.height).toBeLessThanOrEqual(31);
+
+    await close.click();
+    await expect(panel.locator("#workspace")).not.toHaveAttribute("data-layout","split");
   } finally {
     await context.close().catch(()=>{});
     await new Promise(resolve => server.close(resolve));
