@@ -5,21 +5,19 @@ import path from "node:path";
 
 const root = path.resolve(import.meta.dirname,"../..");
 const backgroundEntry = fs.readFileSync(path.join(root,"app/background-entry.js"),"utf8");
-const edgeFixes = fs.readFileSync(path.join(root,"app/shared/edge-manual-gate-fixes.js"),"utf8");
+const background = fs.readFileSync(path.join(root,"app/background.js"),"utf8");
+const adapter = fs.readFileSync(path.join(root,"app/shared/browser-adapter.js"),"utf8");
 const dialogSystem = fs.readFileSync(path.join(root,"app/sidepanel/dialog-system.js"),"utf8");
 const sidepanelFixes = fs.readFileSync(path.join(root,"app/sidepanel/manual-gate-fixes.js"),"utf8");
 
-test("native Edge action and compact rail lifecycle repairs are wired", () => {
-  assert.match(backgroundEntry,/edge-manual-gate-fixes\.js/);
-  assert.match(edgeFixes,/openPanelOnActionClick:true/);
-  assert.match(edgeFixes,/message\.type === "OPEN_PANEL"/);
-  assert.match(edgeFixes,/chrome\.sidePanel\?\.open\?\.\(\{windowId\}\)/);
-  assert.doesNotMatch(edgeFixes,/chrome\.sidePanel\?\.open\?\.\(\{tabId:/);
-  assert.match(edgeFixes,/message\.type === "COLLAPSE_PANEL"/);
-  assert.match(edgeFixes,/COLLAPSE_MARKER_KEY/);
-  assert.match(edgeFixes,/ATN_SET_RAIL_VISIBLE/);
-  assert.match(edgeFixes,/onOpened/);
-  assert.match(edgeFixes,/onClosed/);
+test("native Edge lifecycle has one owner and remains window scoped", () => {
+  assert.doesNotMatch(backgroundEntry,/edge-manual-gate-fixes\.js/);
+  assert.match(background,/chrome\.sidePanel\.onOpened/);
+  assert.match(background,/chrome\.sidePanel\.onClosed/);
+  assert.match(background,/broadcastRail\(windowId, visible\)/);
+  assert.match(adapter,/sidePanel\.open\(\{windowId:numericWindowId\}\)/);
+  assert.doesNotMatch(adapter,/sidePanel\.open\(\{tabId:/);
+  assert.doesNotMatch(adapter,/setOptions\(\{tabId:/);
 });
 
 test("expanded Add Current Page uses the active browser tab", () => {
