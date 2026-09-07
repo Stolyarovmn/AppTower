@@ -1,45 +1,53 @@
-# 20 — Validation report
+# 20 — Validation status
 
-Generated for the GitHub/Codex handoff on 2026-09-02.
+This document records what the repository's automated validation can and cannot prove. Exact package checksums belong to generated `dist/CHECKSUMS.sha256`, CI artifacts and release assets rather than a hand-maintained Markdown snapshot.
 
-## Static source validation
+## Automated validation
 
-```text
-app: JSON 4, JS 13, manifest/DOM/import checks OK
-variants/yandex-sidecar: JSON 4, JS 13, manifest/DOM/import checks OK
-App Tower validation: OK
+Run:
+
+```bash
+node tools/validate.mjs
+python tools/package.py
 ```
 
-Exit code: `0`
+The validator checks, for both the main source tree and generated fallback where applicable:
 
-## Packaging validation
+- JSON syntax;
+- JavaScript parse/syntax via Node;
+- local ES-module paths;
+- manifest resource paths;
+- manifest description store-length constraint;
+- DOM ID references for sidepanel/options/newtab;
+- Yandex fallback manifest shape;
+- version consistency between main and fallback manifests;
+- absence of `.pem` / `.crx` signing artifacts in source trees.
 
-`python tools/package.py` was executed successfully before this report and
-generated current full-replacement packages under `dist/`.
+The package script:
 
-Current generated package checksums:
+1. validates source;
+2. regenerates `variants/yandex-sidecar/` from `app/`;
+3. validates again;
+4. creates full-replacement ZIPs under `dist/`;
+5. writes SHA-256 checksums to `dist/CHECKSUMS.sha256`.
 
-```text
-3a7860d673a1dc3189ec02b77bdb98d50ccd6dec0605dd8531cc97860684340d  AppTowerNext-v0.8.5.zip
-7c3dcfab7d5e460121a07dd80df70325214dcde17f5f04818c586272c6916bc8  AppTowerNext-v0.8.5-yandex-sidecar.zip
-```
+## What automated validation does not prove
 
-## What this validates
+Static validation and successful packaging do **not** prove browser runtime behavior.
 
-- JSON syntax
-- JavaScript parse/syntax via Node
-- local ES-module paths
-- manifest resource paths
-- DOM ID references for sidepanel/options/newtab
-- Yandex fallback manifest shape
-- absence of PEM/CRX in source
-- package generation
+The following still require real Edge/Chrome testing:
 
-## What this does NOT validate
+- Side Panel open/close lifecycle;
+- collapse/expand and restart recovery;
+- Chromium user-activation requirements;
+- Add Current behavior against real browser focus state;
+- third-party iframe/auth/anti-bot behavior;
+- drag/drop interaction;
+- visual rendering, DPI scaling and icon alignment;
+- long-running resource sleep/reload behavior.
 
-No live Microsoft Edge/Chrome GUI is available in this build environment.
-Therefore Side Panel lifecycle, user-gesture behavior, third-party iframe
-behavior and visual rendering still require the live acceptance tests in
-`docs/09_ACCEPTANCE_CRITERIA.md`.
+The current blocking runtime queue is maintained in `docs/10_KNOWN_ISSUES.md` and `docs/09_ACCEPTANCE_CRITERIA.md`.
 
-The current P0 live-verification queue is in `docs/10_KNOWN_ISSUES.md`.
+## Release rule
+
+Do not mark a release as runtime-verified solely because CI is green. A release may be described as **implemented / statically validated / awaiting live verification** until the relevant browser acceptance checks have actually passed.

@@ -3,20 +3,24 @@
 The authoritative historical source packages are in `archive/releases/`.
 Historical README text is preserved in `archive/release-notes/`.
 
-## 1.0.0
+## 1.0.0 — store candidate
 
-Store launch release for Microsoft Edge and Google Chrome (2026-09-03).
+Prepared as the first public-store candidate for Microsoft Edge and Google Chrome (2026-09-03).
 
-- Renamed from "App Tower Next" to "App Tower" across the app, the
-  generated Yandex sidecar variant, docs, and tooling.
-- Version 0.8.5 -> 1.0.0 as the first public store release.
-- Store listing, privacy text, and submission checklist:
-  `docs/21_STORE_SUBMISSION.md`.
-- Product context: Microsoft is retiring Edge's legacy "Sidebar app
-  list (App Tower)"; App Tower is an independent extension with no
-  affiliation with Microsoft or that legacy feature.
-- The three v0.8.5 regression fixes carry over unchanged; live
-  Edge/Chrome verification remains pending (`docs/21` section 7).
+- Renamed from "App Tower Next" to "App Tower" across the app, generated Yandex sidecar variant, docs and tooling.
+- Version 0.8.5 -> 1.0.0 as the first public-store candidate.
+- Added store listing/privacy/submission documentation.
+- Added an explicit independence statement: App Tower is not affiliated with Microsoft or the retired Edge Sidebar app-list feature.
+- Runtime behavior remains **awaiting live verification** for the P0 queue in `docs/10_KNOWN_ISSUES.md`; 1.0.0 must not be described as production-verified until those checks pass.
+
+### Store-readiness audit follow-up
+
+- Shortened `manifest.description` to the Chrome Web Store metadata limit.
+- Removed manifest permissions without a confirmed runtime use (`declarativeNetRequestFeedback`, optional `notifications`).
+- Added public `PRIVACY.md`, `SECURITY.md`, `CONTRIBUTING.md` and `SUPPORT.md`.
+- Clarified broad host/content-script disclosures versus user-scoped Compatibility/DNR rules.
+- Added validator coverage for manifest description length.
+- Reworked public/developer README files so release history has a single source of truth.
 
 ## 0.8.5
 
@@ -102,5 +106,4 @@ Live Edge verification is still required for the P0 paths listed in
 - Secure/Compatibility/Real Page experiments
 - initial Edge Side Panel replacement prototype
 
-For exact source snapshots and historical notes, use the archives instead of
-inferring behavior from this summary.
+For exact source snapshots and historical notes, use the archives instead of inferring behavior from this summary.

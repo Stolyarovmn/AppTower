@@ -1,197 +1,246 @@
-# 21 — Store submission (Edge Add-ons & Chrome Web Store)
+# 21 — Store submission — Edge Add-ons & Chrome Web Store
 
-Purpose: what to submit, how to justify each permission, the privacy policy to
-publish, and the honest limitations to state. Keep this in sync with
-`docs/08_SECURITY_PRIVACY_PERMISSIONS.md` and `app/manifest.json`.
+Purpose: define exactly what is submitted, how each permission is justified, which privacy text is public, and which runtime limitations must be disclosed.
 
-Current build: **v1.0.0** (`STATE_SCHEMA_VERSION` 15).
+Current source version: **1.0.0** (`STATE_SCHEMA_VERSION` 15).
+
+> Release state: **store candidate / awaiting live verification**. Do not describe 1.0.0 as production-verified until the P0 runtime queue in `docs/10_KNOWN_ISSUES.md` passes in real Edge/Chrome.
+
+Keep this document synchronized with:
+
+- `app/manifest.json`
+- `PRIVACY.md`
+- `docs/08_SECURITY_PRIVACY_PERMISSIONS.md`
+- `docs/10_KNOWN_ISSUES.md`
 
 ## 1. Distribution targets
-- **Microsoft Edge Add-ons** — primary (native Side Panel support).
-- **Google Chrome Web Store** — same MV3 build.
-- **Yandex fallback** (`variants/yandex-sidecar/`) — NOT submitted to a store;
-  distributed as source/sidecar for Chromium-based browsers without a Side Panel.
 
-## 2. What reviewers will ask (and the answers)
+- **Microsoft Edge Add-ons** — primary target.
+- **Google Chrome Web Store** — same main MV3 build.
+- **Yandex/Chromium fallback** — generated under `variants/yandex-sidecar/`; not a claim of native Side Panel parity and not part of the Edge/Chrome store package.
 
-### Broad host permissions `http://*/* https://*/*`
-The product is a two-pane browser: it embeds the sites the user pins into
-iframes inside the Side Panel / tower container, and injects the always-available
-rail into pages. Host access is required so the `<iframe>` can load the chosen
-sites and so the DNR compatibility rules (below) can be applied. It is used only
-for the sites the user explicitly pins/opens.
+## 2. Product identity / independence
 
-### Content scripts on all `http/https` pages
-Three content scripts (`rail.js`, `embedded-frame.js`, `pwa-discovery.js`; two
-run in all frames) are registered on all `http/https` pages. They provide the
-collapsed rail (available with zero shortcuts — a core product invariant), the
-embedded-frame behavior, and local Web App Manifest detection. They render UI
-and report manifest metadata to the extension. They do **not** read, store, or
-transmit page content, form data, cookies, or browsing history.
+Use a visible independence statement in the store listing:
+
+> App Tower is an independent browser extension. It is not affiliated with, endorsed by, sponsored by, or developed by Microsoft.
+
+Do not imply that the extension is the Microsoft Edge feature itself or an official continuation of it.
+
+## 3. Store description
+
+The manifest description must stay within the browser store metadata limit. Current manifest text:
+
+> Persistent side-panel workspace for Edge and Chrome with app rail, dual web panes, workspaces, groups, templates, and sync.
+
+`tools/validate.mjs` enforces the maximum description length used by the Chrome manifest/store pipeline.
+
+## 4. Permission and behavior disclosures
+
+### Universal host access — `http://*/*`, `https://*/*`
+
+The extension has broad host access because its core behavior spans arbitrary user-chosen web sites and because the collapsed rail is injected into normal HTTP(S) pages.
+
+This broad access has two distinct uses:
+
+1. universal content-script behavior for the collapsed rail, embedded-frame bridge and standard Web App Manifest discovery;
+2. user-selected embedded web panes and scoped Compatibility/DNR behavior.
+
+Do **not** say that all host access is limited only to pinned sites. The compatibility networking rules are the part that must remain user/site scoped.
+
+### Content scripts
+
+The main build registers content scripts on normal HTTP(S) pages. They provide:
+
+- collapsed App Tower rail;
+- embedded-frame state/focus bridge;
+- standard Web App Manifest discovery.
+
+Product/privacy policy: these scripts must not intentionally collect or transmit page text, form contents, cookies, passwords or authentication tokens to the developer.
+
+URL/title metadata may be handled for explicit product functions such as Add Current, App Tower Recent, shortcuts and PWA metadata.
+
+### `sidePanel`
+
+Used for the native browser Side Panel container on supported Edge/Chrome builds.
+
+### `storage`
+
+Used for App Tower workspaces, shortcuts, pane state, settings, Recent, modules and optional browser sync metadata.
+
+### `favicon`
+
+Used to resolve/render site favicons for the rail and App Tower UI.
+
+### `declarativeNetRequestWithHostAccess`
+
+Used for Compatibility rendering of user-selected sites that block frame embedding through response headers.
+
+Rules must be scoped to the selected target domains and extension-initiated sub-frame behavior. App Tower does not intentionally bypass CAPTCHA, anti-bot, DRM or authentication protections.
 
 ### `scripting`
-Used only to inject `rail.css`, `rail.js` and `pwa-discovery.js` (all frames)
-into **tabs already open** before the static content scripts ran — a catch-up so
-a freshly-opened tab is not missing the rail. Injects **local files only**
-(`content/rail.css`, `content/rail.js`, `content/pwa-discovery.js`); it reads,
-stores, and transmits no page content. Called from `injectIntoOpenTabs()` at
-startup/enable/update (`background.js`). This complements — does not replace —
-the universal content-script registration above.
 
-### Web view panes: not sandboxed, broad device-permission policy
+Used for catch-up injection of App Tower's **local bundled files** into already-open HTTP(S) tabs when startup/enable/update timing means static content scripts did not yet run there.
 
-The two web-view panes (`sidepanel.html`) embed the sites you pin as `<iframe>`
-elements that are **not sandboxed** (no `sandbox` attribute). Embedding a real
-website requires its own scripts to run, so each frame runs as a fully
-privileged cross-origin document — the same as opening that site in a normal
-tab. Each frame declares an `allow` permission policy:
+Do not describe this as remote-code execution. App Tower does not download executable provider modules.
 
-`accelerometer; autoplay; camera; clipboard-write; encrypted-media; fullscreen; gyroscope; microphone; picture-in-picture; web-share`
+### `windows`
 
-What this means:
-- An embedded site can **request** camera, microphone, clipboard writes,
-  fullscreen, autoplay and the other listed domains; the browser's own
-  permission prompts still apply at the device level — App Tower does not
-  auto-grant them.
-- An embedded site is **cross-origin** and **cannot** access the extension's
-  `chrome.*` APIs or its host permissions. The `allow` policy governs only
-  standard web Platform permission domains (camera/mic/clipboard/…), never
-  extension APIs — there is no privilege escalation from a pinned page into the
-  extension.
-- You explicitly choose every site that is embedded; nothing loads without your
-  action, and removing a site removes its frame.
-- This is the inherent risk surface of embedding real websites (identical to
-  opening the site in a normal browser tab). App Tower neither adds nor removes
-  it; it is disclosed here.
+Used for managed Real Page/PWA/sidecar fallback windows where a top-level page is required.
 
-### `declarativeNetRequestWithHostAccess` (DNR)
-Removes `x-frame-options` / `content-security-policy` (frame-embedding) response
-headers **only** for the specific domains the user pins, **only** for requests
-initiated by the extension's own frames (`initiatorDomains: [chrome.runtime.id]`,
-`resourceTypes: ["sub_frame"]`), as **session** rules (max 100). It is not a
-global header stripper and does not modify traffic to any site the user has not
-pinned.
+### `alarms`
 
-### `chrome_url_overrides.newtab`
-Replaces the new-tab page with the App Tower launch page. The user can revert
-this in browser settings / Options.
+Used for resource lease housekeeping, including idle-pane sleep policy.
 
-### Optional permissions `contentSettings` / `notifications`
-Requested only on explicit user action in Options, to enable per-site media
-(autoplay) control and notifications. Not required for core function.
+### `contextMenus`
 
-### Suggested search hotkey
-The `manifest` declares `commands.open-search` with `suggested_key`
-Ctrl+Shift+Space (mac: Command+Shift+Space). This is a standard, user-disableable
-browser command (`chrome://extensions/shortcuts`) — not a permission and not a
-broad-injection surface. It does not conflict with the "no default shortcuts on
-a fresh install" invariant (which refers to site/rail activation shortcuts,
-empty by default).
+Used for browser-native App Tower context-menu actions.
 
-## 3. Privacy policy (publish this text)
+### Optional `contentSettings`
 
-> **Privacy — App Tower**
->
-> App Tower is a local browser extension. It organizes the sites you choose
-> into a persistent rail and two independent web panes.
->
-> **What we collect: nothing that leaves your device automatically.** The
-> extension stores your configuration (workspaces, rail shortcuts, site list,
-> group/template layout, themes, module choices) in your browser's local
-> storage. There is no account, no analytics, no telemetry, no advertising, and
-> no third-party data sharing.
->
-> **Network requests:**
-> - When you open a site, the extension may fetch **that site's own Web App
->   Manifest** (name/icons) to render it as a PWA. The request sends no personal
->   data.
-> - Favicon images are loaded from the site's own origin for the rail icons.
-> - When you enable **Sync** (off by default), your workspace names and site
->   list (URLs and titles) are stored in your browser's **sync storage**,
->   associated with your signed-in browser account, so they follow you across
->   devices. Cookies, passwords, history, and page content are **never** synced.
->
-> **Content scripts** on web pages render the rail and detect PWA manifests;
-> they do not read or send page content, form data, or browsing history.
->
-> **Web content.** The two web views load the sites you explicitly pin. Those
-> sites run as ordinary web content in the browser, governed by their own
-> privacy policies; App Tower does not read or transmit their content. The web
-> views are not sandboxed and are opted into a device-permission policy (camera,
-> microphone, clipboard, fullscreen, autoplay, etc.) so embedded sites behave as
-> they would in a normal tab — the browser's standard permission prompts still
-> apply, and an embedded site cannot access the extension's own APIs or host
-> permissions.
->
-> **You control everything:** you can export your data as JSON at any time and
-> remove the extension (which removes all stored data).
->
-> **Independence:** App Tower is an independent product. It is not
-> affiliated with, endorsed by, or developed by Microsoft, and it is
-> unrelated to Edge's retired "Sidebar app list (App Tower)" feature.
->
-> Questions / data requests: `m.stoliarov@outlook.com`
+Requested only from an explicit settings action when App Tower needs to manage supported per-origin browser content settings such as notification allow/block/default behavior.
 
-Naming note (not for the published text): an unrelated extension named
-"WebTower" exists in the stores. App Tower keeps the name "App Tower" and
-differentiates through the store description, not the name.
+The extension-level optional `notifications` permission is **not** requested by the current audited manifest because App Tower does not have a confirmed runtime feature that creates extension notifications.
 
-## 4. Permissions table (paste into the store form)
+### Removed permission — `declarativeNetRequestFeedback`
 
-| Permission | Why |
-|---|---|
-| `sidePanel` | Native Side Panel host (Edge/Chrome 116+). |
-| `storage` | Persist workspaces, shortcuts, settings locally (and optional sync). |
-| `favicon` | Resolve site favicons for rail icons. |
-| `declarativeNetRequestWithHostAccess` | Scoped removal of frame-embedding headers for pinned sites only. |
-| `declarativeNetRequestFeedback` | Observe which compatibility rules fire (local diagnostics). |
-| `scripting` | Catch-up rail / PWA detection injection into already-open http/https tabs (local files only). |
-| `windows` | Create the tower container / sidecar fallback window. |
-| `alarms` | Periodic resource-lease housekeeping (idle pane sleep). |
-| `contextMenus` | Right-click actions on the rail / sites. |
-| `http://*/* https://*/*` | Load pinned sites in iframes and apply scoped DNR rules. |
-| Optional `contentSettings` | Per-site autoplay/media control (user opt-in). |
-| Optional `notifications` | User-triggered notifications (opt-in). |
-| `chrome_url_overrides.newtab` | Replace the new-tab page with the App Tower launch page. |
+The audited store-candidate source did not have a confirmed runtime dependency on matched-rule feedback APIs, so this permission was removed. Re-add it only with an implemented diagnostic feature and explicit store justification.
 
-## 5. Honest limitations (state in the listing)
-- Some sites that actively block embedding (anti-bot, DRM, OAuth, CAPTCHA) cannot
-  be shown inside the two-pane iframes; App Tower does not bypass these. The
-  "Real Page / PWA sidecar" mode opens such sites in a full tab instead.
-- **Embedded-site device permissions.** The web-view iframes are not sandboxed
-  and carry a broad `allow` policy (camera, microphone, clipboard-write,
-  fullscreen, autoplay, etc.). A pinned site can request these; the browser's
-  standard prompts apply. This is inherent to embedding real websites (equivalent
-  to a normal tab). An embedded site cannot access the extension's APIs or host
-  permissions.
-- Generic YouTube playback inside an iframe is unreliable; the YouTube module
-  uses a PWA/real-page path where needed.
-- Native browser settings pages cannot be modified; configuration lives in the
-  extension Options page.
+## 5. New Tab override
 
-## 6. Screenshot plan
-- **Edge Add-ons:** 300×300 promo + detail shots.
-- **Chrome Web Store:** 1280×800 × 3 + promo images.
-- Capture from the **running build** (real behavior), no mockups:
-  1. Rail expanded with sites + groups (light theme).
-  2. Rail expanded (dark theme).
-  3. Two-pane view: top + bottom independent panes with two sites.
-  4. Collapsed rail (thin) with the search icon at the bottom.
-  5. Options page (settings control plane).
-  6. (Optional) Sync enabled / export dialog.
+`chrome_url_overrides.newtab` replaces the browser New Tab page with the App Tower launch page.
 
-## 7. Pre-submission checklist
+This must be visible in the store listing, not buried only in the manifest/permission documentation. Users must understand that installing/enabling the extension changes the New Tab experience and that disabling/removing the extension reverts that extension override.
+
+Suggested store-listing wording:
+
+> App Tower can replace the browser New Tab page with its launch surface so the rail is available from new tabs. This behavior is part of the extension and can be reverted by disabling or removing App Tower.
+
+## 6. Browser Sync
+
+Browser Sync is optional and disabled by default.
+
+When enabled, App Tower may sync browser-managed extension data such as:
+
+- workspace names;
+- shortcut/group/template structures;
+- selected site URLs and titles;
+- module configuration supported by the sync payload.
+
+Do not claim that absolutely nothing leaves the device when Sync is enabled. The browser vendor operates the sync backend; App Tower does not operate its own sync server.
+
+App Tower does not intentionally sync cookies, saved passwords, authentication tokens, page contents or unrelated browser history.
+
+## 7. Public privacy policy
+
+The canonical public privacy policy is the repository-root [`PRIVACY.md`](../PRIVACY.md).
+
+Before store submission it must be available at a **public, stable URL** that reviewers and users can access without repository credentials. A private GitHub repository URL is not sufficient as the final store privacy-policy URL.
+
+Keep the store privacy form consistent with the actual behavior described there.
+
+## 8. Embedded web-pane disclosure
+
+The two App Tower panes embed real third-party websites as cross-origin web content.
+
+They are not extension-privileged pages. Embedded sites cannot use App Tower's `chrome.*` extension APIs, but they remain ordinary web pages that communicate with their own servers and operate under their own privacy policies.
+
+The pane permission policy may allow web capabilities such as autoplay, camera, microphone, clipboard-write, fullscreen, encrypted media, picture-in-picture or web share. Browser permission/security rules still apply.
+
+This must be disclosed because the extension intentionally hosts arbitrary user-selected web content.
+
+## 9. Honest limitations for the listing
+
+State these limitations rather than promising universal iframe compatibility:
+
+- Some sites block embedding, authentication, DRM, OAuth, anti-bot or CAPTCHA flows and cannot reliably operate inside an App Tower iframe.
+- App Tower does not intentionally bypass those protections.
+- Real Page/PWA/sidecar is the fallback for sites that require a top-level context.
+- Generic YouTube pages inside arbitrary iframes are not guaranteed; provider-specific supported paths may be more reliable.
+- Cross-origin framed pages may not provide password-manager/autofill behavior identical to normal top-level browsing.
+- Native browser Settings navigation cannot be extended with a custom App Tower left-nav entry; App Tower uses its own Options page.
+
+## 10. Suggested store listing structure
+
+### Short summary
+
+Persistent side-panel workspace for Edge and Chrome with an app rail, workspaces, two web panes, groups/templates and optional sync.
+
+### Key features
+
+- persistent shortcut rail;
+- two independent panes;
+- workspaces;
+- groups and two-pane templates;
+- PWA/module-aware Auto rendering;
+- import/export;
+- optional browser sync;
+- idle-pane resource management;
+- system/light/dark themes.
+
+### Required transparency callouts
+
+- independent/not affiliated with Microsoft;
+- changes New Tab behavior;
+- broad site access is required for the rail and arbitrary user-selected web panes;
+- some third-party sites do not support iframe embedding.
+
+## 11. Visual assets plan
+
+Use screenshots captured from the **actual running release candidate**, not mockups.
+
+Recommended capture set:
+
+1. expanded rail with sites/groups — light theme;
+2. expanded rail — dark theme;
+3. independent two-pane view;
+4. collapsed thin rail with search at bottom;
+5. Options page;
+6. optional Sync/export screen.
+
+For Microsoft Edge store metadata, treat the square 300×300-style asset as the extension/logo artwork, not as a Chrome-style promotional tile. Maintain store-specific assets according to each dashboard's current requirements.
+
+## 12. Pre-submission checklist
+
+### Source/package
+
 - [ ] `node tools/validate.mjs` passes.
-- [ ] `python tools/package.py` produces clean ZIPs; `dist/` contains no
-      `.pem` / `.crx` / secrets.
-- [ ] `*.pem`, `*.crx`, secrets are git-ignored (never committed).
-- [ ] Privacy policy (Section 3) published and linked in the store form.
-- [ ] All Section 4 disclosures filled into the store permission form.
-- [ ] P0 live-verification queue (`docs/10`) passed in a real Edge/Chrome:
-      add-page-from-empty-workspace; collapse/expand ×5 + restart (0 sites
-      lost); settings glyph light/dark @100%/150%.
-- [ ] Version matches `manifest.json`, `app/README.md`, `STATUS.json` (1.0.0).
-- [ ] Edge and Yandex/Chrome variant kept consistent (`tools/make_yandex_variant.py`).
+- [ ] `python tools/package.py` succeeds.
+- [ ] generated ZIP has `manifest.json` at the package root.
+- [ ] `dist/` packages contain no `.pem`, `.crx`, secrets or browser profiles.
+- [ ] package SHA-256 recorded from the exact submission artifact.
+- [ ] source version is consistent across `manifest.json`, `app/README.md`, `STATUS.json` and release notes.
 
-> Status: Edge/Chrome runtime behavior is **implemented; awaiting live
-> verification** until the P0 queue above is run in a real browser.
+### Runtime P0
+
+- [ ] Add Current works from an empty workspace.
+- [ ] collapse/expand succeeds repeatedly with zero shortcuts.
+- [ ] collapse/expand works after browser restart.
+- [ ] no duplicate collapsed rail while native Side Panel is open.
+- [ ] settings glyph is correct in Edge light/dark at 100% and scaled DPI.
+- [ ] search mouse interaction works.
+- [ ] Recent -> Open works.
+- [ ] group/template drag/drop works.
+- [ ] two independent panes do not spontaneously reload together during a 10+ minute observation.
+
+### Store/privacy
+
+- [ ] public stable Privacy Policy URL is live.
+- [ ] permission declarations match `app/manifest.json` exactly.
+- [ ] broad host/content-script access disclosed accurately.
+- [ ] New Tab override disclosed prominently.
+- [ ] Browser Sync data handling disclosed accurately.
+- [ ] embedded web-content/device-permission behavior disclosed.
+- [ ] independence/non-affiliation statement visible.
+- [ ] limitations section does not promise unsupported iframe/auth/DRM behavior.
+
+### GitHub/release provenance
+
+- [ ] release tag points to the exact verified source commit.
+- [ ] GitHub Release exists for the public release.
+- [ ] release assets/checksums match the store-submitted ZIP.
+- [ ] `main` protection/ruleset configured before public collaboration.
+
+## 13. Current status
+
+The source is **implemented and statically auditable**, but the project explicitly remains **awaiting live browser verification** for the P0 queue. Store submission should wait for those checks instead of treating version `1.0.0` alone as proof of production readiness.

@@ -1,0 +1,11 @@
+{
+  "capturedAt": "2026-09-06T21:27:23.945Z",
+  "chromiumVersion": "140.0.7339.16",
+  "newTabFirstInteractive": {
+    "samples": 7,
+    "minMs": 85.7,
+    "medianMs": 93.03,
+    "p95Ms": 135.77,
+    "maxMs": 135.77
+  }
+}

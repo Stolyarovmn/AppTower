@@ -61,6 +61,11 @@ button { cursor:pointer; }
 .pane.active .pane-toolbar { box-shadow:inset 3px 0 0 var(--accent); }
 .pane-toolbar { height:44px;flex:0 0 44px;display:flex;align-items:center;gap:6px;padding:6px 8px;border-bottom:1px solid var(--border);background:var(--toolbar); }
 .pane-select,.go,.reload,.external,.focus,.mode-button,.pwa-button { border:0;background:transparent;border-radius:6px;min-width:27px;height:30px;padding:0 5px; }
+.go,.reload,.external,.focus { display:grid;place-items:center; }
+.pane-action-icon { width:18px;height:18px;display:block;fill:none;stroke:currentColor;stroke-width:1.55;stroke-linecap:round;stroke-linejoin:round; }
+.focus .focus-restore-icon { display:none; }
+.focus[aria-pressed="true"] .focus-expand-icon { display:none; }
+.focus[aria-pressed="true"] .focus-restore-icon { display:block; }
 .pane-select:hover,.go:hover,.reload:hover,.external:hover,.focus:hover,.mode-button:hover,.pwa-button:hover { background:var(--hover); }
 .mode-button { width:29px;min-width:29px;font-weight:800;font-size:12px;border:1px solid var(--border); }
 .mode-button.mode-auto { color:#8cbcff; }
