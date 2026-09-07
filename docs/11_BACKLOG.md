@@ -16,7 +16,7 @@ Last competitor scan: 2026-09-07.
 
 **No TASK is ACTIVE.** TASK 2 is complete; the executor must select the next TASK in a later run.
 
-The current regression PR #2 head observed during this scan is `6ec579a64af0ba9d1346a04a0f3df854aaba839c`. Its `validate` workflow run `34061140457` completed with conclusion **`action_required`**, so CI is not green. READY TASKS remain blocked from activation until a successful validation run is observed. PR #1 head `d37cdb6daf9e2b1c84b4cfca585c93db274b445c` separately passed `validate` run `34083691950`, but that documentation-branch success does not override the regression-branch gate.
+The current regression PR #2 head observed during this scan is `6ec579a64af0ba9d1346a04a0f3df854aaba839c`. Its latest `validate` workflow run `34091227500`, created 2026-09-07 06:31 UTC, completed with conclusion **`failure`**. READY TASKS therefore remain blocked from activation until a successful validation run is observed. This supersedes the earlier `action_required` observation for run `34061140457`. A documentation-branch success on PR #1 does not override the regression-branch gate.
 
 ## TASKS
 
