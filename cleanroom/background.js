@@ -64,7 +64,7 @@ async function openWindowPanel(windowId,command=null){
 
   setLifecycle(windowId,{type:"OPEN_REQUEST",command:command||state.pendingCommand});
   try{
-    // Intentionally window-scoped only. Never use tabId here.
+    // Window-scoped only. No tab-specific options or open calls exist in v2.
     await chrome.sidePanel.open({windowId});
     return {ok:true,reused:false};
   }catch(error){
@@ -90,8 +90,6 @@ async function collapseWindowPanel(windowId){
     await prepareRailForCollapse(windowId);
     setLifecycle(windowId,{type:"CLOSE_REQUEST"});
     await chrome.sidePanel.close({windowId});
-    // onClosed is authoritative when available; this fallback handles browsers
-    // that expose close() but not onClosed.
     if(!chrome.sidePanel?.onClosed) setLifecycle(windowId,{type:"PANEL_CLOSED"});
     return {ok:true};
   }catch(error){
@@ -101,9 +99,9 @@ async function collapseWindowPanel(windowId){
 }
 
 chrome.runtime.onConnect.addListener(port=>{
-  let match=/^ATV2_RAIL:(\d+)$/.exec(port.name||"");
-  if(match){
-    const windowId=Number(match[1]);
+  if(port.name==="ATV2_RAIL"){
+    const windowId=port.sender?.tab?.windowId;
+    if(!Number.isInteger(windowId)) return;
     addPort(railPorts,windowId,port);
     const state=lifecycle(windowId);
     if(state.phase===PHASE.UNKNOWN) void settleUnknown(windowId);
@@ -111,7 +109,7 @@ chrome.runtime.onConnect.addListener(port=>{
     return;
   }
 
-  match=/^ATV2_PANEL:(\d+)$/.exec(port.name||"");
+  const match=/^ATV2_PANEL:(\d+)$/.exec(port.name||"");
   if(match){
     const windowId=Number(match[1]);
     addPort(panelPorts,windowId,port);
