@@ -63,6 +63,15 @@ async function addCustomSite(panel,title,url,{fromHome=false}={}) {
   await expect.poll(() => isDialogOpen(panel,"#site-dialog")).toBe(false);
 }
 
+async function stableRect(locator) {
+  await expect(locator).toBeVisible();
+  return locator.evaluate(element => {
+    const rect=element.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
+    return {x:rect.x,y:rect.y,width:rect.width,height:rect.height};
+  });
+}
+
 test("ATN-E2E-021 drag proxy is unique, stays left of the pointer, and remains in bounds", async () => {
   const {server,baseUrl} = await startFixtureServer();
   const profile = fs.mkdtempSync(path.join(os.tmpdir(),"app-tower-drag-left-"));
@@ -75,10 +84,9 @@ test("ATN-E2E-021 drag proxy is unique, stays left of the pointer, and remains i
     await addCustomSite(panel,"Drag B",`${baseUrl}/b`);
 
     const source = panel.locator("#panel-sites .rail-site").nth(0);
-    await expect(source).toBeVisible();
-    await expect.poll(async () => Boolean(await source.boundingBox())).toBe(true);
-    const box = await source.boundingBox();
-    if (!box) throw new Error("shortcut geometry unavailable after visible wait");
+    await expect.poll(async () => Boolean(await stableRect(source))).toBe(true);
+    const box = await stableRect(source);
+    if (!box) throw new Error("shortcut geometry unavailable after stable visible read");
     const startX = box.x + box.width/2;
     const startY = box.y + box.height/2;
     const pointerX = Math.min(1270,startX + 18);
@@ -92,7 +100,7 @@ test("ATN-E2E-021 drag proxy is unique, stays left of the pointer, and remains i
     const proxy = panel.locator(".atn-drag-proxy");
     await expect(proxy).toHaveCount(1);
     await expect(proxy).toBeVisible();
-    const proxyBox = await proxy.boundingBox();
+    const proxyBox = await stableRect(proxy);
     expect(proxyBox).toBeTruthy();
     expect(proxyBox.x + proxyBox.width).toBeLessThan(pointerX - 10);
     expect(proxyBox.x).toBeGreaterThanOrEqual(0);
@@ -178,24 +186,30 @@ test("ATN-E2E-023 empty group context menu never starts with a separator", async
 });
 
 test("ATN-E2E-024 pane primary toolbar uses SVG icons and secondary actions stay out of the row", async () => {
+  const {server,baseUrl} = await startFixtureServer();
   const profile = fs.mkdtempSync(path.join(os.tmpdir(),"app-tower-pane-icons-"));
   const context = await launch(profile);
   try {
+    const web = context.pages()[0] || await context.newPage();
+    await web.goto(`${baseUrl}/host`);
     const panel = await openPanel(context);
+    await addCustomSite(panel,"Toolbar fixture",`${baseUrl}/toolbar`,{fromHome:true});
     const topPane = panel.locator('.pane[data-pane="top"]');
     for (const action of ["go","reload"]) {
       const button = topPane.locator(`[data-action="${action}"]`);
       await expect(button.locator("svg").first()).toBeAttached();
       await expect(button).toBeVisible();
     }
+    await expect(topPane.locator('[data-action="save-shortcut"]')).toBeVisible();
     await expect(topPane.locator('[data-action="mode"]')).toBeHidden();
     await expect(topPane.locator('[data-action="pwa"]')).toBeHidden();
     await expect(topPane.locator('[data-action="external"]')).toBeHidden();
     await expect(topPane.locator('[data-action="focus"]')).toBeHidden();
     await expect(topPane.locator('.atn-pane-more')).toBeVisible();
-    await expect(topPane.locator('.atn-pane-close')).toBeAttached();
+    await expect(topPane.locator('.atn-pane-close')).toBeVisible();
   } finally {
     await context.close().catch(()=>{});
+    await new Promise(resolve => server.close(resolve));
     fs.rmSync(profile,{recursive:true,force:true});
   }
 });
