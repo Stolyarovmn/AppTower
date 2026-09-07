@@ -16,10 +16,13 @@ Last competitor scan: 2026-09-07.
 
 **No TASK is ACTIVE.** TASK 2 is complete. This research process does not activate implementation work; only the AppTower Task Executor may move another TASK to `ACTIVE`.
 
-The current regression PR #2 head observed during this scan is `3ab8d31abd42335440e57b98bee02c5e23e061cb`; its `validate` workflow run `34107440635` completed with conclusion **`success`**. The previous backlog head `e9f20ee27b06d37a3bf18f3475dfe964de741643` also completed PR validation successfully in run `34133540898`. The current backlog head `c018fcfa2093aad3686e6e0335e5c05eb93277e6` has validation run `34138861410` queued, so under the global rule **READY TASKS must not start until this revalidation completes successfully**. TASKS with unresolved functional dependencies remain `BLOCKED` regardless of CI.
+The current regression PR #2 head observed during this scan is `3ab8d31abd42335440e57b98bee02c5e23e061cb`; its `validate` workflow run `34107440635` completed with conclusion **`success`**. The previous backlog head `eb70236cd9118a7416d7a33e4491a6483cb3c56d` completed PR validation successfully in run `34139013992`. Because this scan changes the backlog again, the new documentation head must revalidate successfully before READY TASKS may start. TASKS with unresolved functional dependencies remain `BLOCKED` regardless of CI.
 
 ## Fresh research notes
 
+- `bishwanathjha/split-screen` is a Chromium MV3 extension under a confirmed **MIT License**. It implements a real-window split rather than iframe embedding: the current tab is duplicated into browser windows, windows are automatically rearranged as splits are added/removed, display geometry is read for multi-monitor placement, and split state is persisted through browser storage. Its manifest uses `tabs`, `windows`, `notifications`, `storage`, and `system.display`, with no host permissions or content scripts. This is the first licensed Chromium implementation found in this research stream that directly closes the evidence gap behind the former Anchored Real Page/sidecar IDEA.
+- AppTower does not copy its implementation. The transferable pattern is narrower: an AppTower-owned Real Page sidecar may remember window/display geometry, restore only extension-owned sidecars, and reflow safely when monitor topology changes. `notifications` is not justified for AppTower. `system.display` should be optional/capability-gated; without it, AppTower should fall back to current-window bounds rather than expanding permissions.
+- This new evidence promotes the former IDEA “Anchored Real Page/sidecar placement” from **74 to TASK 21 — 76/100**: 18/25 user value + 10/20 real pain/regression + 14/15 AppTower fit + 12/15 measurable UX + 8/10 low implementation risk + 5/5 privacy/permissions + 4/5 competitor maturity + 5/5 automated testability = 76. Promotion remains BLOCKED until the Real Page lifecycle is stable and automated geometry/restart tests exist.
 - `Tai-ch0802/arc-like-chrome-extension` (shipping as Sidebar for Tabs/Bookmarks v1.20.0) is a current MIT-licensed Chrome side-panel workspace project with 41 GitHub stars observed in this scan and repository push activity on 2026-09-07. Its current product exposes local-by-default AI grouping/search via Chrome's on-device model, optional cloud providers, workspaces, command palette, native tab-group integration, linked tab/bookmark state and hibernate/restore flows. This is stronger evidence that an AI organizer can be privacy-scoped and optional rather than requiring a remote service.
 - Its manifest is simultaneously a permission anti-pattern for AppTower core: required `tabs`, `sidePanel`, `bookmarks`, `tabGroups`, `storage`, `readingList`, `alarms`, `offscreen`, `scripting`, `identity`, `notifications` plus `*://*/*` host access and Google Drive OAuth. AppTower must not inherit that footprint merely for local grouping/search. Any future AI organizer stays modular, capability-gated and outside the core permission budget.
 - TabSweep 0.1.0 is a small current Chrome Side Panel implementation that sends only open-tab titles/URLs for intent grouping, filters browser-internal pages, and declares only `sidePanel`, `tabs`, `tabGroups` plus one explicit backend host. This is useful evidence for a narrow metadata-only organizer contract, but the repository has no declared license and zero GitHub stars observed in this scan, so AppTower treats it as behavior-only evidence and copies no code.
@@ -44,7 +47,7 @@ The current regression PR #2 head observed during this scan is `3ab8d31abd423354
 - TabTOC and Nest remain behavior-only evidence for restricted-page fallback because current source/license could not be verified. AppTower uses its existing native Side Panel on browser-owned pages instead of trying to inject there.
 - Microsoft Edge documentation updated in July 2026 marks PWA `edge_side_panel` integration deprecated; AppTower compatibility therefore stays capability-driven and independent of that vendor-specific surface.
 - Tab Pilot / Tab Radar is MIT and useful UX evidence for fuzzy search/command palette/recent, but its broad permission/injection set remains an anti-pattern for AppTower core.
-- All existing TASKS and IDEAS were rescored after this scan. **No TASK score changed.** Two IDEAS changed: Optional AI organizer 58→66 and Automatic domain grouping suggestions 62→64, based on current MIT/local-AI shipping evidence; neither crosses the TASK threshold.
+- All existing TASKS and IDEAS were rescored after this scan. **TASK 21 was promoted from IDEA 74→76. No other TASK or IDEA score changed.**
 
 ## TASKS
 
@@ -68,8 +71,9 @@ The current regression PR #2 head observed during this scan is `3ab8d31abd423354
 | 16 | 79 | BLOCKED | Restorable split layout metadata in templates | TASK 2; TASK 4 preferred; stable split lifecycle |
 | 17 | 78 | BLOCKED | Native browser tab-group import/export bridge | Stable groups/workspaces; TASK 4 preferred |
 | 18 | 76 | BLOCKED | Per-site pane sleep policy presets: default / aggressive / never | TASK 3; measured resource baseline; coordinate with TASK 6 |
-| 19 | 76 | BLOCKED | Glance preview in temporary bottom pane | Stable split-pane lifecycle |
-| 20 | 75 | BLOCKED | Optional resource-pressure-aware emergency pane eviction | TASK 3 + TASK 6; optional `system.memory`; measured baseline |
+| 19 | 76 | BLOCKED | Anchored Real Page/sidecar placement and geometry restore | TASK 9; stable Real Page lifecycle; TASK 4 preferred |
+| 20 | 76 | BLOCKED | Glance preview in temporary bottom pane | Stable split-pane lifecycle |
+| 21 | 75 | BLOCKED | Optional resource-pressure-aware emergency pane eviction | TASK 3 + TASK 6; optional `system.memory`; measured baseline |
 
 Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 
@@ -148,14 +152,14 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 **Acceptance criteria:** Auto/Embedded/Mobile/Real Page; deterministic failure reason; diagnostics only on explicit action; site/pane-scoped fallback; unrelated pane remains live; no required `edge_side_panel` dependency.
 **Automated test plan:** successful embed/frame denial/navigation failure/Real Page fixtures; per-site persistence; two-window rule collision; permission prompts; capability-negative Edge PWA-sidebar fixture.
 **Dependencies:** stable renderer telemetry; TASK 1.
-**Sources/competitors:** Universal Split View; SplitView; SidePilot (Apache-2.0); QuickPanel behavior only; Portals Sidebar 16.26.92 behavior-only/header-stripping anti-pattern; Microsoft Edge PWA-sidebar deprecation docs; sidepanel-fallback (MIT) as capability/popup-fallback evidence only.
+**Sources/competitors:** Universal Split View; SplitView; SidePilot (Apache-2.0); QuickPanel behavior only; Portals Sidebar 16.26.92 behavior-only/header-stripping anti-pattern; Microsoft Edge PWA-sidebar deprecation docs; sidepanel-fallback (MIT) as capability/popup-fallback evidence only; `bishwanathjha/split-screen` (MIT) as real-window fallback/geometry evidence.
 
 ### TASK 10 — Manifest permission budget + CI regression gate — 81/100 — BLOCKED
 **Rationale:** a CI allowlist prevents permission creep, unexpected warnings and store-review regressions.
 **Acceptance criteria:** reviewed required/optional/host sets per variant; fail on unreviewed addition or optional→required promotion; rationale per permission; generated fallback has narrower budget; removals remain allowed.
 **Automated test plan:** allowed/new required/new optional/new host/required↔optional/fallback-drift fixtures; package validation runs same gate.
 **Dependencies:** current manifest/variant inventory.
-**Sources/competitors:** Benjamin410/chrome-tab-manager (ISC); Drowzy (MIT); Tab Wise 2.4.0 (MIT; optional `system.memory` but broad `<all_urls>` host access); `Tai-ch0802/arc-like-chrome-extension` (MIT; useful local-AI UX but broad required permission/host footprint); Tab Pilot/Tab Radar (MIT) and SwajanJain/tabwise (license-unverified) as broad-footprint counterexamples; Chrome Web Store minimum-permission guidance.
+**Sources/competitors:** Benjamin410/chrome-tab-manager (ISC); Drowzy (MIT); Tab Wise 2.4.0 (MIT; optional `system.memory` but broad `<all_urls>` host access); `Tai-ch0802/arc-like-chrome-extension` (MIT; useful local-AI UX but broad required permission/host footprint); Tab Pilot/Tab Radar (MIT) and SwajanJain/tabwise (license-unverified) as broad-footprint counterexamples; Chrome Web Store minimum-permission guidance; `bishwanathjha/split-screen` (MIT) demonstrates real-window splitting without host access/content scripts, but its `notifications` permission is unnecessary for AppTower.
 
 ### TASK 11 — Duplicate shortcut detection — 80/100 — READY
 **Rationale:** prevents rail/workspace clutter with low implementation and permission risk.
@@ -201,6 +205,14 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 **Dependencies:** TASK 3 safety guards; measured resource baseline; coordinate deadline semantics with TASK 6 and persistence with TASK 4 when implemented.
 **Sources/competitors:** Drowzy 1.5.0 (MIT) for per-site protection; `aminought/firefox-second-sidebar` v2.0.1 (MPL-2.0, behavior only) for per-panel preload/restore/unload lifecycle. No MPL-covered code is reused.
 
+### TASK 21 — Anchored Real Page/sidecar placement and geometry restore — 76/100 — BLOCKED
+**Score:** 18/25 user value + 10/20 real pain/regression + 14/15 AppTower fit + 12/15 measurable UX + 8/10 low implementation risk + 5/5 privacy/permissions + 4/5 competitor maturity + 5/5 automated testability = **76**.
+**Rationale:** Real Page is the compatibility escape hatch for sites that cannot or should not be embedded. A sidecar that remembers its display/bounds and safely restores extension-owned geometry makes that fallback feel like part of AppTower rather than an unmanaged extra window. `bishwanathjha/split-screen` provides MIT-licensed Chromium evidence for real-window tiling, multi-monitor placement, persistent split state, and automatic rearrangement without host access or page injection. AppTower implements the pattern independently.
+**Acceptance criteria:** AppTower stores geometry only for windows it created/owns; reopening Real Page may reuse the matching sidecar rather than spawning duplicates; restart restores bounded geometry only when the target display still exists; monitor removal/DPI/work-area changes clamp or reflow the sidecar into a visible work area; closing/promoting a sidecar clears ownership cleanly; normal user-created browser windows/tabs are never globally rerouted; no host permission/content script is added; `system.display`, if needed for multi-monitor topology, is optional/capability-gated and denial falls back to current-window bounds; no `notifications` permission is introduced for this task.
+**Automated test plan:** geometry normalization/clamping fixtures; one/two-display topology fixtures; display removal between save/restore; restart persistence; duplicate-sidecar prevention; close/promote ownership cleanup; denied/unavailable `system.display`; user-created window negative case; Chrome/Edge E2E verifies Real Page fallback opens beside AppTower, survives restart without duplicate windows, and does not reload the unrelated pane.
+**Dependencies:** TASK 9 compatibility ladder; stable Real Page window lifecycle; TASK 4 preferred for persisted geometry schema; TASK 10 permission gate preferred before optional `system.display`.
+**Sources/competitors:** `bishwanathjha/split-screen` (MIT) as licensed Chromium implementation evidence; Tab Anchor (MIT) as earlier sidecar/anchor evidence; Sift and SplitView behavior-only because shipping source/license was not verified. No competitor code is copied.
+
 ### TASK 15 — Glance preview in temporary bottom pane — 76/100 — BLOCKED
 **Rationale:** temporary reference preview reuses AppTower split model instead of spawning permanent tabs/windows.
 **Acceptance criteria:** temporary bottom pane; top unchanged; explicit promote; close restores layout; compatibility fallback applies.
@@ -219,15 +231,14 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 
 | Rank | Score | IDEA | Evidence / source | Promotion condition / risk |
 |---:|---:|---|---|---|
-| 1 | 74 | Anchored Real Page/sidecar placement: remember monitor/window bounds, restore extension-owned sidecar geometry after restart and optionally reuse an existing sidecar | Tab Anchor (MIT), QuickPanel; Split Workspace/splitescreen store behavior | Promote after Real Page lifecycle is stable; normalize display changes; never reroute normal browsing globally; store-only source/license remains unverified where noted. |
-| 2 | 74 | Panel navigation escape policy | QuickPanel | Promote after navigation telemetry proves accidental pane hijacking; clean-room only because QuickPanel is PolyForm Noncommercial. |
-| 3 | 73 | Favorites/pinned mini-row independent of workspace ordering | ddSideBar (MIT), Lunma, TabTree, ThisPanel, Tab Tiles 9.0 behavior | Promote if rail overflow is recurring UX pain; Tab Tiles source/license unverified. |
-| 4 | 72 | Workspace/session import from other managers | VertiTab, Lunma, Tabwise | Promote after TASK 4 export/import schema; avoid mandatory history permission. |
-| 5 | 71 | Native browser Split View awareness/bridge | W3C WebExtensions split-tabs proposal; MDN; Chrome Web Store split-view behavior | Keep as IDEA until stable create/remove split-view APIs or a concrete coexistence regression. |
-| 6 | 70 | Optional Document Picture-in-Picture companion mode | Chrome Document PiP; Super Pinned Windows (MIT) | Concrete compact-player/reference use case required; no CSP/XFO stripping or broad host access. |
-| 7 | 68 | Optional browser-context actions over selected text/link | AI Side Panel / SuperchargeNavigation patterns | Needs concrete non-AI use case and optional-permission review. |
-| 8 | 66 | Optional on-device AI organizer/search module | Sidebar for Tabs/Bookmarks (`Tai-ch0802/arc-like-chrome-extension`, MIT); TabSweep behavior only | Keep optional and capability-gated; prefer local metadata-only inference; no new core broad host access; provide deterministic non-AI fallback; Chrome on-device model availability/hardware remains a portability risk. |
-| 9 | 65 | Portable workspace export/mirror to native browser bookmarks | Mooring | Explicit optional `bookmarks` only; clean-room where license is unclear. |
-| 10 | 65 | Focus mode: temporarily show only one group/workspace | TabTree, Tabwise | Promote if groups/templates overload rail. |
-| 11 | 64 | Automatic domain/grouping suggestions | VertiTab, TabDog, SuperchargeNavigation; Sidebar for Tabs/Bookmarks (MIT) | Opt-in shortcut organizer only; deterministic site rules first, optional local AI fallback; do not become a tab manager. |
-| 12 | 54 | Full vertical-tab manager | VertiTab, TabTOC, ddSideBar, TabTree, Tabwise | Deliberately low; conflicts with product boundary. |
+| 1 | 74 | Panel navigation escape policy | QuickPanel | Promote after navigation telemetry proves accidental pane hijacking; clean-room only because QuickPanel is PolyForm Noncommercial. |
+| 2 | 73 | Favorites/pinned mini-row independent of workspace ordering | ddSideBar (MIT), Lunma, TabTree, ThisPanel, Tab Tiles 9.0 behavior | Promote if rail overflow is recurring UX pain; Tab Tiles source/license unverified. |
+| 3 | 72 | Workspace/session import from other managers | VertiTab, Lunma, Tabwise | Promote after TASK 4 export/import schema; avoid mandatory history permission. |
+| 4 | 71 | Native browser Split View awareness/bridge | W3C WebExtensions split-tabs proposal; MDN; Chrome Web Store split-view behavior | Keep as IDEA until stable create/remove split-view APIs or a concrete coexistence regression. |
+| 5 | 70 | Optional Document Picture-in-Picture companion mode | Chrome Document PiP; Super Pinned Windows (MIT) | Concrete compact-player/reference use case required; no CSP/XFO stripping or broad host access. |
+| 6 | 68 | Optional browser-context actions over selected text/link | AI Side Panel / SuperchargeNavigation patterns | Needs concrete non-AI use case and optional-permission review. |
+| 7 | 66 | Optional on-device AI organizer/search module | Sidebar for Tabs/Bookmarks (`Tai-ch0802/arc-like-chrome-extension`, MIT); TabSweep behavior only | Keep optional and capability-gated; prefer local metadata-only inference; no new core broad host access; provide deterministic non-AI fallback; Chrome on-device model availability/hardware remains a portability risk. |
+| 8 | 65 | Portable workspace export/mirror to native browser bookmarks | Mooring | Explicit optional `bookmarks` only; clean-room where license is unclear. |
+| 9 | 65 | Focus mode: temporarily show only one group/workspace | TabTree, Tabwise | Promote if groups/templates overload rail. |
+| 10 | 64 | Automatic domain/grouping suggestions | VertiTab, TabDog, SuperchargeNavigation; Sidebar for Tabs/Bookmarks (MIT) | Opt-in shortcut organizer only; deterministic site rules first, optional local AI fallback; do not become a tab manager. |
+| 11 | 54 | Full vertical-tab manager | VertiTab, TabTOC, ddSideBar, TabTree, Tabwise | Deliberately low; conflicts with product boundary. |
