@@ -57,9 +57,23 @@ function deliverPending(windowId){
 async function openWindowPanel(windowId,command=null){
   if(command) queueCommand(windowId,command);
   const state=lifecycle(windowId);
+
   if(state.phase===PHASE.EXPANDED && panelPorts.get(windowId)?.size){
     deliverPending(windowId);
     return {ok:true,reused:true};
+  }
+
+  // A second rail/search/action click during the browser-owned opening animation
+  // must not call sidePanel.open() again. The command is already queued above.
+  if(state.phase===PHASE.OPENING){
+    return {ok:true,pending:true};
+  }
+
+  // During close we intentionally do not try to race the in-flight close with
+  // another browser call. The rail remains visible and the next click after the
+  // authoritative close will open normally.
+  if(state.phase===PHASE.CLOSING){
+    return {ok:false,busy:true,error:"AppTower ещё завершает сворачивание. Повторите нажатие после завершения."};
   }
 
   setLifecycle(windowId,{type:"OPEN_REQUEST",command:command||state.pendingCommand});
@@ -83,6 +97,8 @@ async function prepareRailForCollapse(windowId){
 }
 
 async function collapseWindowPanel(windowId){
+  const state=lifecycle(windowId);
+  if(state.phase===PHASE.CLOSING) return {ok:true,pending:true};
   if(!chrome.sidePanel?.close){
     return {ok:false,error:"Этот Edge не предоставляет безопасный window-scoped sidePanel.close(). AppTower не будет использовать tab-specific workaround."};
   }
