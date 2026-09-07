@@ -51,3 +51,58 @@ Do not load an additional copy alongside the old one. Diagnostics must show 2.0.
   that it checks API capabilities, not actual lifecycle behavior.
 - Regression tests use actual background.js and rail.js with API/DOM doubles.
   Live browser restart and Edge UI remain unverified in this environment.
+
+## 2.1.0 — modular feature preview
+
+Update the existing unpacked folder, then reload the extension; do not install a
+second copy. Diagnostics should report 2.1.0. Export data before testing this
+preview. The previous Cleanroom shortcuts and pane URLs migrate automatically.
+
+The collapsed rail reserves 48 CSS pixels and restores the original inline
+styles when hidden. Viewport-fixed right controls are adjusted separately;
+transformed containers are excluded. This is implemented and DOM-tested, not
+verified on arbitrary live sites or in Edge in this environment.
+
+New code is organized into pure model/reducer, serialized storage, browser
+services, pane resource controller, DOM UI, page-space controller and trusted
+provider adapters. No implementation imports from legacy app/ exist.
+
+Implemented: workspaces; site/group/two-pane template entities; editing,
+reordering, ungrouping, swapping and decomposing templates; pointer/touch drag;
+search across entities/history/workspaces/commands; independent panes and split
+resize; themes, accent and template overlap; site zoom, keep-awake, notification
+settings; 5-minute idle sleep and shared 1–6 resource cap; global disable;
+context menus; own new-tab page; schema-1 JSON import/export; optional sync of
+organization and modules; declarative embed modules and opt-in YouTube adapter;
+standard same-origin Web App Manifest discovery and reusable popup sidecars.
+
+### Remaining parity and verification work
+
+- This preview is NOT a declaration of complete legacy parity. Legacy v1 backup
+  formats, Yandex Music integration and provider-specific media controls are not
+  restored. Yandex/Firefox fallback builds remain the historical implementation.
+- Recent entries track AppTower-issued navigation, not arbitrary navigation
+  inside cross-origin frames.
+- Sync currently has a 7,600-byte payload limit; excess data stays local and
+  displays an export recommendation. Pane sessions and site permissions stay local.
+- A/C compatibility removes frame-blocking response headers only for extension
+  initiated subframes on selected origins. A simultaneous S frame on the same
+  origin shares that rule; S is not strict per-frame isolation in this preview.
+- PWA discovery is same-origin only. Separate windows are browser popups, not
+  installed OS apps. Sites with DRM/OAuth/anti-bot may still reject embedding.
+- Live Edge installation/restart, pointer/touch drag, real iframe media and site
+  geometry need browser verification. The cloud browser policy blocked opening
+  the extension-management page; no live Edge pass is claimed.
+
+### Reproduce checks / package
+
+Node 24: `npm ci --ignore-scripts` then `npm test` inside cleanroom/.
+`python cleanroom/tools/package.py --output dist/AppTower-Cleanroom.zip` from repo root.
+The full ZIP contains runtime sources, tests and lockfile, excluding node_modules.
+
+Acceptance gate: existing tab → collapse/expand 20 times; browser restart;
+fixed header and right button stay reachable with compact rail; hide restores
+page width; upper/lower iframe source stays unchanged on metadata edits and
+closing the other pane; global X hides every rail; reducing resource cap sleeps
+excess panes; export/import preserves organization. Automated tests cover the
+state/DOM/API-double portions, not browser-owned UI.

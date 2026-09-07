@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import * as lifecycle from '../lifecycle.js';
 
-const source=fs.readFileSync(new URL('../background.js',import.meta.url),'utf8').replace(/^import .*;\n/,'');
+const source=fs.readFileSync(new URL('../background.js',import.meta.url),'utf8').replace(/^import .*;\n/gm,'');
 const event=()=>({listeners:[],addListener(fn){this.listeners.push(fn);},emit(...args){for(const fn of this.listeners)fn(...args);}});
 function harness({connectPorts=true,panelContexts=[]}={}){
   let resolveClose,rejectClose;
@@ -17,7 +17,7 @@ function harness({connectPorts=true,panelContexts=[]}={}){
     sidePanel:{onOpened:event(),onClosed:event(),open:async()=>{},close:()=>closing},
     action:{onClicked:event()},commands:{onCommand:event()},windows:{onRemoved:event()}
   };
-  const context=vm.createContext({...lifecycle,chrome,console:{info(){},warn(){}},navigator:{userAgent:'test'},setTimeout});
+  const context=vm.createContext({...lifecycle,installFeatures:()=>null,chrome,console:{info(){},warn(){}},navigator:{userAgent:'test'},setTimeout});
   vm.runInContext(source+'\nthis.api={collapseWindowPanel,openWindowPanel,lifecycle,settleUnknown,syncRail};',context);
   function port(name){const p={name,sender:{tab:{windowId:1}},messages:[],onDisconnect:event(),postMessage(m){this.messages.push(m);}};chrome.runtime.onConnect.emit(p);return p;}
   const panel=connectPorts?port('ATV2_PANEL:1'):null;
@@ -70,7 +70,7 @@ function survivingRail(){
   const elements=[];
   function element(){return {style:{},children:[],isConnected:false,setAttribute(){},addEventListener(){},append(...nodes){this.children.push(...nodes);for(const n of nodes)n.isConnected=true;},attachShadow(){return element();},remove(){this.isConnected=false;}};}
   const root=element();
-  const document={documentElement:root,createElement(){const n=element();elements.push(n);return n;},getElementById(id){return elements.find(n=>n.id===id&&n.isConnected);}};
+  const document={querySelector(){return null;},documentElement:root,createElement(){const n=element();elements.push(n);return n;},getElementById(id){return elements.find(n=>n.id===id&&n.isConnected);}};
   const window={addEventListener(){}};window.top=window;
   const onMessage=event();
   const oldPort={onMessage:event(),onDisconnect:event()};

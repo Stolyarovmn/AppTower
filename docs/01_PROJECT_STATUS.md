@@ -71,3 +71,10 @@ Status legend:
 - Verify group/template drag/drop.
 - Decide what experience is acceptable for generic YouTube and Google/Gemini
   anti-bot pages rather than repeatedly changing generic compatibility rules.
+
+### Cleanroom 2.1.0 preview
+
+Modular feature restoration and reversible compact-rail page-space implemented.
+See cleanroom/README.md for feature inventory, tests and explicit remaining parity
+work. Legacy app/ is not the source of the Cleanroom ZIP. Live Edge gate remains
+open; this milestone does not certify complete v1 feature parity.

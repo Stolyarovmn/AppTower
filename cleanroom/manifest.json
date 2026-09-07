@@ -1,11 +1,22 @@
 {
   "manifest_version": 3,
   "name": "AppTower Cleanroom",
-  "version": "2.0.2",
+  "version": "2.1.0",
   "description": "From-scratch AppTower lifecycle and side-panel implementation.",
   "minimum_chrome_version": "141",
-  "permissions": ["sidePanel", "storage", "tabs", "scripting"],
-  "host_permissions": ["http://*/*", "https://*/*"],
+  "permissions": [
+    "sidePanel",
+    "storage",
+    "tabs",
+    "scripting",
+    "contextMenus",
+    "declarativeNetRequestWithHostAccess",
+    "favicon"
+  ],
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
   "background": {
     "service_worker": "background.js",
     "type": "module"
@@ -16,11 +27,18 @@
   "side_panel": {
     "default_path": "sidepanel.html"
   },
-  "options_page": "diagnostics.html",
+  "options_page": "options.html",
   "content_scripts": [
     {
-      "matches": ["http://*/*", "https://*/*"],
-      "js": ["rail.js"],
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "page-space.js",
+        "icon-data.js",
+        "rail.js"
+      ],
       "run_at": "document_start"
     }
   ],
@@ -32,5 +50,11 @@
       },
       "description": "Open AppTower search"
     }
+  },
+  "optional_permissions": [
+    "contentSettings"
+  ],
+  "chrome_url_overrides": {
+    "newtab": "newtab.html"
   }
 }

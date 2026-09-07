@@ -107,3 +107,11 @@ restart with zero registered rail ports. Unknown state is reconciled against
 runtime.getContexts rather than a 250 ms assumption. Existing Side Panel documents
 re-register without renderer reload. The attached user trace was inspected but
 is not stored in the repository because it contains browsing history.
+
+## Cleanroom 2.1 feature preview
+
+Restore features through new core/model, core/store, core/services, ui and modules
+boundaries in cleanroom/. Preserve v2.0.2 lifecycle delivery. Page-space owns
+reversible 48px reservation separately from rail visibility. New storage schema
+1 migrates prior Cleanroom data; do not import legacy executable implementations.
+Release status and remaining parity limitations are in cleanroom/README.md.

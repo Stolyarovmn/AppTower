@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - rewrite/v2-cleanroom
+      - feature/cleanroom-functions
     paths:
       - cleanroom/**
       - .github/workflows/cleanroom-v2.yml
@@ -19,7 +20,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
-          node-version: 22
+          node-version: 24
+      - name: Install test dependencies
+        working-directory: cleanroom
+        run: npm ci --ignore-scripts
       - name: Validate manifest JSON
         run: node -e "JSON.parse(require('fs').readFileSync('cleanroom/manifest.json','utf8'))"
       - name: Cleanroom unit and contract tests
@@ -27,11 +31,13 @@ jobs:
         run: npm test
       - name: Verify no legacy imports or fixed extension key
         run: |
-          ! grep -R "\.\./app\|/app/\|edge-manual-gate-fixes\|manual-gate-fixes\|rail-prelude\|rail-style-contract" cleanroom --include='*.js' --include='*.html' --include='*.css'
+          ! grep -R "\.\./app\|/app/\|edge-manual-gate-fixes\|manual-gate-fixes\|rail-prelude\|rail-style-contract" cleanroom --exclude-dir=node_modules --include='*.js' --include='*.html' --include='*.css'
           ! grep -n '"key"' cleanroom/manifest.json
+      - name: Package complete extension
+        run: python cleanroom/tools/package.py --output dist/AppTower-Cleanroom.zip
       - name: Upload cleanroom test build
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: AppTower-Cleanroom-${{ github.sha }}
-          path: cleanroom/
+          path: dist/AppTower-Cleanroom.zip
           if-no-files-found: error

@@ -12,8 +12,8 @@ test("expanded right rail exposes a right-pointing collapse affordance",()=>{
   assert.match(html,/id="collapse"[^>]*aria-label="Свернуть AppTower"/);
   assert.match(html,/id="collapse"[\s\S]*?<path d="m7\.5 4\.5 5\.5 5\.5-5\.5 5\.5"\/?>/);
   assert.doesNotMatch(html,/id="collapse"[\s\S]*?<path d="m12\.5 4\.5-5\.5 5\.5 5\.5 5\.5"\/?>/);
-  assert.match(js,/collapse\.addEventListener\("click"/);
-  assert.match(js,/type:"COLLAPSE_PANEL"/);
+  assert.match(js,/\$\('collapse'\)\.addEventListener\('click'/);
+  assert.match(js,/type:\s*'COLLAPSE_PANEL'/);
 });
 
 test("compact rail prepares hidden and becomes visible only via lifecycle visibility message",()=>{
