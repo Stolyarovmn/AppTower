@@ -16,10 +16,12 @@ Last competitor scan: 2026-09-07.
 
 **No TASK is ACTIVE.** TASK 2 is complete. This research process does not activate implementation work; only the AppTower Task Executor may move another TASK to `ACTIVE`.
 
-The current regression PR #2 head observed during this scan is `3ab8d31abd42335440e57b98bee02c5e23e061cb`. Its `validate` workflow run `34107440635` completed with conclusion **`success`**. READY TASKS are therefore not globally blocked by CI, while TASKS with unresolved functional dependencies remain `BLOCKED`.
+The current regression PR #2 head observed during this scan is `3ab8d31abd42335440e57b98bee02c5e23e061cb`. Its `validate` workflow run `34107440635` completed with conclusion **`success`**. READY TASKS are therefore not globally blocked by CI, while TASKS with unresolved functional dependencies remain `BLOCKED`. The previous backlog head `fee38538b4ce5992b9568a257dd27f37a1b13347` also completed PR validation successfully in run `34122766710`.
 
 ## Fresh research notes
 
+- `Sid-1819/tab-wise` is an actively maintained Chrome Side Panel tab/workspace manager under **MIT** (repository push observed 2026-09-06). Version 2.4.0 declares required `tabs`, `tabGroups`, `storage`, `sidePanel`, `contextMenus`, `sessions`, `favicon`, optional `system.memory`, and broad `<all_urls>` host access. It is useful clean-room evidence that `system.memory` can be made optional and that sessions/recent UX can avoid a `history` permission, while its `<all_urls>` footprint is not copied into AppTower.
+- `touyou/sidepanel-fallback` is an **MIT** library that cleanly separates browser detection, mode persistence and panel launching, with an automatic side-panel→popup/window fallback and a large test suite claimed by the project. It is older/low-adoption evidence rather than a mature competitor, but it independently supports capability-based surface fallback and explicit per-browser mode persistence; no score increase is justified from it alone.
 - `aminought/firefox-second-sidebar` is a mature adjacent web-panel implementation (583 GitHub stars observed in this scan, latest release v2.0.1 dated 2026-05-19) under **MPL-2.0**. Its per-panel loading controls include load-at-startup, restore-last-page and unload-after-close. This independently validates per-panel memory lifecycle as a user-facing web-panel concept rather than a tab-suspender-only concept. AppTower does not copy MPL-covered code; only the clean-room behavior pattern is used.
 - This new evidence promotes the former IDEA “Per-site sleep policy presets” from 74 to **TASK 20 — 76/100**. The AppTower version remains narrower: per-AppTower-site `default/aggressive/never` policy modifies existing lease deadlines only, must respect TASK 3 safety guards, must not add polling or broad host permissions, and must be measured against the resource baseline.
 - Portals Sidebar 16.26.92 was updated in the Chrome Web Store on 2026-09-06 and independently combines a native side-panel portal hub, floating overlay rail, groups, drag/drop, search, quick-add and floating windows. Its store description explicitly says it modifies `X-Frame-Options` so sites load in the panel. No current public source repository/license or exact manifest permission set was verified in this scan, so it is behavior-only evidence; header-stripping is recorded as an anti-pattern and is not copied.
@@ -32,7 +34,7 @@ The current regression PR #2 head observed during this scan is `3ab8d31abd423354
 - TabTOC and Nest remain behavior-only evidence for restricted-page fallback because current source/license could not be verified. AppTower uses its existing native Side Panel on browser-owned pages instead of trying to inject there.
 - Microsoft Edge documentation updated in July 2026 marks PWA `edge_side_panel` integration deprecated; AppTower compatibility therefore stays capability-driven and independent of that vendor-specific surface.
 - Tab Pilot / Tab Radar is MIT and useful UX evidence for fuzzy search/command palette/recent, but its broad permission/injection set remains an anti-pattern for AppTower core.
-- All existing TASKS and IDEAS were rescored after this scan. No existing numeric score changed other than the promoted per-site sleep policy item (74→76); ranks below the new TASK/removed IDEA shift accordingly.
+- All existing TASKS and IDEAS were rescored after this scan. **No numeric score changed in this pass**: Tab Wise strengthens existing TASK 18/TASK 19/TASK 10 evidence but does not increase competitor maturity enough to justify another point, while sidepanel-fallback is too old/low-adoption to change TASK 17/TASK 9 maturity.
 
 ## TASKS
 
@@ -101,7 +103,7 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 **Acceptance criteria:** eligible HTTP(S) pages keep exactly one rail; restricted pages do not receive injection attempts and action/toggle opens or focuses the existing native Side Panel; eligible↔restricted transitions preserve collapse/expand/close state; no `chrome_url_overrides`, broad host permission, or browser-page scripting workaround.
 **Automated test plan:** HTTP(S) → New Tab/`chrome://` → HTTP(S); zero restricted-page injection errors; action→Side Panel; duplicate-surface checks; restart on restricted page; unsupported schemes; Edge parity gate when automation is reliable.
 **Dependencies:** TASK 1; stable surface ownership; one shared eligibility predicate with TASK 12.
-**Sources/competitors:** TabTOC 1.2.0 and Nest 1.5.3 behavior only; source/license unverified.
+**Sources/competitors:** TabTOC 1.2.0 and Nest 1.5.3 behavior only; source/license unverified; sidepanel-fallback (MIT) as low-adoption capability-fallback evidence.
 
 ### TASK 5 — Command Palette — 86/100 — BLOCKED
 **Rationale:** keyboard-first command/search improves reach without permanent UI density.
@@ -136,21 +138,21 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 **Acceptance criteria:** Auto/Embedded/Mobile/Real Page; deterministic failure reason; diagnostics only on explicit action; site/pane-scoped fallback; unrelated pane remains live; no required `edge_side_panel` dependency.
 **Automated test plan:** successful embed/frame denial/navigation failure/Real Page fixtures; per-site persistence; two-window rule collision; permission prompts; capability-negative Edge PWA-sidebar fixture.
 **Dependencies:** stable renderer telemetry; TASK 1.
-**Sources/competitors:** Universal Split View; SplitView; SidePilot (Apache-2.0); QuickPanel behavior only; Portals Sidebar 16.26.92 behavior-only/header-stripping anti-pattern; Microsoft Edge PWA-sidebar deprecation docs.
+**Sources/competitors:** Universal Split View; SplitView; SidePilot (Apache-2.0); QuickPanel behavior only; Portals Sidebar 16.26.92 behavior-only/header-stripping anti-pattern; Microsoft Edge PWA-sidebar deprecation docs; sidepanel-fallback (MIT) as capability/popup-fallback evidence only.
 
 ### TASK 10 — Manifest permission budget + CI regression gate — 81/100 — BLOCKED
 **Rationale:** a CI allowlist prevents permission creep, unexpected warnings and store-review regressions.
 **Acceptance criteria:** reviewed required/optional/host sets per variant; fail on unreviewed addition or optional→required promotion; rationale per permission; generated fallback has narrower budget; removals remain allowed.
 **Automated test plan:** allowed/new required/new optional/new host/required↔optional/fallback-drift fixtures; package validation runs same gate.
 **Dependencies:** current manifest/variant inventory.
-**Sources/competitors:** Benjamin410/chrome-tab-manager (ISC); Drowzy (MIT); Tab Pilot/Tab Radar (MIT) as broad-footprint counterexample; Chrome Web Store minimum-permission guidance.
+**Sources/competitors:** Benjamin410/chrome-tab-manager (ISC); Drowzy (MIT); Tab Wise 2.4.0 (MIT; optional `system.memory` but broad `<all_urls>` host access); Tab Pilot/Tab Radar (MIT) as broad-footprint counterexample; Chrome Web Store minimum-permission guidance.
 
 ### TASK 11 — Duplicate shortcut detection — 80/100 — READY
 **Rationale:** prevents rail/workspace clutter with low implementation and permission risk.
 **Acceptance criteria:** canonical URL matching; reuse/open existing or intentionally duplicate; group/template identity not merged accidentally; no network lookup.
 **Automated test plan:** canonical URL/query/hash fixtures; same URL across workspaces/groups; Add Current Page E2E; keyboard confirmation.
 **Dependencies:** stable add flow.
-**Sources/competitors:** Tab Wise, Tabwise, TabDog, Tab Manager v2, Tablio.
+**Sources/competitors:** Tab Wise (MIT), Tabwise, TabDog, Tab Manager v2, Tablio.
 
 ### TASK 19 — Privacy-scoped Recently accessed / Recently closed smart view — 80/100 — BLOCKED
 **Score:** 20/25 user value + 13/20 real pain/regression + 15/15 AppTower fit + 10/15 measurable UX + 8/10 low implementation risk + 5/5 privacy/permissions + 4/5 competitor maturity + 5/5 automated testability = **80**.
@@ -158,14 +160,14 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 **Acceptance criteria:** primary Recent list uses AppTower-owned recency only; opening/activating a shortcut/template updates recency deterministically without polling; stable tie-break is preserved; optional “Recently closed browser tabs” requests/uses only `sessions` and is clearly separated from AppTower Recent; no `history`, `idle`, `<all_urls>`, or content-script expansion; turning the optional browser subsection off removes the need to query sessions; search can filter Recent without changing ranking state; restoring a closed browser session is explicit and never silently imports it into an AppTower workspace.
 **Automated test plan:** deterministic `lastUsedAt` ordering/ties; open/activate updates; restart persistence; same entity in group/template; search filtering; optional sessions denied/unavailable/empty; recently closed tab and window restore fixtures; ensure manifest/permission gate rejects accidental `history`/`idle` additions; E2E confirms opening Recent does not reload pane documents or wake unrelated resources.
 **Dependencies:** TASK 2 completed; current Recent/search surface stable; TASK 10 preferred before introducing optional `sessions`; coordinate with TASK 5 so Command Palette consumes the same recency model rather than maintaining a second index.
-**Sources/competitors:** Chromium `tabs.Tab.lastAccessed`; WebExtensions `sessions.getRecentlyClosed()`; Benjamin410/chrome-tab-manager (ISC, 2026) for recency/recently-closed side-panel UX. Its `<all_urls>` content-script design is explicitly not copied. Side Tab Manager and Vertical SidePanel Tab Group Manager are additional store-level behavior evidence only.
+**Sources/competitors:** Chromium `tabs.Tab.lastAccessed`; WebExtensions `sessions.getRecentlyClosed()`; Benjamin410/chrome-tab-manager (ISC, 2026) and Tab Wise 2.4.0 (MIT) for recency/recently-closed side-panel UX. Broad host access in Tab Wise and `<all_urls>` content scripts in chrome-tab-manager are explicitly not copied. Side Tab Manager and Vertical SidePanel Tab Group Manager are additional store-level behavior evidence only.
 
 ### TASK 12 — Context-scoped pane bridge/PWA content-script injection — 79/100 — BLOCKED
 **Rationale:** pane bridge/PWA discovery currently run too broadly; narrowing execution reduces injection surface and avoidable work.
 **Acceptance criteria:** inventory rail/pane/PWA roles; pane bridge only in AppTower-owned pane contexts; PWA discovery on-demand/bounded; no new permission; no required `edge_side_panel`; measure helper initializations before/after.
 **Automated test plan:** static manifest assertion; ordinary page has no pane/PWA helper initialization; top/bottom isolation; on-demand PWA fixture; auth/payment fixtures; restart/reconnect/fallback; capability-negative Edge fixture; initialization count.
 **Dependencies:** current content-script inventory; TASK 1; coordinate with TASK 9/17.
-**Sources/competitors:** Side Link Preview (MIT); Chrome `scripting` docs; Microsoft Edge PWA-sidebar deprecation; Drowzy as narrow-injection evidence; Tab Pilot as broad-injection counterexample.
+**Sources/competitors:** Side Link Preview (MIT); Chrome `scripting` docs; Microsoft Edge PWA-sidebar deprecation; Drowzy as narrow-injection evidence; Tab Pilot and Tab Wise as broad-access counterexamples.
 
 ### TASK 13 — Restorable split layout metadata — 79/100 — BLOCKED
 **Rationale:** layout ratios are durable workflow state; AppTower can gain repeatability without arbitrary tiling.
@@ -201,7 +203,7 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 **Acceptance criteria:** opt-in; `system.memory` requested only when enabled; no new polling; sampling only on TASK 6 check or explicit diagnostics; hysteresis; only TASK 3-safe panes; AppTower-owned LRU; denied/unavailable API degrades cleanly; no broad host permission/network dependency.
 **Automated test plan:** low/normal/high pressure + hysteresis; denied API; zero-leases proves no extra wakeup; LRU order; all-protected case; enable/disable/restart; pane-isolation E2E; wakeup count before/after.
 **Dependencies:** TASK 3; TASK 6; TASK 10 preferred; measured baseline.
-**Sources/competitors:** TabRest (MIT, clean-room evidence); TabZen behavior only; Chrome `system.memory` capability boundary.
+**Sources/competitors:** TabRest (MIT, clean-room evidence); Tab Wise 2.4.0 (MIT; optional `system.memory` demonstrates narrow permission gating, but its broad host access is not copied); TabZen behavior only; Chrome `system.memory` capability boundary.
 
 ## IDEAS
 
