@@ -16,13 +16,15 @@ Last competitor scan: 2026-09-07.
 
 **No TASK is ACTIVE.** TASK 2 is complete. This research process does not activate implementation work; only the AppTower Task Executor may move another TASK to `ACTIVE`.
 
-The current regression PR #2 head observed during this scan is `72f8d3e27674dcff41c35d3f83329fd2b7e42d71`. Its `validate` workflow run `34091866718` completed with conclusion **`success`**. Source validation, unit tests, Chromium extension E2E, exact-commit fallback/package rebuild and artifact upload all passed. The previous global CI block is therefore cleared for TASKS that are otherwise `READY`; TASKS with unresolved functional dependencies remain `BLOCKED`.
+The current regression PR #2 head observed during this scan is `3f9f709b7db8ff11a6d5c0e56ecde3b8c7409dbc`. Its `validate` workflow run `34097191379` completed with conclusion **`success`**. The current regression head is therefore green; READY TASKS are not globally blocked by CI, while TASKS with unresolved functional dependencies remain `BLOCKED`.
 
 ## Fresh research notes
 
-- Microsoft Edge documentation updated in July 2026 now explicitly marks the PWA `edge_side_panel` integration as **deprecated** and says it will soon no longer be supported. AppTower must not make PWA-sidebar metadata a required compatibility path. PWA discovery may remain useful for ordinary installability/app metadata, but panel compatibility must stay capability-driven and fall back to AppTower's own Embedded/Mobile/Real Page surfaces. This strengthens TASK 9 and adds a guardrail to TASK 12; it does not justify a separate TASK or a score change.
+- TabTOC 1.2.0 was updated in the Chrome Web Store on 2026-09-04 and explicitly exposes three workspace surfaces: floating overlay on ordinary pages, native Side Panel, and a New Tab workspace. Its product site states that the native Side Panel remains available on `chrome://` pages where an injected overlay cannot operate. Nest 1.5.3, updated 2026-09-03, independently uses the same broad pattern: injected overlay plus persistent native Side Panel/full-page surfaces, and explicitly notes that the Side Panel works on Chrome-owned pages where injection cannot. This directly matches AppTower's known start/new-tab availability requirement and motivates TASK 17: a clean-room restricted-page control-surface fallback using AppTower's existing native Side Panel instead of trying to inject the rail into browser-owned pages.
+- TabTOC's website describes the product as free/open source, but this scan did not locate a verifiable source repository or source license for the current extension build. Nest source/license was also not verified. Therefore neither implementation is a code source for AppTower; only the independently observable multi-surface behavior is used as evidence. TASK 17 is intentionally designed as an independent implementation and does not require new broad host permissions or `chrome_url_overrides`.
+- Microsoft Edge documentation updated in July 2026 explicitly marks the PWA `edge_side_panel` integration as **deprecated** and says it will soon no longer be supported. AppTower must not make PWA-sidebar metadata a required compatibility path. PWA discovery may remain useful for ordinary installability/app metadata, but panel compatibility must stay capability-driven and fall back to AppTower's own Embedded/Mobile/Real Page surfaces. This strengthens TASK 9 and adds a guardrail to TASK 12; it does not justify a separate TASK or a score change.
 - Tab Pilot / Tab Radar is a current MIT-licensed side-panel tab command center with fuzzy search, command palette, grouping, sessions/recently-closed and activity features. Its manifest currently requests `tabs`, `tabGroups`, `windows`, `sidePanel`, `storage`, `sessions`, `history`, `activeTab`, `scripting`, `nativeMessaging`, `idle`, `alarms`, `<all_urls>`, and an all-page content script. This is useful competitor evidence for Command Palette/search UX, but its broad permission/injection surface is an anti-pattern for AppTower's core and reinforces TASK 10 (permission budget) plus TASK 12 (context-scoped injection). No source code is needed or copied.
-- All TASK and IDEA scores were recalculated after these findings. No numeric score changed: the Edge deprecation changes compatibility constraints rather than user value, and Tab Pilot adds corroborating evidence without enough independent maturity/performance evidence to change a score.
+- All TASK and IDEA scores were recalculated after these findings. Existing numeric scores did not change. TASK 17 enters at 86/100; at the 86 tie it ranks ahead of Command Palette because it removes a known unsupported-page/lifecycle gap and reduces duplicate-surface/routing risk.
 
 ## TASKS
 
@@ -33,17 +35,18 @@ The current regression PR #2 head observed during this scan is `72f8d3e27674dcff
 | 3 | 90 | BLOCKED | Deterministic drag/drop interaction model for reorder, groups and two-pane templates | TASK 2; stable pointer/drag lifecycle |
 | 4 | 89 | READY | Safe pane sleep guards for unsaved input, active media and explicit keep-awake | Embedded-frame bridge; resource lease/sleep path |
 | 5 | 88 | BLOCKED | Versioned persistence schema + append-only migrations | TASK 2; persisted-state inventory |
-| 6 | 86 | BLOCKED | Command Palette across shortcuts/templates/workspaces/recent | TASK 2 |
-| 7 | 85 | BLOCKED | Event-driven nearest-deadline resource scheduling | Performance baseline |
-| 8 | 84 | BLOCKED | Event-based workspace snapshots + Undo | TASK 2; TASK 4 preferred |
-| 9 | 83 | BLOCKED | Installed-extension lifecycle E2E harness using browser-managed install/action/inspection | Reproducible package; Chrome toolchain availability |
-| 10 | 82 | BLOCKED | Compatibility ladder UX: Auto / Embedded / Mobile / Real Page | Stable renderer telemetry; TASK 1 |
-| 11 | 81 | BLOCKED | Manifest permission budget + CI regression gate | Current manifest/variant inventory |
-| 12 | 80 | READY | Duplicate shortcut detection and reuse prompt | Stable add flow |
-| 13 | 79 | BLOCKED | Context-scoped pane bridge/PWA content-script injection instead of all-page/all-frame injection | Current script-role inventory; TASK 1 |
-| 14 | 79 | BLOCKED | Restorable split layout metadata in templates | TASK 2; TASK 4 preferred; stable split lifecycle |
-| 15 | 78 | BLOCKED | Native browser tab-group import/export bridge | Stable groups/workspaces; TASK 4 preferred |
-| 16 | 76 | BLOCKED | Glance preview in temporary bottom pane | Stable split-pane lifecycle |
+| 6 | 86 | BLOCKED | Restricted-page control-surface fallback to native Side Panel | TASK 1; stable rail/panel ownership and browser-page capability detection |
+| 7 | 86 | BLOCKED | Command Palette across shortcuts/templates/workspaces/recent | TASK 2 |
+| 8 | 85 | BLOCKED | Event-driven nearest-deadline resource scheduling | Performance baseline |
+| 9 | 84 | BLOCKED | Event-based workspace snapshots + Undo | TASK 2; TASK 4 preferred |
+| 10 | 83 | BLOCKED | Installed-extension lifecycle E2E harness using browser-managed install/action/inspection | Reproducible package; Chrome toolchain availability |
+| 11 | 82 | BLOCKED | Compatibility ladder UX: Auto / Embedded / Mobile / Real Page | Stable renderer telemetry; TASK 1 |
+| 12 | 81 | BLOCKED | Manifest permission budget + CI regression gate | Current manifest/variant inventory |
+| 13 | 80 | READY | Duplicate shortcut detection and reuse prompt | Stable add flow |
+| 14 | 79 | BLOCKED | Context-scoped pane bridge/PWA content-script injection instead of all-page/all-frame injection | Current script-role inventory; TASK 1 |
+| 15 | 79 | BLOCKED | Restorable split layout metadata in templates | TASK 2; TASK 4 preferred; stable split lifecycle |
+| 16 | 78 | BLOCKED | Native browser tab-group import/export bridge | Stable groups/workspaces; TASK 4 preferred |
+| 17 | 76 | BLOCKED | Glance preview in temporary bottom pane | Stable split-pane lifecycle |
 
 Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 
@@ -83,6 +86,14 @@ Only the AppTower Task Executor may change another TASK to `ACTIVE`.
 **Automated test plan:** historical fixtures; golden/idempotent migrations; malformed/future cases; legacy-profile restart; export/import round trip; coordinator never sees pre-migration state.
 **Dependencies:** TASK 2, persisted-state inventory.
 **Sources/competitors:** Lunma (Apache-2.0), pattern only.
+
+### TASK 17 — Restricted-page control-surface fallback — 86/100 — BLOCKED
+**Score:** 21/25 user value + 17/20 real pain/regression + 15/15 AppTower fit + 11/15 measurable UX/reliability + 8/10 low implementation risk + 5/5 privacy/permissions + 4/5 competitor maturity + 5/5 automated testability = **86**.
+**Rationale:** AppTower's injected rail cannot exist on browser-owned/restricted pages, while the product requirement includes availability on start/new-tab/browser pages. The correct boundary is capability-driven surface selection: keep the injected rail on eligible web pages, but route the same AppTower controls through the existing native Side Panel/action on restricted pages. This avoids futile injection, missing controls, and duplicate surface ownership.
+**Acceptance criteria:** on eligible HTTP(S) pages the injected rail remains the primary control surface; on browser-owned/restricted pages (`chrome://`, `edge://`, browser New Tab and other non-scriptable targets) AppTower does not attempt content-script injection and its action/toggle opens or focuses the existing native Side Panel; returning to an eligible page restores exactly one rail; collapse/expand/close state remains coherent across eligible↔restricted transitions; no second AppTower panel document is created; no `chrome_url_overrides`, new broad host permission or browser-page scripting workaround is required.
+**Automated test plan:** headed Chromium fixtures for normal HTTP(S) page → New Tab/`chrome://` → normal page; assert zero injection attempts/errors on restricted targets; extension action opens/focuses native Side Panel there; exactly one rail after returning; repeated transitions do not duplicate panel/rail; restart while last active tab is restricted; collapse/expand/close persistence; negative fixture for unsupported URL schemes. Add Edge manual/E2E parity gate when browser automation can reliably address `edge://`/New Tab.
+**Dependencies:** TASK 1 completed; stable rail/panel ownership; explicit browser-page capability detection. Coordinate with TASK 12 so scoped injection and restricted-page fallback share one eligibility predicate rather than competing allow/deny logic.
+**Sources/competitors:** TabTOC 1.2.0 (Chrome Web Store updated 2026-09-04; product site behavior only, current source repository/license not verified); Nest 1.5.3 (Chrome Web Store updated 2026-09-03; behavior only, source/license not verified). Independent AppTower implementation only.
 
 ### TASK 5 — Command Palette — 86/100 — BLOCKED
 **Rationale:** keyboard-first command/search improves reach without permanent UI density.
