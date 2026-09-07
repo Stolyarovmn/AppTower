@@ -16,6 +16,7 @@
   "side_panel": {
     "default_path": "sidepanel.html"
   },
+  "options_page": "diagnostics.html",
   "content_scripts": [
     {
       "matches": ["http://*/*", "https://*/*"],
