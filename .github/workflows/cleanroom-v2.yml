@@ -29,3 +29,9 @@ jobs:
         run: |
           ! grep -R "\.\./app\|/app/\|edge-manual-gate-fixes\|manual-gate-fixes\|rail-prelude\|rail-style-contract" cleanroom --include='*.js' --include='*.html' --include='*.css'
           ! grep -n '"key"' cleanroom/manifest.json
+      - name: Upload cleanroom test build
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: AppTower-Cleanroom-${{ github.sha }}
+          path: cleanroom/
+          if-no-files-found: error
