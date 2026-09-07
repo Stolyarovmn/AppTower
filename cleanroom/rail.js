@@ -4,11 +4,9 @@
   document.documentElement.dataset.atv2RailInstalled="1";
 
   let host=null;
-  let root=null;
-  let port=null;
-  let windowId=null;
+  const port=chrome.runtime.connect({name:"ATV2_RAIL"});
 
-  const svg=(path,viewBox="0 0 20 20")=>`<svg viewBox="${viewBox}" aria-hidden="true">${path}</svg>`;
+  const svg=path=>`<svg viewBox="0 0 20 20" aria-hidden="true">${path}</svg>`;
   const icons={
     expand:svg('<path d="M7 4.5 12.5 10 7 15.5"/>'),
     add:svg('<path d="M10 4v12M4 10h12"/>'),
@@ -16,10 +14,13 @@
     settings:svg('<circle cx="10" cy="10" r="3"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M15.3 4.7l-1.4 1.4M6.1 13.9l-1.4 1.4"/>')
   };
 
+  function open(command=null){
+    chrome.runtime.sendMessage({type:"OPEN_PANEL",command}).catch(()=>{});
+  }
+
   function button(label,icon,handler){
     const b=document.createElement("button");
     b.type="button";
-    b.className="atv2-rail-button";
     b.setAttribute("aria-label",label);
     b.title=label;
     b.innerHTML=icon;
@@ -27,16 +28,11 @@
     return b;
   }
 
-  async function sendOpen(command=null){
-    if(!Number.isInteger(windowId)) return;
-    await chrome.runtime.sendMessage({type:"OPEN_PANEL",windowId,command}).catch(()=>{});
-  }
-
   function ensure(){
     if(host?.isConnected) return;
     host=document.createElement("div");
     host.id="atv2-rail-host";
-    root=host.attachShadow({mode:"closed"});
+    const root=host.attachShadow({mode:"closed"});
     const style=document.createElement("style");
     style.textContent=`
       :host{all:initial}
@@ -48,21 +44,19 @@
       svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
       .sep{width:28px;height:1px;background:rgba(255,255,255,.11);margin:6px 0}
     `;
-    const rail=document.createElement("div");
-    rail.className="rail";
+    const rail=document.createElement("div");rail.className="rail";
+    const sep=document.createElement("div");sep.className="sep";
+    const spacer=document.createElement("div");spacer.className="spacer";
     rail.append(
-      button("Развернуть AppTower",icons.expand,()=>sendOpen()),
-      document.createElement("div")
-    );
-    rail.lastElementChild.className="sep";
-    const spacer=document.createElement("div");spacer.className="spacer";rail.append(spacer);
-    rail.append(
-      button("Добавить текущую страницу",icons.add,()=>sendOpen({type:"add-current"})),
-      button("Поиск",icons.search,()=>sendOpen({type:"search"})),
-      button("Настройки",icons.settings,()=>sendOpen({type:"settings"}))
+      button("Развернуть AppTower",icons.expand,()=>open()),
+      sep,
+      spacer,
+      button("Добавить текущую страницу",icons.add,()=>open({type:"add-current"})),
+      button("Поиск",icons.search,()=>open({type:"search"})),
+      button("Настройки",icons.settings,()=>open({type:"settings"}))
     );
     root.append(style,rail);
-    (document.documentElement||document).append(host);
+    document.documentElement.append(host);
   }
 
   function setVisible(visible){
@@ -71,27 +65,13 @@
   }
 
   chrome.runtime.onMessage.addListener((message,_sender,sendResponse)=>{
-    if(message?.type==="RAIL_PREPARE_COLLAPSE"){
-      ensure();
-      setVisible(true);
-      sendResponse({ok:true});
-      return;
-    }
+    if(message?.type!=="RAIL_PREPARE_COLLAPSE") return;
+    ensure();
+    setVisible(true);
+    sendResponse({ok:true});
   });
 
-  chrome.windows.getCurrent?.().catch?.(()=>null);
-  chrome.runtime.sendMessage({type:"ATV2_IDENTIFY_WINDOW"}).catch(()=>{});
-
-  // Content scripts have their browser window directly on sender.tab in the
-  // background, so ask background to open once to discover nothing is needed.
-  // We obtain the id from chrome.runtime.connect sender metadata by creating a
-  // temporary port name after querying through a small message roundtrip.
-  chrome.runtime.sendMessage({type:"GET_WINDOW_ID"}).then(response=>{
-    if(!Number.isInteger(response?.windowId)) return;
-    windowId=response.windowId;
-    port=chrome.runtime.connect({name:`ATV2_RAIL:${windowId}`});
-    port.onMessage.addListener(message=>{
-      if(message?.type==="RAIL_VISIBILITY") setVisible(Boolean(message.visible));
-    });
-  }).catch(()=>{});
+  port.onMessage.addListener(message=>{
+    if(message?.type==="RAIL_VISIBILITY") setVisible(Boolean(message.visible));
+  });
 })();
