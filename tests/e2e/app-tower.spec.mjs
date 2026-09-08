@@ -123,12 +123,19 @@ async function dragShortcut(sourceId, targetId) {
   await panel.mouse.up();
 }
 
+async function currentPaneFrame(name) {
+  const frameElement = panel.locator(`.pane[data-pane="${name}"] iframe[data-role="frame"]`);
+  const handle = await frameElement.elementHandle();
+  return handle?.contentFrame() || null;
+}
+
 async function paneFrame(name) {
-  await expect.poll(() => {
-    const frame = panel.frames().find(candidate => candidate.name() === `app-tower-pane-${name}`);
-    return Boolean(frame && /^https?:/.test(frame.url()));
-  }, {timeout:10_000}).toBe(true);
-  return panel.frames().find(candidate => candidate.name() === `app-tower-pane-${name}`);
+  let frame = null;
+  await expect.poll(async () => {
+    frame = await currentPaneFrame(name);
+    return frame?.url() || "";
+  }, {timeout:10_000}).toMatch(/^https?:/);
+  return frame;
 }
 
 async function navigatePane(name, url) {
@@ -136,7 +143,10 @@ async function navigatePane(name, url) {
   await pane.locator('[data-role="url"]').fill(url);
   await pane.locator('[data-action="go"]').click();
   await expect.poll(async () => (await pane.locator('[data-role="url"]').inputValue())).toContain(url);
-  await expect.poll(() => panel.frames().find(frame => frame.name() === `app-tower-pane-${name}`)?.url() || "", {timeout:10_000}).toContain(url);
+  // Resolve the frame from the pane's current DOM iframe. Chromium can briefly
+  // retain an older same-name Frame during iframe replacement/navigation, so
+  // panel.frames().find(...) can observe a stale about:blank browsing context.
+  await expect.poll(async () => (await currentPaneFrame(name))?.url() || "", {timeout:10_000}).toContain(url);
 }
 
 async function screenshotFailure(testInfo) {
