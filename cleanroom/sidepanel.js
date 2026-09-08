@@ -252,12 +252,6 @@ rail.insertBefore(
   iconButton('Группы и шаблоны', 'group', () => organizer().catch(error)),
   $('search'),
 );
-rail.insertBefore(
-  iconButton('Закрыть AppTower', 'close', () =>
-    send({ type: 'APP_DISABLE' }).catch(error),
-  ),
-  rail.firstChild,
-);
 $('settings').innerHTML = icon('settings');
 for (const [id, label, delta] of [
   ['scroll-up', 'Прокрутить вверх', -120],

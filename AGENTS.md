@@ -88,3 +88,11 @@ check where possible.
 - Use browser-native APIs where possible; inside extension HTML use a browser
   skin rather than pretending custom HTML is truly native.
 - UI text is currently primarily Russian.
+
+## Cleanroom regression gate
+
+Before editing cleanroom/, also read docs/22_CLEANROOM_REGRESSION_RULES.md.
+Historical user complaints remain acceptance requirements for rewritten code.
+For Cleanroom releases, version/package cleanroom/; legacy app/ and archive/
+are not the release source. Exercise both extension-action and browser-owned
+panel entry paths; never infer live Edge success from mocked API tests.

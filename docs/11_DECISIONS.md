@@ -115,3 +115,10 @@ boundaries in cleanroom/. Preserve v2.0.2 lifecycle delivery. Page-space owns
 reversible 48px reservation separately from rail visibility. New storage schema
 1 migrates prior Cleanroom data; do not import legacy executable implementations.
 Release status and remaining parity limitations are in cleanroom/README.md.
+
+## Cleanroom 2.1.1 user regression gate
+
+Follow docs/22_CLEANROOM_REGRESSION_RULES.md. Browser-owned entry and extension
+action are distinct entry paths into the same extension. Explicit Collapse must
+restore enabled compact behavior even when action.onClicked never ran. Expanded
+rail has no global X; browser-owned X remains. Compact rail keeps global disable.

@@ -26,3 +26,8 @@ test("compact rail prepares hidden and becomes visible only via lifecycle visibi
  test("compact expand arrow points left, opposite to expanded collapse",()=>{
   assert.match(rail,/M12\.5 4\.5 7 10 12\.5 15\.5/);
  });
+
+test("expanded rail has no global disable X competing with browser close",()=>{
+ assert.doesNotMatch(js,/iconButton\('Закрыть AppTower'/);
+ assert.doesNotMatch(js,/type:\s*'APP_DISABLE'/);
+});

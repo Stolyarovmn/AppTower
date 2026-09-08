@@ -116,3 +116,15 @@ and MAIN-world script expansion also fail. The same checker runs from npm tests,
 CI and tools/package.py. Existing broad HTTP(S) access is explicitly recorded,
 not certified as minimal; narrowing remains TASK 12. Changes to the budget itself
 require review. Legacy/fallback variants are not covered by this Cleanroom gate.
+
+## 2.1.1 — explicit collapse and UI regression repair
+
+Explicit Collapse now persists enabled=true before closing. Browser-owned panel
+entry can bypass the extension action's enable path; a previously disabled
+workspace otherwise collapses into a hidden rail. Tests cover browser onOpened
+and panel connection after disable, close completion and subsequent expansion.
+The expanded rail no longer contains a global X competing with the browser's X.
+The compact rail retains global disable. Settings uses a centered shared gear SVG.
+
+Mandatory historical regression rules: docs/22_CLEANROOM_REGRESSION_RULES.md in
+the repository. Local tests do not certify the two actual Edge menu controls.

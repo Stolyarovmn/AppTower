@@ -18,7 +18,7 @@ function harness({connectPorts=true,panelContexts=[]}={}){
     action:{onClicked:event()},commands:{onCommand:event()},windows:{onRemoved:event()}
   };
   const context=vm.createContext({...lifecycle,installFeatures:()=>null,chrome,console:{info(){},warn(){}},navigator:{userAgent:'test'},setTimeout});
-  vm.runInContext(source+'\nthis.api={collapseWindowPanel,openWindowPanel,lifecycle,settleUnknown,syncRail};',context);
+  vm.runInContext(source+'\nthis.api={collapseWindowPanel,openWindowPanel,lifecycle,settleUnknown,syncRail,disableForTest(){featureEnabled=false;}};',context);
   function port(name){const p={name,sender:{tab:{windowId:1}},messages:[],onDisconnect:event(),postMessage(m){this.messages.push(m);}};chrome.runtime.onConnect.emit(p);return p;}
   const panel=connectPorts?port('ATV2_PANEL:1'):null;
   const rail=connectPorts?port('ATV2_RAIL'):null;
@@ -111,4 +111,15 @@ test('context recovery cannot overwrite an intervening user open',async()=>{
   h.chrome.runtime.getContexts=()=>new Promise(resolve=>{reply=resolve;});
   const recovery=h.settleUnknown(1);await h.openWindowPanel(1);reply([]);await recovery;
   assert.equal(h.lifecycle(1).phase,'opening');
+});
+
+for (const entry of ['browser-event','panel-connect']) test(`native ${entry} after disable restores compact rail on explicit collapse`, async()=>{
+ const h=harness({connectPorts:false});h.disableForTest();
+ const rail=h.port('ATV2_RAIL');
+ if(entry==='browser-event')h.chrome.sidePanel.onOpened.emit({windowId:1});
+ else h.port('ATV2_PANEL:1');
+ const closing=h.collapseWindowPanel(1);await tick();h.resolveClose();await closing;
+ assert.equal(h.lifecycle(1).phase,'collapsed');
+ assert.equal(rail.messages.at(-1).visible,true);
+ await h.openWindowPanel(1);assert.equal(rail.messages.at(-1).visible,false);
 });
