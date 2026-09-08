@@ -56,10 +56,11 @@ test("ATN-PERF-002 collect New Tab first-interactive baseline", async ({}, testI
 
   try {
     const samples = [];
-    // With nearest-rank p95, 7 samples make p95 equal the single worst sample.
-    // Twenty samples keep the gate sensitive to sustained tail regressions while
-    // preventing one host-scheduler/Xvfb spike from masquerading as the p95.
-    for (let i = 0; i < 20; i += 1) {
+    // A 20-sample nearest-rank p95 is still the second-worst sample, which made
+    // two unrelated host-scheduler/Xvfb stalls fail an otherwise healthy run.
+    // Forty samples keep the same budget while requiring a sustained tail
+    // regression (more than 5% of measurements) to move the p95 over it.
+    for (let i = 0; i < 40; i += 1) {
       const page = await context.newPage();
       const started = nodePerformance.now();
       await page.goto(newTabUrl);
