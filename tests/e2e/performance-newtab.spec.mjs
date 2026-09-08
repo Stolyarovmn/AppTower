@@ -56,7 +56,10 @@ test("ATN-PERF-002 collect New Tab first-interactive baseline", async ({}, testI
 
   try {
     const samples = [];
-    for (let i = 0; i < 7; i += 1) {
+    // With nearest-rank p95, 7 samples make p95 equal the single worst sample.
+    // Twenty samples keep the gate sensitive to sustained tail regressions while
+    // preventing one host-scheduler/Xvfb spike from masquerading as the p95.
+    for (let i = 0; i < 20; i += 1) {
       const page = await context.newPage();
       const started = nodePerformance.now();
       await page.goto(newTabUrl);
