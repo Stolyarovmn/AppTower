@@ -10,7 +10,8 @@ import {
 import { form } from './ui/dialogs.js';
 import { validate, flatten } from './core/model.js';
 let state = await read(),
-  section = location.hash.slice(1) || 'general';
+  section = location.hash.slice(1) || 'general',
+  selectedWorkspaceId = state.workspaces[0].id;
 const content = document.getElementById('content'),
   status = document.getElementById('status');
 const sections = {
@@ -29,7 +30,7 @@ const sections = {
 async function act(action) {
   try {
     state = await mutate(action);
-    status.textContent = 'Сохранено';
+    status.textContent = '';
     render();
   } catch (e) {
     status.textContent = e.message;
@@ -60,14 +61,58 @@ function row(label, value, options, change) {
   box.append(l);
   content.append(box);
 }
+function actionButton(title, fn, options = {}) {
+  const b = button(options.iconOnly ? '' : title, fn);
+  b.title = title;
+  b.setAttribute('aria-label', title);
+  const name = options.icon || ({
+    'Открыть':'external', 'Открыть как приложение':'external',
+    'Открыть AppTower':'workspaces', 'Создать область':'add',
+    'Очистить недавние':'broom', 'Добавить сайт':'add',
+    'Импортировать модуль JSON':'data', 'Открытые отдельные окна':'external',
+    'Экспорт JSON':'data', 'Импорт JSON':'data',
+    'Открыть диагностику':'search',
+    'Переименовать':'edit', 'Удалить':'trash', 'Сбросить':'trash',
+    'Показать':'external', 'Закрыть':'close',
+  })[title];
+  if (name) b.insertAdjacentHTML('afterbegin', icon(name));
+  if (options.iconOnly) b.classList.add('icon-action');
+  return b;
+}
+function labeledAction(title, fn, options) {
+  return actionButton(title, fn, options);
+}
 function card(label, actions, entity) {
   const c = document.createElement('div');
   c.className = 'card';
   const text = document.createElement('span');
   text.textContent = label;
   if(entity)c.append(shortcutIcon(entity));
-  c.append(text, ...actions.map(([title, fn]) => {const b=button(title,fn);const symbol=({'Открыть':'app','Открыть как приложение':'app','Переименовать':'edit','Удалить':'trash','Выше':'up','Ниже':'down'})[title];if(symbol)b.insertAdjacentHTML('afterbegin',icon(symbol));return b;}));
+  c.append(text, ...actions.map(([title, fn, options]) => actionButton(title, fn, options)));
   content.append(c);
+}
+function workspacePicker() {
+  if (!state.workspaces.some((w) => w.id === selectedWorkspaceId))
+    selectedWorkspaceId = state.workspaces[0].id;
+  const box = document.createElement('label');
+  box.className = 'workspace-filter';
+  const text = document.createElement('span');
+  text.textContent = 'Рабочая область';
+  const select = document.createElement('select');
+  for (const w of state.workspaces) {
+    const option = document.createElement('option');
+    option.value = w.id;
+    option.textContent = w.name;
+    select.append(option);
+  }
+  select.value = selectedWorkspaceId;
+  select.onchange = () => {
+    selectedWorkspaceId = select.value;
+    render();
+  };
+  box.append(text, select);
+  content.append(box);
+  return state.workspaces.find((w) => w.id === selectedWorkspaceId);
 }
 function pickJSON(run) {
   const input = document.createElement('input');
@@ -137,10 +182,6 @@ function render() {
           await send({ type: 'OPEN_PANEL', windowId: w.id });
         },
       ],
-      [
-        'Новая вкладка браузера',
-        () => chrome.tabs.create({}),
-      ],
     ]);
   }
   if (section === 'appearance') {
@@ -176,20 +217,30 @@ function render() {
   }
   if (section === 'workspaces') {
     content.append(
-      button('Создать область', async () => {
+      labeledAction('Создать область', async () => {
         const v = await form('Новая область', [
           { name: 'name', label: 'Название', required: true },
         ]);
         if (v) await act({ type: 'workspace-add', name: v.name });
       }),
     );
-    for (const w of state.workspaces)
-      card(w.name, [
-        ['Выше',()=>act({type:'workspace-move',workspaceId:w.id,direction:-1})],
-        ['Ниже',()=>act({type:'workspace-move',workspaceId:w.id,direction:1})],
-        [
-          'Переименовать',
-          async () => {
+    const order = document.createElement('div');
+    order.className = 'workspace-order';
+    for (const w of state.workspaces) {
+      const row = document.createElement('div');
+      row.className = 'card workspace-order-row';
+      row.dataset.id = w.id;
+      const grip = document.createElement('span');
+      grip.className = 'drag-handle';
+      grip.title = 'Перетащить область';
+      grip.innerHTML = icon('grip');
+      grip.draggable = true;
+      const name = document.createElement('span');
+      name.textContent = w.name;
+      row.append(
+        grip,
+        name,
+        actionButton('Переименовать', async () => {
             const v = await form('Рабочая область', [
               {
                 name: 'name',
@@ -204,21 +255,35 @@ function render() {
                 workspaceId: w.id,
                 name: v.name,
               });
-          },
-        ],
-        [
-          'Удалить',
-          () => {
+          }, {iconOnly:true}),
+        actionButton('Удалить', () => {
             if (confirm('Удалить область и её ярлыки?'))
               return act({ type: 'workspace-remove', workspaceId: w.id });
-          },
-        ],
-      ]);
+          }, {iconOnly:true}),
+      );
+      grip.ondragstart = (event) => {
+        event.dataTransfer.setData('text/plain', w.id);
+        event.dataTransfer.effectAllowed = 'move';
+        row.classList.add('dragging');
+      };
+      grip.ondragend = () => row.classList.remove('dragging');
+      row.ondragover = (event) => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+      };
+      row.ondrop = (event) => {
+        event.preventDefault();
+        const id = event.dataTransfer.getData('text/plain');
+        if (id && id !== w.id)
+          void act({type:'workspace-reorder', workspaceId:id, targetId:w.id});
+      };
+      order.append(row);
+    }
+    content.append(order);
   }
   if (section === 'shortcuts') {
-    for (const w of state.workspaces) {
-      hint(w.name);
-      for (const x of flatten(w))
+    const w = workspacePicker();
+    for (const x of flatten(w))
         card(x.title + (x.url ? ' — ' + x.url : ''), [
           [
             'Открыть',
@@ -226,6 +291,7 @@ function render() {
               const site = x.type === 'template' ? x.top : x;
               if (site.url) return chrome.tabs.create({ url: site.url });
             },
+            {iconOnly:true,icon:'external'},
           ],
           [
             'Переименовать',
@@ -246,17 +312,18 @@ function render() {
                   value: v,
                 });
             },
+            {iconOnly:true},
           ],
           [
             'Удалить',
-            () => act({ type: 'remove', workspaceId: w.id, id: x.id }),
+            () => { if (confirm(`Удалить «${x.title}»?`)) return act({ type: 'remove', workspaceId: w.id, id: x.id }); },
+            {iconOnly:true},
           ],
         ], x);
-    }
   }
   if (section === 'recent') {
     content.append(
-      button('Очистить недавние', () => act({ type: 'clear-recent' })),
+      labeledAction('Очистить недавние', () => act({ type: 'clear-recent' })),
     );
     for (const x of state.recent)
       card(x.title, [
@@ -270,8 +337,9 @@ function render() {
               command: { type: 'navigate', url: x.url },
             });
           },
+          {iconOnly:true,icon:'external'},
         ],
-      ]);
+      ], {title:x.title,url:x.url});
   }
   if (section === 'performance') {
     row(
@@ -286,8 +354,11 @@ function render() {
     );
   }
   if (section === 'sites') {
+    hint(
+      'Здесь хранятся правила показа сайтов внутри AppTower. Добавление правила не создаёт ярлык: оно задаёт масштаб, режим отдельного окна, удержание в памяти и уведомления для всего сайта.',
+    );
     content.append(
-      button('Добавить сайт', async () => {
+      labeledAction('Добавить сайт', async () => {
         const v = await form('Параметры сайта', [
           { name: 'url', label: 'URL', required: true },
         ]);
@@ -296,7 +367,14 @@ function render() {
       }),
     );
     for (const [origin, s] of Object.entries(state.sites)) {
-      hint(origin);
+      card(origin, [[
+        'Сбросить',
+        () => {
+          if (confirm(`Удалить индивидуальные настройки для ${origin}?`))
+            return act({type:'site-settings-remove', url:origin});
+        },
+        {iconOnly:true},
+      ]], {title:new URL(origin).hostname,url:origin});
       row(
         'Масштаб',
         s.zoom,
@@ -360,43 +438,52 @@ function render() {
     }
   }
   if (section === 'modules') {
+    hint('Модуль меняет способ открытия поддерживаемого сайта в режиме «Авто». Переключатель временно включает или отключает модуль, сохраняя его настройки.');
     toggle('Модуль YouTube',state.modules.some(m=>m.type==='youtube'&&m.enabled),enabled=>act({type:'module-add',module:{type:'youtube',enabled}}));
     content.append(
-      button('Импортировать модуль JSON', () =>
+      labeledAction('Импортировать модуль JSON', () =>
         pickJSON((module) => act({ type: 'module-add', module })),
       ),
     );
     hint(
       'Модули — проверяемые данные. Формат: {"type":"embed","host":"example.com","target":"https://example.com/embed","name":"Пример"}. Модуль заменяет адрес только в режиме Авто и для указанного host.',
     );
-    for (const m of state.modules) {
-      if(m.type !== 'youtube') toggle(m.name,m.enabled,enabled=>act({type:'module-add',module:{...m,enabled}}));
-      card(m.name, [
-        ['Удалить', () => act({ type: 'module-remove', id: m.id })],
-      ]);
-  }
+    for (const m of state.modules)
+      if(m.type !== 'youtube') {
+        toggle(m.name,m.enabled,enabled=>act({type:'module-add',module:{...m,enabled}}));
+        content.lastChild.append(actionButton('Удалить конфигурацию модуля', () => {
+          if (confirm(`Удалить модуль «${m.name}»?`))
+            return act({type:'module-remove',id:m.id});
+        }, {iconOnly:true,icon:'trash'}));
+      }
   }
   if (section === 'apps') {
     hint(
-      'Обнаруженные Web App Manifest. Открытие создаёт обычное отдельное окно браузера, а не устанавливает PWA в ОС.',
+      'AppTower автоматически находит Web App Manifest на посещённых сайтах. Запись позволяет открыть сайт в отдельном окне браузера без вкладочной панели; приложение в операционную систему не устанавливается.',
     );
     for (const p of state.pwas)
       card(p.name, [
         [
           'Открыть как приложение',
           () => send({ type: 'APP_SIDECAR', url: p.start_url }),
+          {iconOnly:true,icon:'external'},
+        ],
+        [
+          'Удалить',
+          () => act({type:'pwa-remove',url:p.url}),
+          {iconOnly:true},
         ],
       ], {title:p.name,url:p.start_url});
     content.append(
-      button('Открытые отдельные окна', async () => {
+      labeledAction('Открытые отдельные окна', async () => {
         const data =
           (await chrome.storage.session.get('atv2.sidecars'))[
             'atv2.sidecars'
           ] || {};
         for (const [origin, id] of Object.entries(data))
           card(origin, [
-            ['Показать', () => chrome.windows.update(id, { focused: true })],
-            ['Закрыть', () => chrome.windows.remove(id)],
+            ['Показать', () => chrome.windows.update(id, { focused: true }), {iconOnly:true}],
+            ['Закрыть', () => chrome.windows.remove(id), {iconOnly:true}],
           ]);
       }),
     );

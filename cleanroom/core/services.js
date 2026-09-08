@@ -25,6 +25,7 @@ export function compatibilityRules(state, extensionId) {
   }));
 }
 export function installFeatures({ setEnabled, openWindowPanel, log }) {
+  const WELCOME_KEY = 'atv2.welcome.shown';
   let sidecars = new Map();
   const store = createStore(chrome.storage, async (state) => {
     setEnabled(state.enabled);
@@ -37,7 +38,7 @@ export function installFeatures({ setEnabled, openWindowPanel, log }) {
     });
     void chrome.runtime.sendMessage({ type: 'APP_CHANGED' }).catch(() => {});
   });
-  async function sidecar(href) {
+  async function sidecar(href, { reload = false } = {}) {
     href = url(href);
     if (!href) throw Error('Некорректный URL');
     const origin = new URL(href).origin;
@@ -50,7 +51,11 @@ export function installFeatures({ setEnabled, openWindowPanel, log }) {
       try {
         await chrome.windows.update(id, { focused: true });
         const tabs = await chrome.tabs.query({ windowId: id });
-        if (tabs[0]) await chrome.tabs.update(tabs[0].id, { url: href });
+        if (tabs[0]) {
+          if (reload) await chrome.tabs.reload(tabs[0].id);
+          else if (tabs[0].url !== href)
+            await chrome.tabs.update(tabs[0].id, { url: href });
+        }
         return;
       } catch {
         sidecars.delete(origin);
@@ -66,6 +71,19 @@ export function installFeatures({ setEnabled, openWindowPanel, log }) {
     await chrome.storage.session.set({
       'atv2.sidecars': Object.fromEntries(sidecars),
     });
+  }
+  async function closeSidecar(href) {
+    href = url(href);
+    if (!href) throw Error('Некорректный URL');
+    const origin = new URL(href).origin;
+    const cached =
+      (await chrome.storage.session.get('atv2.sidecars'))['atv2.sidecars'] ||
+      {};
+    const id = cached[origin];
+    if (id) await chrome.windows.remove(id).catch(() => {});
+    delete cached[origin];
+    sidecars.delete(origin);
+    await chrome.storage.session.set({ 'atv2.sidecars': cached });
   }
   async function notifications() {
     if (
@@ -104,11 +122,19 @@ export function installFeatures({ setEnabled, openWindowPanel, log }) {
       return { ok: true };
     }
     if (m.type === 'APP_OPTIONS') {
-      await chrome.runtime.openOptionsPage();
+      if (m.section)
+        await chrome.tabs.create({
+          url: chrome.runtime.getURL(`options.html#${m.section}`),
+        });
+      else await chrome.runtime.openOptionsPage();
       return { ok: true };
     }
     if (m.type === 'APP_SIDECAR') {
-      await sidecar(m.url);
+      await sidecar(m.url, { reload: !!m.reload });
+      return { ok: true };
+    }
+    if (m.type === 'APP_SIDECAR_RETURN') {
+      await closeSidecar(m.url);
       return { ok: true };
     }
     if (m.type === 'APP_DISCOVER_PWA') {
@@ -133,7 +159,7 @@ export function installFeatures({ setEnabled, openWindowPanel, log }) {
       await store.write({
         type: 'pwa',
         pwa: {
-          url: page,
+          url: manifest,
           start_url: start,
           name: data.name || data.short_name || new URL(page).hostname,
         },
@@ -161,7 +187,7 @@ export function installFeatures({ setEnabled, openWindowPanel, log }) {
         .receive(changes['atv2.sync.v1'].newValue)
         .catch((e) => log('sync.error', { error: e.message }));
   });
-  chrome.runtime.onInstalled.addListener(() => {
+  chrome.runtime.onInstalled.addListener(async (details = {}) => {
     chrome.contextMenus.removeAll(() => {
       chrome.contextMenus.create({
         id: 'at-add',
@@ -174,6 +200,13 @@ export function installFeatures({ setEnabled, openWindowPanel, log }) {
         contexts: ['link'],
       });
     });
+    if (details.reason === 'install') {
+      const existing = await chrome.storage.local.get(WELCOME_KEY);
+      if (!existing[WELCOME_KEY]) {
+        await chrome.storage.local.set({ [WELCOME_KEY]: true });
+        await chrome.tabs.create({ url: chrome.runtime.getURL('welcome.html') });
+      }
+    }
   });
   chrome.contextMenus.onClicked.addListener((info, tab) => {
     if (!Number.isInteger(tab?.windowId)) return;

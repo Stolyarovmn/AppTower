@@ -18,4 +18,6 @@ test('template order controls pane opening and group color survives persistence'
  assert.equal(validate({...group,settings:{}}).settings.backgroundLimit,12);
 });
 
-test('workspace ordering preserves identities and pane data',()=>{let d=reduce(defaults(),{type:'workspace-add',name:'Second'});const first=d.workspaces[0].id,second=d.workspaces[1].id;d=reduce(d,{type:'workspace-move',workspaceId:second,direction:-1});assert.deepEqual(d.workspaces.map(w=>w.id),[second,first]);});
+test('workspace drag ordering preserves identities and pane data',()=>{let d=reduce(defaults(),{type:'workspace-add',name:'Second'});d=reduce(d,{type:'workspace-add',name:'Third'});const [first,second,third]=d.workspaces.map(w=>w.id);d=reduce(d,{type:'pane',workspaceId:third,pane:'top',value:{url:'https://third.test'}});d=reduce(d,{type:'workspace-reorder',workspaceId:third,targetId:first});assert.deepEqual(d.workspaces.map(w=>w.id),[third,first,second]);assert.equal(d.workspaces[0].panes.top.url,'https://third.test/');});
+
+test('web app discovery records stay unique by start URL and can be removed',()=>{let d=defaults();d.pwas=[{url:'https://example.test/manifest-a.json',start_url:'https://example.test/app',name:'First'},{url:'https://example.test/manifest-b.json',start_url:'https://example.test/app',name:'Duplicate'}];d=validate(d);assert.equal(d.pwas.length,1);d=reduce(d,{type:'pwa-remove',url:'https://example.test/app'});assert.equal(d.pwas.length,0);});

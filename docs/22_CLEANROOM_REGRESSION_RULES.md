@@ -11,7 +11,7 @@ is not evidence that old behavioral defects cannot recur.
 | Expanded panel has only browser-owned global X | No extension global-disable button in expanded rail; pane X only in split |
 | Collapsed rail X disables globally | Persists across restart; explicit action re-enables; native entry then Collapse restores compact surface |
 | Chevron direction | Right-pointing expanded Collapse, left-pointing compact Expand |
-| Settings icon | One shared SVG source in rail/panel/newtab; centered, same stroke, no font glyph or post-render patch replacement |
+| Settings icon | One shared SVG source in rail/panel/welcome; centered, same stroke, no font glyph or post-render patch replacement |
 | Icon buttons and spacing | Compact consistent hit areas; no oversized kebab tile; verify Windows scaling and both themes |
 | Pane independence | Renaming, organizing and navigating bottom do not assign top iframe src; closing top retains bottom document |
 | Add current | Populated browser source when empty; explicit top/bottom/browser source selection; no stale URL after pane navigation |
@@ -94,3 +94,14 @@ are a fully fitting prefix in persisted order; overflow provides all workspaces.
 No chrome_url_overrides: onboarding belongs inside the empty extension only.
 Boolean/module choices use labeled switches. No claim of inheriting private
 Edge/Chrome settings UI. Original icon retained pending a verified sharper source.
+
+## 2.4 gate
+
+Selecting separate-window mode performs the open action once; it does not leave
+a second “open” command in the pane. Reload refreshes the owned popup, and Return
+closes that popup before switching the pane back to Auto. Workspace ordering uses
+drag handles and stable IDs. Settings do not emit permanent success notices or
+repeat action names beside self-describing icons. Search results remain left
+aligned and every non-site command has a semantic icon. Web App entries dedupe by
+start URL. The browser new-tab page is never overridden; first-install welcome is
+an ordinary extension tab. Application icons are exported from one vector source.

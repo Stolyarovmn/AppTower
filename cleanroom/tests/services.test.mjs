@@ -25,3 +25,25 @@ test('feature service rebuilds notifications and disables all windows',async()=>
  assert.equal(permissions.length,1);assert.equal(permissions[0].primaryPattern,'https://b.test/*');
  assert.equal((await call({type:'APP_DISABLE'})).ok,true);assert.deepEqual(closed,[1,2]);assert.equal(enabled.at(-1),false);assert.equal(chrome.storage.local.data[KEY].enabled,false);
 });
+
+test('separate window opens once, reloads in place and returns to AppTower',async()=>{
+ const updates=[],reloads=[],removed=[],createdTabs=[];
+ globalThis.chrome={storage:{local:area({[KEY]:defaults()}),session:area(),sync:area(),onChanged:event()},
+ runtime:{id:'test',onMessage:event(),onInstalled:event(),getURL:p=>'chrome-extension://test/'+p,async sendMessage(){return {ok:true};}},
+ declarativeNetRequest:{async getSessionRules(){return [];},async updateSessionRules(){}},
+ contextMenus:{onClicked:event()},permissions:{async contains(){return false;}},contentSettings:{notifications:{}},
+ windows:{async create(){return {id:91};},async update(id,value){updates.push([id,value]);},async remove(id){removed.push(id);},async getAll(){return [];},},
+ tabs:{async query({windowId}){return windowId===91?[{id:701,url:'https://app.test/'}]:[];},async update(id,value){createdTabs.push(['update',id,value]);},async reload(id){reloads.push(id);},async create(value){createdTabs.push(['create',value]);}},
+ sidePanel:{}};
+ installFeatures({setEnabled(){},openWindowPanel(){},log(){}});
+ const listener=chrome.runtime.onMessage.listeners[0];
+ const call=m=>new Promise(resolve=>listener(m,{},resolve));
+ assert.equal((await call({type:'APP_SIDECAR',url:'https://app.test/'})).ok,true);
+ assert.equal(chrome.storage.session.data['atv2.sidecars']['https://app.test'],91);
+ assert.equal((await call({type:'APP_SIDECAR',url:'https://app.test/',reload:true})).ok,true);
+ assert.deepEqual(updates,[[91,{focused:true}]]);assert.deepEqual(reloads,[701]);
+ assert.equal((await call({type:'APP_SIDECAR_RETURN',url:'https://app.test/'})).ok,true);
+ assert.deepEqual(removed,[91]);assert.deepEqual(chrome.storage.session.data['atv2.sidecars'],{});
+ assert.equal((await call({type:'APP_OPTIONS',section:'workspaces'})).ok,true);
+ assert.deepEqual(createdTabs.at(-1),['create',{url:'chrome-extension://test/options.html#workspaces'}]);
+});

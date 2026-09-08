@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Добро пожаловать в AppTower</title>
+  <link rel="stylesheet" href="sidepanel.css">
+  <style>
+    body{display:grid;place-items:center;overflow:auto}.welcome{width:min(560px,calc(100vw - 32px));padding:32px;border:1px solid var(--border);border-radius:14px;background:var(--panel)}
+    h1{margin:0 0 12px;font-size:28px}p{margin:0 0 24px;color:var(--muted);line-height:1.55}.actions{display:flex;gap:10px;flex-wrap:wrap}.actions button{min-height:38px;padding:0 14px;border:1px solid var(--border);border-radius:8px;background:var(--toolbar)}
+  </style>
+</head>
+<body>
+  <main class="welcome">
+    <h1>AppTower готов</h1>
+    <p>Создавайте рабочие области, собирайте сайты в группы и открывайте два сайта как один шаблон. Эта страница показывается только после первой установки.</p>
+    <div class="actions"><button id="open">Открыть AppTower</button><button id="settings">Настройки</button></div>
+  </main>
+  <script type="module" src="welcome.js"></script>
+</body>
+</html>

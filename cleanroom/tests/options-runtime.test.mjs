@@ -3,12 +3,17 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {JSDOM} from 'jsdom';
 import {defaults,reduce} from '../core/model.js';
-test('settings sections render semantic icons and module switch saves enabled state',async()=>{
- const d=new JSDOM(fs.readFileSync(new URL('../options.html',import.meta.url),'utf8'),{url:'chrome-extension://test/options.html#modules'});
- Object.assign(globalThis,{document:d.window.document,window:d.window,location:d.window.location});let state=defaults();
+test('settings use drag handles, icon actions and module switch without saved noise',async()=>{
+ const d=new JSDOM(fs.readFileSync(new URL('../options.html',import.meta.url),'utf8'),{url:'chrome-extension://test/options.html#workspaces'});
+ Object.assign(globalThis,{document:d.window.document,window:d.window,location:d.window.location,confirm:()=>true});let state=reduce(defaults(),{type:'workspace-add',name:'Дополнительная'});
  globalThis.chrome={runtime:{getURL:p=>'chrome-extension://test'+p,sendMessage:async m=>{if(m.type==='APP_MUTATE')state=reduce(state,m.action);return {ok:true,state};}},storage:{onChanged:{addListener(){}}}};
  await import('../options.js');
  assert.equal(document.querySelectorAll('.nav-group').length,4);
+ assert.equal(document.querySelectorAll('.drag-handle[draggable="true"]').length,2);
+ assert.doesNotMatch(document.getElementById('content').textContent,/Выше|Ниже/);
+ assert.ok(document.querySelector('.workspace-order-row .icon-action[aria-label="Переименовать"]'));
+ document.querySelector('[data-section="modules"]').click();
+ for(let i=0;i<3;i++)await Promise.resolve();
  const toggle=document.querySelector('[role="switch"]');assert.ok(toggle);assert.equal(toggle.checked,false);toggle.checked=true;toggle.dispatchEvent(new d.window.Event('change'));
- for(let i=0;i<6;i++)await Promise.resolve();assert.equal(state.modules.find(m=>m.type==='youtube').enabled,true);assert.ok(document.querySelector('[data-section="data"] svg'));d.window.close();
+ for(let i=0;i<6;i++)await Promise.resolve();assert.equal(state.modules.find(m=>m.type==='youtube').enabled,true);assert.equal(document.getElementById('status').textContent,'');assert.doesNotMatch(document.getElementById('content').textContent,/Удалить/);assert.ok(document.querySelector('[data-section="data"] svg'));d.window.close();
 });

@@ -14,6 +14,8 @@ globalThis.__atv2IconPaths = Object.freeze({
   up: '<path d="m5 12 5-5 5 5"/>',
   down: '<path d="m5 8 5 5 5-5"/>',
   app: '<rect x="2" y="3" width="16" height="14" rx="2"/><path d="M2 7h16M5 5h1m2 0h1"/>',
+  external: '<rect x="3" y="5" width="12" height="12" rx="2"/><path d="M10 3h7v7M9 11l8-8"/>',
+  grip: '<circle cx="7" cy="5" r="1"/><circle cx="13" cy="5" r="1"/><circle cx="7" cy="10" r="1"/><circle cx="13" cy="10" r="1"/><circle cx="7" cy="15" r="1"/><circle cx="13" cy="15" r="1"/>',
   sync: '<path d="M4 7a6 6 0 0 1 10-2l2 2m0-4v4h-4M16 13a6 6 0 0 1-10 2l-2-2m0 4v-4h4"/>',
   workspaces: '<rect x="6" y="6" width="11" height="11" rx="2"/><path d="M3 13V3h10"/>',
   chevron: '<path d="m5 8 5 5 5-5"/>',

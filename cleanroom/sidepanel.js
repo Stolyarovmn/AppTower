@@ -29,7 +29,10 @@ $('workspace').before(workspaceTabs); $('workspace').hidden=true;
 async function selectWorkspace(id) { workspaceId=id; await chrome.storage.session.set({[sessionKey]:id}); await render(); }
 function renderWorkspaceTabs() {
   workspaceTabs.replaceChildren();
-  const overflow=iconButton('Все рабочие области','chevron',()=>menu('Рабочие области',state.workspaces.map(w=>[w.name,()=>selectWorkspace(w.id),{icon:'workspaces',selected:w.id===current().id}]),overflow));
+  const overflow=iconButton('Все рабочие области','chevron',()=>menu('Рабочие области',[
+    ...state.workspaces.map(w=>[w.name,()=>selectWorkspace(w.id),{icon:'workspaces',selected:w.id===current().id}]),
+    ['Настроить рабочие области',()=>send({type:'APP_OPTIONS',section:'workspaces'}),{icon:'settings'}],
+  ],overflow));
   overflow.classList.add('workspace-overflow');
   const buttons=state.workspaces.map(w=>{const b=button(w.name,()=>selectWorkspace(w.id));b.setAttribute('aria-pressed',String(w.id===current().id));b.className='workspace-tab';workspaceTabs.append(b);return b;});
   workspaceTabs.append(overflow);
@@ -123,7 +126,7 @@ function context(x, anchor) {
   const actions = [];
   if (x.type === 'site') actions.push(
     ['Открыть', () => openItem(x), {icon:'single'}],
-    ['Отдельное окно', () => send({type:'APP_SIDECAR',url:x.url})],
+    ['Открыть в отдельном окне', () => send({type:'APP_SIDECAR',url:x.url}), {icon:'external'}],
   );
   if (x.type === 'template') actions.push(['Открыть шаблон', () => openItem(x), {icon:'template'}]);
   if (x.type === 'group') actions.push(['Разгруппировать', () => act({type:'ungroup',id:x.id}), {icon:'group'}]);
@@ -147,6 +150,7 @@ async function organizer() {
             item: { type: 'group', title: v.title, color: v.color, items: [] },
           });
       },
+      {icon:'group'},
     ],
     [
       'Сохранить две области как шаблон',
@@ -159,14 +163,15 @@ async function organizer() {
           top: v.reverse ? w.panes.bottom : w.panes.top,
           bottom: v.reverse ? w.panes.top : w.panes.bottom}});
       },
+      {icon:'template'},
     ],
-    ['Управление рабочими областями', () => send({ type: 'APP_OPTIONS' })],
     [
       'Очистить ярлыки этой области',
       async () => {
         if (confirm('Удалить все ярлыки этой рабочей области?'))
           await act({ type: 'clear-items' });
       },
+      {icon:'broom'},
     ],
   ]);
 }
@@ -306,13 +311,24 @@ for (const el of document.querySelectorAll('.pane')) {
   const address = () => input.value === current().panes[name].url.replace(/^https?:\/\//, '') ? current().panes[name].url : input.value;
   const navigate = () =>
     act({ type: 'pane', pane: name, value: { url: address() } });
+  const setMode = async (mode) => {
+    const pane = current().panes[name];
+    if (mode === 'R')
+      await send({ type: 'APP_SIDECAR', url: pane.url });
+    await act({ type: 'pane', pane: name, value: { mode } });
+  };
   input.onkeydown = (e) => {
     if (e.key === 'Enter') void navigate().catch(error);
   };
   el.querySelector('[data-action="go"]').onclick = () =>
     navigate().catch(error);
-  el.querySelector('[data-action="reload"]').onclick = () =>
-    renderer.wake(name, true).catch(error);
+  el.querySelector('[data-action="reload"]').onclick = () => {
+    const pane = current().panes[name];
+    const task = pane.mode === 'R'
+      ? send({ type: 'APP_SIDECAR', url: pane.url, reload: true })
+      : renderer.wake(name, true);
+    task.catch(error);
+  };
   el.querySelector('[data-action="save"]').onclick = () =>
     act({
       type: 'add',
@@ -328,8 +344,8 @@ for (const el of document.querySelectorAll('.pane')) {
     menu('Область', [
       ...['A', 'S', 'C', 'R'].map((mode, i) => [
         ['Авто', 'Обычный iframe', 'Совместимость', 'Отдельное окно'][i],
-        () => act({ type: 'pane', pane: name, value: { mode } }),
-        {selected: current().panes[name].mode === mode, icon: ['auto','frame','shield','app'][i]},
+        () => setMode(mode),
+        {selected: current().panes[name].mode === mode, icon: ['auto','frame','shield','external'][i]},
       ]),
       [
         'Открыть обычной вкладкой',
@@ -386,6 +402,7 @@ function renderSearch() {
     })),
     ...state.recent.map((x) => ({
       label: 'Недавнее: ' + x.title,
+      icon: 'clock',
       run: () =>
         act({
           type: 'pane',
@@ -395,22 +412,25 @@ function renderSearch() {
     })),
     ...state.workspaces.map((w) => ({
       label: 'Область: ' + w.name,
+      icon: 'workspaces',
       run: async () => {
         workspaceId = w.id;
         await chrome.storage.session.set({ [sessionKey]: workspaceId });
         await render();
       },
     })),
-    { label: 'Добавить текущую страницу', run: addSite },
-    { label: 'Группы и шаблоны', run: organizer },
-    { label: 'Настройки', run: () => send({ type: 'APP_OPTIONS' }) },
+    { label: 'Добавить текущую страницу', icon: 'add', run: addSite },
+    { label: 'Группы и шаблоны', icon: 'group', run: organizer },
+    { label: 'Настройки', icon: 'settings', run: () => send({ type: 'APP_OPTIONS' }) },
   ];
   results.replaceChildren(
     ...entries
       .filter((x) => x.label.toLowerCase().includes(q))
       .map((x) => {
         const b=button(x.label, async () => { $('search-dialog').close(); await x.run(); });
-        if(x.entity)b.prepend(shortcutIcon(x.entity));return b;
+        if(x.entity)b.prepend(shortcutIcon(x.entity));
+        else if(x.icon)b.insertAdjacentHTML('afterbegin',icon(x.icon));
+        return b;
       }),
   );
 }

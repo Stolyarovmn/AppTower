@@ -1,3 +1,23 @@
+# 2.4.0 separate-window return and settings cleanup
+
+Selecting “Отдельное окно” now opens the popup immediately. Reload targets the
+existing popup, and the pane offers “Вернуть в AppTower”, which closes the owned
+popup and restores normal panel rendering. The mode uses the standard external-
+window arrow icon. Workspace management moved into the workspace overflow menu.
+
+Workspace order is changed with a six-dot drag handle. Settings no longer show
+Higher/Lower controls, permanent “Saved” messages, a redundant New Tab action,
+or duplicate text on shortcut action buttons. Sites and Web Apps explain their
+effect, Web App discovery deduplicates by start URL, and all search/settings rows
+use left-aligned semantic icons. Boolean and module state remain switches.
+
+The extension no longer overrides the browser home or new-tab page. A dedicated
+welcome page opens only on first installation. The application icon is redrawn
+from a transparent vector source and exported at every manifest size. Extension
+pages follow system light/dark mode, AccentColor and Segoe UI Variable where the
+platform provides them; browser-private Settings controls are not exposed to
+extensions. Automated result: 60 tests passed; live Edge UI remains unverified.
+
 # 2.3.0 workspace navigation and layout fixes
 
 Bottom single pane fills available height. Site icons appear in group menus,

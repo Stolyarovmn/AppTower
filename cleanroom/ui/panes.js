@@ -43,6 +43,22 @@ export function createPanes(windowId, onError) {
     if (slot.current) { slot.paused = slot.current.key; discard(slot.current); slot.current = null; }
     notice(name, 'Область приостановлена — возобновить', () => wake(name));
   }
+  async function returnToPanel(name) {
+    const p = work.panes[name];
+    await send({ type: 'APP_SIDECAR_RETURN', url: p.url });
+    if (p.mode === 'A' && latest.sites[new URL(p.url).origin]?.pwaApp)
+      await mutate({
+        type: 'site-settings',
+        url: p.url,
+        value: { pwaApp: false },
+      });
+    await mutate({
+      type: 'pane',
+      workspaceId: work.id,
+      pane: name,
+      value: { mode: 'A' },
+    });
+  }
   async function wake(name, force = false) {
     const slot = slots[name], p = work.panes[name];
     if (!p.url) return;
@@ -74,7 +90,9 @@ export function createPanes(windowId, onError) {
       if (!shown || !p.url) { park(slot); slot.notice.hidden = true; continue; }
       const setting = state.sites[new URL(p.url).origin];
       if (p.mode === 'R' || (p.mode === 'A' && setting?.pwaApp)) {
-        park(slot); notice(name,'Открыть отдельным окном',() => send({type:'APP_SIDECAR',url:p.url})); continue;
+        park(slot);
+        notice(name, 'Вернуть в AppTower', () => returnToPanel(name));
+        continue;
       }
       if (slot.paused === key(name,p)) continue;
       await wake(name);

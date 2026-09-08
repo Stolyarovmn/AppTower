@@ -191,14 +191,20 @@ export function validate(value) {
     };
   }
   d.modules = (value.modules || []).slice(0, 30).map(validateModule);
+  const seenPwas = new Set();
   d.pwas = (value.pwas || [])
     .filter((p) => url(p.url) && url(p.start_url))
-    .slice(0, 100)
     .map((p) => ({
       url: url(p.url),
       start_url: url(p.start_url),
       name: text(p.name),
-    }));
+    }))
+    .filter((p) => {
+      if (seenPwas.has(p.start_url)) return false;
+      seenPwas.add(p.start_url);
+      return true;
+    })
+    .slice(0, 100);
   d.updatedAt = Number(value.updatedAt) || 0;
   return d;
 }
@@ -253,12 +259,26 @@ export function reduce(input, action) {
       d.sites[origin] = { ...d.sites[origin], ...action.value };
       break;
     }
+    case 'site-settings-remove': {
+      const origin = new URL(url(action.url)).origin;
+      delete d.sites[origin];
+      break;
+    }
     case 'workspace-add':
       d.workspaces.push(workspace(text(action.name) || 'Новая область'));
       break;
     case 'workspace-move': {
       const from=d.workspaces.findIndex(x=>x.id===w.id), to=Math.max(0,Math.min(d.workspaces.length-1,from+(action.direction<0?-1:1)));
       d.workspaces.splice(from,1);d.workspaces.splice(to,0,w);break;
+    }
+    case 'workspace-reorder': {
+      const from = d.workspaces.findIndex((x) => x.id === w.id);
+      const to = d.workspaces.findIndex((x) => x.id === action.targetId);
+      if (from >= 0 && to >= 0 && from !== to) {
+        const [moved] = d.workspaces.splice(from, 1);
+        d.workspaces.splice(to, 0, moved);
+      }
+      break;
     }
     case 'workspace-rename':
       w.name = text(action.name) || w.name;
@@ -440,8 +460,17 @@ export function reduce(input, action) {
     case 'pwa':
       d.pwas = [
         action.pwa,
-        ...d.pwas.filter((x) => x.url !== action.pwa.url),
+        ...d.pwas.filter(
+          (x) =>
+            x.url !== action.pwa.url &&
+            x.start_url !== action.pwa.start_url,
+        ),
       ].slice(0, 100);
+      break;
+    case 'pwa-remove':
+      d.pwas = d.pwas.filter(
+        (x) => x.url !== url(action.url) && x.start_url !== url(action.url),
+      );
       break;
     default:
       throw Error('Неизвестная команда данных: ' + action.type);
