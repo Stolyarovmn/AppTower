@@ -295,3 +295,8 @@ Sources: https://github.com/Stolyarovmn/AppTower/blob/2c1073b3d83e7a2d294a1621ce
 | 8 | 65 | Focus mode: temporarily show only one group/workspace | TabTree, Tabwise | Promote if groups/templates overload rail. |
 | 9 | 64 | Automatic domain/grouping suggestions | VertiTab, TabDog, SuperchargeNavigation; Sidebar for Tabs/Bookmarks (MIT) | Opt-in shortcut organizer only; deterministic site rules first, optional local AI fallback; do not become a tab manager. |
 | 10 | 54 | Full vertical-tab manager | VertiTab, TabTOC, ddSideBar, TabTree, Tabwise | Deliberately low; conflicts with product boundary. |
+
+
+### TASK 10 — Cleanroom gate implementation evidence (2026-09-08)
+
+Implemented the Cleanroom portion at https://github.com/Stolyarovmn/AppTower/commit/a50d9097b8543018aa31c60f08da0e2377e7772a : documented required/optional/host budgets, content-script scope checks, CI invocation and packaging enforcement. Local Node suite: 45 passed, 0 failed, including 12 permission checks. Local package creation passed. This is build/test infrastructure, not a new user-facing feature or a complete cross-variant TASK 10 pass. Legacy/fallback variant budget and remote CI confirmation remain outstanding. Preserve TASK status pending those gates; no new ACTIVE item is created.
