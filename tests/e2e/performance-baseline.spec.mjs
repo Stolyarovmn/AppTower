@@ -103,7 +103,7 @@ test("ATN-PERF-001 collect Side Panel startup, interaction, idle CPU and heap ba
     });
 
     const searchSamples = [];
-    for (let i = 0; i < 7; i += 1) {
+    for (let i = 0; i < 20; i += 1) {
       const started = nodePerformance.now();
       await panel.locator("#rail-search").click();
       await expect.poll(() => panel.locator("#search-dialog").evaluate(element => element.open === true)).toBe(true);
