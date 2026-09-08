@@ -219,12 +219,15 @@ test("ATN-E2E-003 changing bottom pane does not reload top pane", async () => {
   const topInstanceBefore = await top.evaluate(() => window.__appTowerInstanceId);
   expect(topInstanceBefore).toBeTruthy();
 
-  await navigatePane("bottom", `${baseUrl}/bottom-2`);
-  await panel.waitForTimeout(500);
-
-  const topAfter = await paneFrame("top");
-  const topInstanceAfter = await topAfter.evaluate(() => window.__appTowerInstanceId);
-  expect(topInstanceAfter).toBe(topInstanceBefore);
+  // Exercise consecutive same-pane writes while workspace-change broadcasts from
+  // the previous write can still be in flight. A stale refresh must never roll
+  // a newer navigation intent back to the previous URL or recreate the top pane.
+  for (const suffix of ["bottom-2", "bottom-3", "bottom-4"]) {
+    await navigatePane("bottom", `${baseUrl}/${suffix}`);
+    const topAfter = await paneFrame("top");
+    const topInstanceAfter = await topAfter.evaluate(() => window.__appTowerInstanceId);
+    expect(topInstanceAfter).toBe(topInstanceBefore);
+  }
 });
 
 test("ATN-E2E-004 site can be dragged into a created group", async () => {
