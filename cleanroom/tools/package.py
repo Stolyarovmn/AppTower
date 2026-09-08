@@ -1,9 +1,10 @@
 """Build complete unpacked extension ZIP without installed test dependencies."""
-import argparse, json, pathlib, zipfile
+import argparse, json, pathlib, zipfile, subprocess
 parser = argparse.ArgumentParser()
 parser.add_argument('--output', required=True)
 args = parser.parse_args()
 root = pathlib.Path(__file__).resolve().parents[1]
+subprocess.run(['node', str(root / 'tools/check-permissions.mjs')], check=True)
 manifest = json.loads((root / 'manifest.json').read_text())
 assert 'key' not in manifest
 out = pathlib.Path(args.output).resolve()

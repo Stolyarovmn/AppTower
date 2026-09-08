@@ -26,6 +26,8 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Validate manifest JSON
         run: node -e "JSON.parse(require('fs').readFileSync('cleanroom/manifest.json','utf8'))"
+      - name: Check manifest permission budget
+        run: node cleanroom/tools/check-permissions.mjs
       - name: Cleanroom unit and contract tests
         working-directory: cleanroom
         run: npm test

@@ -106,3 +106,13 @@ page width; upper/lower iframe source stays unchanged on metadata edits and
 closing the other pane; global X hides every rail; reducing resource cap sleeps
 excess panes; export/import preserves organization. Automated tests cover the
 state/DOM/API-double portions, not browser-owned UI.
+
+### Permission regression gate
+
+`node tools/check-permissions.mjs` verifies the manifest against documented
+required, optional, host and content-script budgets. New permissions and
+optional-to-required promotion fail; removals pass. Inherited-origin, all-frame
+and MAIN-world script expansion also fail. The same checker runs from npm tests,
+CI and tools/package.py. Existing broad HTTP(S) access is explicitly recorded,
+not certified as minimal; narrowing remains TASK 12. Changes to the budget itself
+require review. Legacy/fallback variants are not covered by this Cleanroom gate.
