@@ -36,8 +36,9 @@ The Yandex/Chromium fallback is generated/maintained under
 - Template icon overlap defaults to 50%; the TOP site is visually above and
   opens in the upper pane.
 - Search icon is at the bottom of the rail.
-- Idle web panes sleep after 5 minutes; the configurable hard cap is at most 6
-  live web/media pane resources.
+- Open Cleanroom panes are protected from automatic idle eviction. Only parked
+  background pages expire after 5 minutes; per-window background cache defaults
+  to 12 (configurable 0–24). This supersedes the old six-live-resource cap.
 - Optional service integrations belong in declarative modules, not hard-coded
   provider logic in the core.
 - Imported module manifests must remain data-only. Do not add remote executable

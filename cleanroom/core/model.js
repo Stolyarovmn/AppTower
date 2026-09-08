@@ -19,7 +19,7 @@ export function defaults() {
       theme: 'system',
       accent: '',
       sync: false,
-      maxLive: 6,
+      backgroundLimit: 12,
       idleMinutes: 5,
       overlap: 50,
     },
@@ -64,6 +64,7 @@ export function item(value, inGroup = false) {
       id: text(value.id) || crypto.randomUUID(),
       type: 'group',
       title: text(value.title) || 'Группа',
+      color: /^#[0-9a-f]{6}$/i.test(value.color || '') ? value.color : '#648bd8',
       items: (value.items || []).map((x) => item(x, true)),
     };
   }
@@ -133,7 +134,7 @@ export function validate(value) {
       ? settings.accent
       : '',
     sync: settings.sync === true,
-    maxLive: Math.max(1, Math.min(6, Number(settings.maxLive) || 6)),
+    backgroundLimit: Math.max(0, Math.min(24, Number.isFinite(Number(settings.backgroundLimit)) ? Math.floor(Number(settings.backgroundLimit)) : 12)),
     idleMinutes: 5,
     overlap: Math.max(20, Math.min(80, Number(settings.overlap) || 50)),
   };
@@ -263,9 +264,13 @@ export function reduce(input, action) {
         throw Error('Нельзя удалить последнюю область');
       d.workspaces = d.workspaces.filter((x) => x.id !== w.id);
       break;
-    case 'add':
-      w.items.push(item(action.item));
+    case 'add': {
+      const added = item(action.item);
+      w.items.push(added);
+      if (action.openIfEmpty && added.type === 'site' && !w.panes.top.url && !w.panes.bottom.url)
+        w.panes[w.singlePane] = { url: added.url, title: added.title, mode: added.mode };
       break;
+    }
     case 'edit': {
       const found = locate(w, action.id);
       found.list[found.index] = item(
@@ -337,13 +342,14 @@ export function reduce(input, action) {
               type: 'template',
               title: text(action.name) || 'Шаблон',
               ratio: w.ratio,
-              top: a.item,
-              bottom: b.item,
+              top: action.reverse ? b.item : a.item,
+              bottom: action.reverse ? a.item : b.item,
             }
           : {
               id: crypto.randomUUID(),
               type: 'group',
               title: text(action.name) || 'Группа',
+              color: action.color,
               items: [a.item, b.item],
             };
       a.list.splice(a.list.indexOf(a.item), 1);

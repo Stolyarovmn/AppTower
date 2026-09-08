@@ -57,9 +57,26 @@
       rect: node.getBoundingClientRect(),
       style: getComputedStyle(node),
     }));
+    const wide = [...document.querySelectorAll('body *')].filter(node => {
+      const s = getComputedStyle(node), r = node.getBoundingClientRect();
+      return s.position !== 'fixed' && r.width >= innerWidth - 1 && r.width <= innerWidth + 1;
+    });
+    remember(document.documentElement, 'min-width', '0');
+    remember(document.documentElement, 'box-sizing', 'border-box');
     remember(document.documentElement, 'width', `calc(100% - ${WIDTH}px)`);
     remember(document.documentElement, 'max-width', `calc(100% - ${WIDTH}px)`);
-    if (document.body) remember(document.body, 'max-width', '100%');
+    if (document.body) {
+      remember(document.body, 'width', '100%');
+      remember(document.body, 'min-width', '0');
+      remember(document.body, 'max-width', '100%');
+      remember(document.body, 'box-sizing', 'border-box');
+    }
+    // Viewport-unit app shells do not shrink when only html is resized.
+    for (const node of wide) {
+      remember(node, 'min-width', '0');
+      remember(node, 'max-width', `calc(100vw - ${WIDTH}px)`);
+      remember(node, 'box-sizing', 'border-box');
+    }
     for (const { node, rect, style } of measured) {
       if (rect.right <= innerWidth - WIDTH || rect.width === 0) continue;
       // Wide fixed headers keep their left edge; small right-pinned controls shift left.

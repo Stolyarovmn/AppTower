@@ -1,6 +1,5 @@
 import { createStore } from './store.js';
 import { url } from './model.js';
-import { evictLeases } from './resources.js';
 export function compatibilityRules(state, extensionId) {
   const origins = new Set();
   for (const w of state.workspaces)
@@ -27,32 +26,8 @@ export function compatibilityRules(state, extensionId) {
 }
 export function installFeatures({ setEnabled, openWindowPanel, log }) {
   let sidecars = new Map();
-  let leaseQueue = Promise.resolve();
-  let lastLimit = 6;
   const store = createStore(chrome.storage, async (state) => {
     setEnabled(state.enabled);
-    if (state.settings.maxLive < lastLimit) {
-      const task = leaseQueue.then(async () => {
-        const saved = await chrome.storage.session.get('atv2.leases');
-        const leases = saved['atv2.leases'] || {};
-        const victims = Object.entries(leases)
-          .sort((a, b) => a[1].at - b[1].at)
-          .slice(
-            0,
-            Math.max(0, Object.keys(leases).length - state.settings.maxLive),
-          );
-        for (const [key] of victims) {
-          await chrome.runtime
-            .sendMessage({ type: 'APP_SLEEP', key })
-            .catch(() => {});
-          delete leases[key];
-        }
-        await chrome.storage.session.set({ 'atv2.leases': leases });
-      });
-      leaseQueue = task.catch(() => {});
-      await task;
-    }
-    lastLimit = state.settings.maxLive;
     const old = await chrome.declarativeNetRequest.getSessionRules();
     await chrome.declarativeNetRequest.updateSessionRules({
       removeRuleIds: old
@@ -108,31 +83,6 @@ export function installFeatures({ setEnabled, openWindowPanel, log }) {
         });
   }
   async function process(m, sender) {
-    if (m.type === 'APP_LEASE') {
-      const task = leaseQueue.then(async () => {
-        const saved = await chrome.storage.session.get('atv2.leases');
-        const leases = saved['atv2.leases'] || {};
-        if (m.release) delete leases[m.key];
-        else {
-          const state = await store.read();
-          for (const key of evictLeases(
-            leases,
-            m.key,
-            state.settings.maxLive,
-          )) {
-            await chrome.runtime
-              .sendMessage({ type: 'APP_SLEEP', key })
-              .catch(() => {});
-            delete leases[key];
-          }
-          leases[m.key] = { at: Date.now() };
-        }
-        await chrome.storage.session.set({ 'atv2.leases': leases });
-        return { ok: true };
-      });
-      leaseQueue = task.catch(() => {});
-      return task;
-    }
     if (m.type === 'APP_GET') {
       const key = `atv2.workspace.window.${sender.tab?.windowId}`;
       return {

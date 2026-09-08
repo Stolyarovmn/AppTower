@@ -8,7 +8,7 @@ import {
 } from './ui/client.js';
 import { url, flatten, locate } from './core/model.js';
 import { icon, iconButton, shortcutIcon } from './ui/icons.js';
-import { form, menu } from './ui/dialogs.js';
+import { form, menu, chooseCombination, templateOrder } from './ui/dialogs.js';
 import { installDrag } from './ui/drag.js';
 import { createPanes } from './ui/panes.js';
 const windowId = (await chrome.windows.getCurrent()).id;
@@ -63,9 +63,14 @@ async function addSite() {
     'Добавить',
   );
   if (value)
-    await act({ type: 'add', item: { title: value.title, url: value.url } });
+    await act({ type: 'add', openIfEmpty: true, item: { title: value.title, url: value.url } });
 }
 async function editItem(x) {
+  if (x.type === 'template') {
+    const v = await templateOrder(x.top, x.bottom, state.settings.overlap);
+    if (v?.reverse) await act({type:'swap-template', id:x.id});
+    return;
+  }
   const fields = [
     { name: 'title', label: 'Название', value: x.title, required: true },
   ];
@@ -84,42 +89,33 @@ async function editItem(x) {
         ],
       },
     );
-  const v = await form('Изменить', fields);
+  if (x.type === 'group') fields.push({name:'color',label:'Цвет',type:'color',value:x.color || '#648bd8'});
+  const v = await form('Настроить', fields);
   if (v) await act({ type: 'edit', id: x.id, value: v });
 }
-async function openItem(x, pane) {
+async function openItem(x, pane, anchor) {
   if (x.type === 'group') {
     menu(
       x.title,
       x.items.map((child) => [child.title, () => openItem(child, pane)]),
+      anchor || [...list.children].find(b => b.dataset.id === x.id),
     );
     return;
   }
   await act({ type: 'open-item', id: x.id, pane });
 }
-function context(x) {
-  const actions = [
-    ['Открыть сверху', () => openItem(x, 'top')],
-    ['Открыть снизу', () => openItem(x, 'bottom')],
-    ['Изменить', () => editItem(x)],
-  ];
-  if (x.type === 'group')
-    actions.push(['Разгруппировать', () => act({ type: 'ungroup', id: x.id })]);
-  if (x.type === 'template')
-    actions.push(
-      [
-        'Поменять области местами',
-        () => act({ type: 'swap-template', id: x.id }),
-      ],
-      ['Разобрать на сайты', () => act({ type: 'decompose', id: x.id })],
-    );
-  if (x.type === 'site')
-    actions.push([
-      'Открыть отдельным окном',
-      () => send({ type: 'APP_SIDECAR', url: x.url }),
-    ]);
-  actions.push(['Удалить', () => act({ type: 'remove', id: x.id })]);
-  menu(x.title, actions);
+function context(x, anchor) {
+  const actions = [];
+  if (x.type === 'site') actions.push(
+    ['Открыть', () => openItem(x), {icon:'single'}],
+    ['Отдельное окно', () => send({type:'APP_SIDECAR',url:x.url})],
+  );
+  if (x.type === 'template') actions.push(['Открыть шаблон', () => openItem(x), {icon:'template'}]);
+  if (x.type === 'group') actions.push(['Разгруппировать', () => act({type:'ungroup',id:x.id}), {icon:'group'}]);
+  if (x.type === 'template') actions.push(['Разобрать на сайты', () => act({type:'decompose',id:x.id})]);
+  actions.push(['Настроить', () => editItem(x), {icon:'settings'}]);
+  actions.push(['Удалить', () => { if (confirm(`Удалить «${x.title}»?`)) return act({type:'remove',id:x.id}); }, {icon:'trash',danger:true}]);
+  menu(x.title, actions, anchor);
 }
 async function organizer() {
   menu('Организация', [
@@ -128,11 +124,12 @@ async function organizer() {
       async () => {
         const v = await form('Новая группа', [
           { name: 'title', label: 'Название', required: true },
+          { name:'color',label:'Цвет',type:'color',value:'#648bd8' },
         ]);
         if (v)
           await act({
             type: 'add',
-            item: { type: 'group', title: v.title, items: [] },
+            item: { type: 'group', title: v.title, color: v.color, items: [] },
           });
       },
     ],
@@ -142,20 +139,10 @@ async function organizer() {
         const w = current();
         if (!w.panes.top.url || !w.panes.bottom.url)
           throw Error('Сначала откройте два сайта');
-        const v = await form('Новый шаблон', [
-          { name: 'title', label: 'Название', required: true },
-        ]);
-        if (v)
-          await act({
-            type: 'add',
-            item: {
-              type: 'template',
-              title: v.title,
-              ratio: w.ratio,
-              top: w.panes.top,
-              bottom: w.panes.bottom,
-            },
-          });
+        const v = await templateOrder(w.panes.top, w.panes.bottom, state.settings.overlap);
+        if (v) await act({type:'add', item:{type:'template',ratio:w.ratio,
+          top: v.reverse ? w.panes.bottom : w.panes.top,
+          bottom: v.reverse ? w.panes.top : w.panes.bottom}});
       },
     ],
     ['Управление рабочими областями', () => send({ type: 'APP_OPTIONS' })],
@@ -174,19 +161,16 @@ async function drop(id, targetId, position) {
     await act({ type: 'move', id, targetId, position });
     return;
   }
-  const v = await form('Объединить сайты', [
-    { name: 'name', label: 'Название', required: true },
-    {
-      name: 'kind',
-      label: 'Тип',
-      value: 'group',
-      options: [
-        ['group', 'Группа'],
-        ['template', 'Шаблон двух областей'],
-      ],
-    },
-  ]);
-  if (v) await act({ type: 'combine', id, targetId, ...v });
+  const source = locate(current(), id).item;
+  const kind = await chooseCombination();
+  if (!kind) return;
+  const v = kind === 'template'
+    ? await templateOrder(source, target, state.settings.overlap)
+    : await form('Новая группа', [
+      {name:'name',label:'Название',required:true},
+      {name:'color',label:'Цвет',type:'color',value:'#648bd8'},
+    ]);
+  if (v) await act({type:'combine',id,targetId,kind,...v});
 }
 let itemSignature = '';
 async function render() {
@@ -205,6 +189,9 @@ async function render() {
   panes.dataset.layout = w.split ? 'split' : 'single';
   panes.dataset.single = w.singlePane || 'top';
   $('split-toggle').setAttribute('aria-pressed', String(w.split));
+  $('split-toggle').innerHTML = icon(w.split ? 'template' : 'single');
+  $('split-toggle').title = w.split ? 'Две области — перейти к одной' : 'Одна область — разделить на две';
+  $('split-toggle').setAttribute('aria-label', $('split-toggle').title);
   document.querySelector('.pane[data-pane="top"]').style.flex = w.split
     ? `${w.ratio} 1 0`
     : '1';
@@ -226,11 +213,11 @@ async function render() {
       b.append(shortcutIcon(x, state.settings.overlap));
       b.onclick = () => {
         if (b.dataset.suppressClick) return;
-        void openItem(x).catch(error);
+        void openItem(x, undefined, b).catch(error);
       };
       b.oncontextmenu = (e) => {
         e.preventDefault();
-        context(x);
+        context(x, b);
       };
       list.append(b);
     }
@@ -296,8 +283,11 @@ $('settings').onclick = () => send({ type: 'APP_OPTIONS' }).catch(error);
 for (const el of document.querySelectorAll('.pane')) {
   const name = el.dataset.pane,
     input = el.querySelector('[data-role="url"]');
+  input.onfocus = () => { input.value = current().panes[name].url; };
+  input.onblur = () => { if (input.value === current().panes[name].url) input.value = input.value.replace(/^https?:\/\//, ''); };
+  const address = () => input.value === current().panes[name].url.replace(/^https?:\/\//, '') ? current().panes[name].url : input.value;
   const navigate = () =>
-    act({ type: 'pane', pane: name, value: { url: input.value } });
+    act({ type: 'pane', pane: name, value: { url: address() } });
   input.onkeydown = (e) => {
     if (e.key === 'Enter') void navigate().catch(error);
   };
@@ -308,7 +298,7 @@ for (const el of document.querySelectorAll('.pane')) {
   el.querySelector('[data-action="save"]').onclick = () =>
     act({
       type: 'add',
-      item: { ...current().panes[name], url: input.value },
+      item: { ...current().panes[name], url: address() },
     }).catch(error);
   el.querySelector('[data-action="close"]').onclick = () =>
     act({ type: 'close-pane', pane: name }).catch(error);
@@ -321,6 +311,7 @@ for (const el of document.querySelectorAll('.pane')) {
       ...['A', 'S', 'C', 'R'].map((mode, i) => [
         ['Авто', 'Обычный iframe', 'Совместимость', 'Отдельное окно'][i],
         () => act({ type: 'pane', pane: name, value: { mode } }),
+        {selected: current().panes[name].mode === mode},
       ]),
       [
         'Открыть обычной вкладкой',
@@ -328,7 +319,7 @@ for (const el of document.querySelectorAll('.pane')) {
       ],
       ['Приостановить', () => renderer.sleep(name)],
       ['Очистить', () => act({ type: 'pane', pane: name, value: { url: '' } })],
-    ]);
+    ], el.querySelector('[data-action="more"]'));
 }
 const splitter = document.querySelector('.splitter');
 splitter.setAttribute('role', 'separator');

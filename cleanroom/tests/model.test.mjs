@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {defaults,reduce,validate,migrate,syncProjection,mergeSync,locate} from '../core/model.js';
 import {createStore} from '../core/store.js';
 import {compatibilityRules} from '../core/services.js';
-import {evictLeases} from '../core/resources.js';
+
 const add=(d,id,url)=>reduce(d,{type:'add',item:{id,url,title:id}});
 test('migrates 2.0.2 shortcuts and panes without resetting explicit URL',()=>{const d=migrate({shortcuts:[{id:'one',url:'https://one.test'}],panes:{top:{url:'https://top.test'},bottom:{url:'https://bottom.test'}},split:true});assert.equal(d.workspaces[0].items.length,1);assert.equal(d.workspaces[0].panes.bottom.url,'https://bottom.test/');assert.equal(d.workspaces[0].split,true);});
 test('group moves, ungroup and ordering preserve entities without nested groups',()=>{let d=add(add(defaults(),'a','https://a.test'),'b','https://b.test');d=reduce(d,{type:'combine',id:'a',targetId:'b',kind:'group',name:'AB'});let w=d.workspaces[0],g=w.items[0];assert.deepEqual(g.items.map(x=>x.id),['a','b']);d=reduce(d,{type:'move',id:'b',targetId:'a',position:'before'});assert.deepEqual(d.workspaces[0].items[0].items.map(x=>x.id),['b','a']);d=reduce(d,{type:'ungroup',id:g.id});assert.deepEqual(d.workspaces[0].items.map(x=>x.id),['b','a']);});
@@ -15,7 +15,6 @@ test('sync projection excludes live panes, recent URLs and notification permissi
 test('sync applies newer organization while preserving local pane URLs',()=>{let d=reduce(defaults(),{type:'pane',value:{url:'https://local.test'}});const p=syncProjection(d);p.updatedAt=d.updatedAt+1;p.workspaces[0].name='Updated';const merged=mergeSync(d,p);assert.equal(merged.workspaces[0].panes.top.url,'https://local.test/');assert.equal(merged.workspaces[0].name,'Updated');});
 test('serialized writes do not lose concurrent shortcut additions',async()=>{const saved={};const storage={local:{async get(){return structuredClone(saved);},async set(v){Object.assign(saved,v);}},sync:{async set(){}}};const store=createStore(storage);await Promise.all(['a','b','c'].map(id=>store.write({type:'add',item:{id,url:`https://${id}.test`}})));assert.equal((await store.read()).workspaces[0].items.length,3);});
 test('DNR rules apply only to extension initiated subframes on active compatibility origins',()=>{let d=reduce(defaults(),{type:'pane',value:{url:'https://a.test:8443/path',mode:'C'}});d=reduce(d,{type:'pane',pane:'bottom',value:{url:'https://safe.test',mode:'S'}});const rules=compatibilityRules(d,'extensionid');assert.equal(rules.length,1);assert.deepEqual(rules[0].condition.initiatorDomains,['extensionid']);assert.deepEqual(rules[0].condition.resourceTypes,['sub_frame']);assert.equal(new RegExp(rules[0].condition.regexFilter).test('https://a.test:8443/path'),true);assert.equal(new RegExp(rules[0].condition.regexFilter).test('https://aXtest:8443/path'),false);});
-test('global lease cap evicts oldest even if site requests keepalive',()=>{assert.deepEqual(evictLeases({a:{at:1},b:{at:2}},'c',2),['a']);assert.equal(evictLeases(Object.fromEntries(Array.from({length:6},(_,i)=>['x'+i,{at:i}])),'new',999).length,1);});
 
 test('templates preserve split ratio through validate/export/open without changing URLs',()=>{
  let d=add(add(defaults(),'a','https://a.test'),'b','https://b.test');

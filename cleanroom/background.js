@@ -57,7 +57,7 @@ async function prepareRailForCollapse(windowId){
   }catch(error){
     devLog("collapse.rail.message-missed",{windowId,tabId:tab.id,error:String(error?.message||error)});
     if(!chrome.scripting?.executeScript)throw error;
-    await chrome.scripting.executeScript({target:{tabId:tab.id},files:["page-space.js","icon-data.js","rail.js"]});
+    await chrome.scripting.executeScript({target:{tabId:tab.id},files:["page-space.js","icon-data.js","entity-icons.js","rail.js"]});
     devLog("collapse.rail.injected",{windowId,tabId:tab.id});
     response=await chrome.tabs.sendMessage(tab.id,{type:"RAIL_PREPARE_COLLAPSE"});
     devLog("collapse.rail.response",{windowId,response,source:"injected-content-script"});

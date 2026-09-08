@@ -262,14 +262,14 @@ function render() {
   }
   if (section === 'performance') {
     row(
-      'Максимум живых областей во всех окнах',
-      state.settings.maxLive,
-      [1, 2, 3, 4, 5, 6].map((n) => [n, n]),
-      (maxLive) =>
-        act({ type: 'settings', value: { maxLive: Number(maxLive) } }),
+      'Фоновых страниц на окно',
+      state.settings.backgroundLimit,
+      [0, 4, 8, 12, 16, 24].map((n) => [n, n]),
+      (backgroundLimit) =>
+        act({ type: 'settings', value: { backgroundLimit: Number(backgroundLimit) } }),
     );
     hint(
-      'Неактивные области приостанавливаются через 5 минут. «Не усыплять» настраивается для каждого сайта; общий лимит имеет приоритет.',
+      'Открытые области не выгружаются по таймеру. Фоновые страницы хранятся до 5 минут; при заполнении кэша вытесняются самые старые. «Не усыплять» отменяет таймер для сайта, но не лимит фонового кэша. Закрытие нативной панели завершает все её страницы.',
     );
   }
   if (section === 'sites') {

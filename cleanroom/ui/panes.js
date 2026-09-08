@@ -1,168 +1,97 @@
 import { send, mutate } from './client.js';
 import { rendererUrl } from '../core/resources.js';
+
+// Frames stay in their original DOM parent. Reparenting a live iframe reloads it.
+// This cache survives navigation within this document, not native panel destruction.
 export function createPanes(windowId, onError) {
-  const records = {};
-  let latest,
-    work,
-    serial = 0;
+  const slots = {}, cache = new Map();
+  let latest, work, nextId = 0, revision = 0;
   for (const name of ['top', 'bottom']) {
     const el = document.querySelector(`.pane[data-pane="${name}"]`);
-    const frame = el.querySelector('iframe');
-    frame.allow = 'autoplay; fullscreen; picture-in-picture; encrypted-media';
-    frame.allowFullscreen = true;
     const notice = document.createElement('div');
-    notice.className = 'pane-notice';
-    notice.hidden = true;
-    el.querySelector('.frame-wrap').append(notice);
-    records[name] = {
-      el,
-      frame,
-      notice,
-      signature: '',
-      at: Date.now(),
-      asleep: false,
-      sequence: 0,
-    };
-    el.addEventListener('pointerdown', () => {
-      records[name].at = Date.now();
-    });
-    frame.addEventListener('load', () => {
-      void chrome.runtime
-        .sendMessage({
-          type: 'DEV_LOG',
-          event: 'frame.loaded',
-          payload: { pane: name, source: frame.src },
-        })
-        .catch(() => {});
+    notice.className = 'pane-notice'; notice.hidden = true;
+    const wrap = el.querySelector('.frame-wrap'); wrap.append(notice);
+    slots[name] = {el, wrap, notice, initial:el.querySelector('iframe'), current:null, paused:null};
+  }
+  function notice(name, label, run) {
+    const n = slots[name].notice, b = document.createElement('button');
+    b.textContent = label; b.onclick = () => Promise.resolve(run()).catch(onError);
+    n.replaceChildren(b); n.hidden = false;
+  }
+  function park(slot) {
+    if (!slot.current) return;
+    slot.current.active = false;
+    slot.current.at = Date.now();
+    slot.current.frame.hidden = true;
+    slot.current = null;
+  }
+  function discard(entry) {
+    entry.frame.src = 'about:blank'; entry.frame.remove(); cache.delete(entry.key);
+  }
+  function trim() {
+    if (!latest) return;
+    const background = [...cache.values()].filter(e => !e.active).sort((a,b) => a.at-b.at);
+    const excess = Math.max(0, background.length - latest.settings.backgroundLimit);
+    background.forEach((e,i) => {
+      const pinned = latest.sites[new URL(e.url).origin]?.neverSleep;
+      if (i < excess || (!pinned && Date.now()-e.at >= latest.settings.idleMinutes*60000)) discard(e);
     });
   }
-  async function sleep(name, release = true) {
-    const r = records[name];
-    r.sleepTarget = r.signature;
-    r.sequence++;
-    r.frame.src = 'about:blank';
-    r.signature = '';
-    r.asleep = true;
-    notice(name, 'Область приостановлена', () => wake(name));
-    if (release)
-      await send({
-        type: 'APP_LEASE',
-        key: `${windowId}:${name}`,
-        release: true,
-      });
-  }
-  function notice(name, label, action) {
-    const r = records[name];
-    r.notice.replaceChildren();
-    const b = document.createElement('button');
-    b.textContent = label;
-    b.onclick = () => Promise.resolve(action()).catch(onError);
-    r.notice.append(b);
-    r.notice.hidden = false;
+  function key(name, p) { return `${name}|${p.mode}|${rendererUrl(p, latest.modules)}`; }
+  async function sleep(name) {
+    const slot = slots[name];
+    if (slot.current) { slot.paused = slot.current.key; discard(slot.current); slot.current = null; }
+    notice(name, 'Область приостановлена — возобновить', () => wake(name));
   }
   async function wake(name, force = false) {
-    const r = records[name],
-      p = work.panes[name];
+    const slot = slots[name], p = work.panes[name];
     if (!p.url) return;
-    const signature = p.mode + '|' + rendererUrl(p, latest.modules);
-    if (!force && r.signature === signature && !r.asleep) return;
-    const seq = ++r.sequence;
-    await send({ type: 'APP_LEASE', key: `${windowId}:${name}` });
-    if (seq !== r.sequence) return;
-    r.signature = signature;
-    r.asleep = false;
-    r.at = Date.now();
-    r.notice.hidden = true;
-    r.frame.src = rendererUrl(p, latest.modules);
-    void mutate({ type: 'recent', url: p.url, title: p.title }).catch(onError);
+    const k = key(name,p);
+    if (slot.current?.key === k && !force) return;
+    if (slot.current?.key !== k) park(slot);
+    let entry = cache.get(k);
+    if (!entry) {
+      const frame = slot.initial || document.createElement('iframe'); slot.initial = null;
+      frame.allow = 'autoplay; fullscreen; picture-in-picture; encrypted-media'; frame.allowFullscreen = true;
+      frame.title = p.title || new URL(p.url).hostname;
+      entry = {key:k,frame,url:p.url,active:true,at:Date.now(),id:++nextId};
+      cache.set(k, entry); slot.current = entry;
+      if (!frame.isConnected) slot.wrap.insertBefore(frame,slot.notice);
+      frame.addEventListener('load', () => { void chrome.runtime.sendMessage({type:'DEV_LOG',event:'frame.loaded',payload:{pane:name,resource:entry.id,source:frame.src}}).catch(()=>{}); });
+      frame.src = rendererUrl(p,latest.modules);
+    } else if (force) entry.frame.src = rendererUrl(p,latest.modules);
+    entry.active = true; entry.at = Date.now(); entry.frame.hidden = false;
+    slot.current = entry; slot.paused = null; slot.notice.hidden = true;
+    void mutate({type:'recent',url:p.url,title:p.title}).catch(onError);
   }
-  async function render(state, w) {
-    latest = state;
-    work = w;
-    serial++;
-    for (const name of ['top', 'bottom']) {
-      const r = records[name],
-        p = w.panes[name],
-        shown = name === (w.singlePane || 'top') || w.split;
-      const input = r.el.querySelector('[data-role="url"]');
-      if (document.activeElement !== input) input.value = p.url;
-      const setting = p.url ? state.sites[new URL(p.url).origin] : null;
-      const zoom = setting?.zoom || 1;
-      r.frame.style.zoom = zoom;
-      r.frame.style.width = `${100 / zoom}%`;
-      r.frame.style.height = `${100 / zoom}%`;
-      if (!shown || !p.url) {
-        if (r.signature) {
-          r.sequence++;
-          r.frame.src = 'about:blank';
-          r.signature = '';
-          void send({
-            type: 'APP_LEASE',
-            key: `${windowId}:${name}`,
-            release: true,
-          }).catch(onError);
-        }
-        r.notice.hidden = shown && !!p.url;
-        continue;
-      }
+  async function render(state,w) {
+    const pass = ++revision;
+    latest = state; work = w;
+    for (const name of ['top','bottom']) {
+      const slot = slots[name], p = w.panes[name], shown = w.split || name === w.singlePane;
+      const input = slot.el.querySelector('[data-role="url"]');
+      if (document.activeElement !== input) input.value = p.url.replace(/^https?:\/\//,'');
+      if (!shown || !p.url) { park(slot); slot.notice.hidden = true; continue; }
+      const setting = state.sites[new URL(p.url).origin];
       if (p.mode === 'R' || (p.mode === 'A' && setting?.pwaApp)) {
-        if (r.signature) {
-          r.sequence++;
-          r.signature = '';
-          r.frame.src = 'about:blank';
-          void send({
-            type: 'APP_LEASE',
-            key: `${windowId}:${name}`,
-            release: true,
-          }).catch(onError);
-        }
-        notice(name, 'Открыть отдельным окном', () =>
-          send({ type: 'APP_SIDECAR', url: p.url }),
-        );
-        continue;
+        park(slot); notice(name,'Открыть отдельным окном',() => send({type:'APP_SIDECAR',url:p.url})); continue;
       }
-      const sig = p.mode + '|' + rendererUrl(p, state.modules);
-      if (r.asleep && r.sleepTarget === sig) continue;
-      r.asleep = false;
+      if (slot.paused === key(name,p)) continue;
       await wake(name);
+      if (pass !== revision) return;
+      if (slot.current) {
+        const zoom = setting?.zoom || 1;
+        Object.assign(slot.current.frame.style,{zoom,width:`${100/zoom}%`,height:`${100/zoom}%`});
+      }
     }
+    trim();
   }
-  chrome.runtime.onMessage.addListener((m, _sender, reply) => {
-    if (m?.type === 'APP_SLEEP') {
-      const name = ['top', 'bottom'].find((n) => m.key === `${windowId}:${n}`);
-      if (name) {
-        records[name].sleepTarget = records[name].signature;
-        void sleep(name, false).then(() => reply({ ok: true }));
-        return true;
-      }
-    }
+  // Only parked frames age out. An open translator remains live even without focus.
+  const timer = setInterval(trim,15000);
+  window.addEventListener('pagehide',() => clearInterval(timer),{once:true});
+  window.addEventListener('blur',() => {
+    for (const name of ['top','bottom']) if (slots[name].current?.frame === document.activeElement)
+      void mutate({type:'layout',workspaceId:work.id,activePane:name}).catch(onError);
   });
-  setInterval(() => {
-    if (!latest || !work) return;
-    for (const name of ['top', 'bottom']) {
-      const r = records[name],
-        p = work.panes[name];
-      if (document.activeElement === r.frame) r.at = Date.now();
-      if (
-        r.signature &&
-        Date.now() - r.at >= 300000 &&
-        !latest.sites[p.url ? new URL(p.url).origin : '']?.neverSleep
-      ) {
-        r.sleepTarget = r.signature;
-        void sleep(name).catch(onError);
-      }
-    }
-  }, 15000);
-  window.addEventListener('blur', () => {
-    for (const name of ['top', 'bottom'])
-      if (document.activeElement === records[name].frame) {
-        records[name].at = Date.now();
-        void mutate({
-          type: 'layout',
-          workspaceId: work.id,
-          activePane: name,
-        }).catch(onError);
-      }
-  });
-  return { render, wake, sleep };
+  return {render,wake,sleep};
 }

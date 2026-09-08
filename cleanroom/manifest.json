@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AppTower Cleanroom",
-  "version": "2.1.2",
+  "version": "2.2.0",
   "description": "From-scratch AppTower lifecycle and side-panel implementation.",
   "minimum_chrome_version": "141",
   "permissions": [
@@ -43,6 +43,7 @@
       "js": [
         "page-space.js",
         "icon-data.js",
+        "entity-icons.js",
         "rail.js"
       ],
       "run_at": "document_start"
@@ -68,5 +69,16 @@
     "32": "icons/icon-32.png",
     "48": "icons/icon-48.png",
     "128": "icons/icon-128.png"
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "_favicon/*"
+      ],
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ]
+    }
+  ]
 }

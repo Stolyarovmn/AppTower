@@ -39,3 +39,35 @@ and live-browser cases that passed or remain unverified. Mocked API/jsdom tests
 are not Edge UI tests. A missing environment is a recorded gap, not a pass.
 Every reported regression must map to a rule and an executable test where
 possible. Visual and browser-owned entry controls still need live validation.
+
+## 2.2 interaction and resource rules
+
+- Both rails use the same entity icon renderer. A template is two overlaid site
+  tiles, TOP in front; a group is an outline folder in its chosen color.
+- Bottom controls are Add → Groups/templates → Search → Settings in every state.
+- Combining sites first asks Template or Group. Cancellation never mutates data.
+- Template editor shows visual TOP/BOTTOM order and swap, no name input.
+  Groups have name and color. Order determines opened panes.
+- Context menus anchor to their trigger and clamp within viewport; no group
+  top/bottom navigation. Final actions: ungroup/decompose, settings, delete.
+  Delete always asks for confirmation.
+- Add-current opens the added site only if both pane URLs are empty.
+- Open pane documents are never idle-evicted. Background cache is per window,
+  defaults to 12, range 0–24. LRU eviction applies only to parked frames;
+  parked frames expire after five minutes unless that site disables idle sleep.
+- Returning to a cached site must reuse the DOM frame without src assignment
+  or reparenting. The deprecated global active-pane lease cap is removed.
+- Address display omits http(s) scheme; editing restores it. An untouched HTTP
+  address must not silently become HTTPS on Go/Save.
+- Single/split icon and renderer menu selection reflect current workspace state.
+- Viewport-width page shells and min-width must be included in rail space
+  reservation, with original styles restored. Live site validation is required.
+
+### Unresolved native-container requirement
+
+Closing the native Side Panel may destroy its entire document. Neither cache
+nor iframe idle policy can preserve that document or its audio afterward.
+2.2 does NOT claim collapse/expand document continuity or background playback.
+A persistent renderer/container design remains required before this user
+acceptance item can be marked passed. Do not work around it with unsupported
+browser-internal APIs, hidden UI patches, or a fake successful test.

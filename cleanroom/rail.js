@@ -28,18 +28,24 @@
     style.textContent=`
       :host{all:initial}
       .rail{position:fixed;z-index:2147483647;top:0;right:0;width:48px;height:100vh;display:flex;flex-direction:column;align-items:center;padding:8px 5px;box-sizing:border-box;background:var(--rail-bg,#202020);border-left:1px solid rgba(255,255,255,.10);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--rail-text,#f2f2f2)}
-      .spacer{flex:1}.shortcuts{display:flex;flex-direction:column;overflow:auto;gap:6px;min-height:0;scrollbar-width:thin}.shortcuts button{flex-shrink:0}.shortcuts span{width:26px;height:26px;display:grid;place-items:center;border-radius:6px;background:#ddd;color:#222;font-weight:650;font-size:11px}
+      .spacer{flex:1}.shortcuts{display:flex;flex-direction:column;overflow:auto;gap:6px;min-height:0;scrollbar-width:thin}.shortcuts button{flex-shrink:0}
       button{width:36px;height:36px;padding:0;border:0;border-radius:8px;background:transparent;color:inherit;display:grid;place-items:center;cursor:pointer}
       button:hover{background:rgba(255,255,255,.08)}
       button:focus-visible{outline:1px solid #5aa2ff;outline-offset:-2px}
       svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.group-icon svg{width:26px;height:26px}.entity-icon{position:relative;width:34px;height:34px;display:grid;place-items:center}
+.tile{width:26px;height:26px;border-radius:7px;background:#ddd;color:#222;display:grid;place-items:center;font-size:10px;overflow:hidden;position:relative}
+.tile img{position:absolute;width:100%;height:100%;object-fit:contain}
+.template-icon .tile{position:absolute;width:18px;height:18px;left:var(--offset);top:var(--offset)}
+.template-icon .tile:last-child{z-index:2;top:0;left:0}
+
       .sep{width:28px;height:1px;background:rgba(255,255,255,.11);margin:6px 0}
     `;
     const rail=document.createElement("div");rail.className="rail";
     const sep=document.createElement("div");sep.className="sep";
     const spacer=document.createElement("div");spacer.className="spacer";
     shortcutArea=document.createElement("div");shortcutArea.className="shortcuts";
-    rail.append(button("Закрыть AppTower",svg(globalThis.__atv2IconPaths?.close||""),()=>chrome.runtime.sendMessage({type:"APP_DISABLE"})),button("Развернуть AppTower",icons.expand,()=>open()),sep,shortcutArea,spacer,button("Добавить текущую страницу",icons.add,()=>open({type:"add-current"})),button("Поиск",icons.search,()=>open({type:"search"})),button("Группы и шаблоны",svg(globalThis.__atv2IconPaths?.group||""),()=>open({type:"organize"})),button("Настройки",icons.settings,()=>chrome.runtime.sendMessage({type:"APP_OPTIONS"})));
+    rail.append(button("Закрыть AppTower",svg(globalThis.__atv2IconPaths?.close||""),()=>chrome.runtime.sendMessage({type:"APP_DISABLE"})),button("Развернуть AppTower",icons.expand,()=>open()),sep,shortcutArea,spacer,button("Добавить текущую страницу",icons.add,()=>open({type:"add-current"})),button("Группы и шаблоны",svg(globalThis.__atv2IconPaths?.group||""),()=>open({type:"organize"})),button("Поиск",icons.search,()=>open({type:"search"})),button("Настройки",icons.settings,()=>chrome.runtime.sendMessage({type:"APP_OPTIONS"})));
     root.append(style,rail);
     document.documentElement.append(host);
     renderConfig();
@@ -63,7 +69,7 @@
     if(!shortcutArea||!config)return;
     shortcutArea.replaceChildren();
     const w=config.workspaces.find(w=>w.id===config.activeWorkspaceId)||config.workspaces[0];
-    for(const x of w.items){const b=button(x.title,"",()=>open({type:"open-item",id:x.id}));const label=document.createElement("span");label.textContent=x.title.slice(0,2).toUpperCase();b.append(label);shortcutArea.append(b);}
+    for(const x of w.items){const b=button(x.title,"",()=>open({type:"open-item",id:x.id}));b.append(globalThis.__atv2ShortcutIcon(x,config.settings.overlap));shortcutArea.append(b);}
     const theme=config.settings.theme;const light=theme==="light"||(theme==="system"&&matchMedia('(prefers-color-scheme: light)').matches);
     host.style.setProperty('--rail-bg',light?'#f5f5f5':'#202020');host.style.setProperty('--rail-text',light?'#222':'#f2f2f2');
   }

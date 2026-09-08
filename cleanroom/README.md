@@ -1,3 +1,21 @@
+# AppTower Cleanroom 2.2.0 — test build
+
+Changes: restored the original application icon (asset reuse requested by user),
+shared compact/expanded shortcut rendering, ordered template editor, colored
+named groups, anchored context menus with confirmed deletion, selected mode
+indicators, scheme-free URL display, and Add-current opening an empty workspace.
+
+Open panes no longer idle-sleep. A per-window LRU cache keeps up to 12 background
+pages by default (Options: 0–24), expires parked pages after five minutes, and
+reuses iframe nodes without reparenting. Old global live-pane leases are removed.
+The page-space adapter also constrains viewport-width app shells.
+
+**Known release gap:** native Side Panel close can destroy its document and all
+iframes. This build does not preserve music or live page identity through that
+close. Cache reuse applies while the panel document exists. Live Edge layout,
+restart and native-container behavior are unverified in this environment.
+Use the same unpacked folder when updating to preserve extension identity/data.
+
 # AppTower Cleanroom v2
 
 This directory is a from-scratch implementation.
@@ -71,7 +89,7 @@ Implemented: workspaces; site/group/two-pane template entities; editing,
 reordering, ungrouping, swapping and decomposing templates; pointer/touch drag;
 search across entities/history/workspaces/commands; independent panes and split
 resize; themes, accent and template overlap; site zoom, keep-awake, notification
-settings; 5-minute idle sleep and shared 1–6 resource cap; global disable;
+settings; historical 5-minute idle sleep and shared 1–6 resource cap (superseded by 2.2 background-only cache); global disable;
 context menus; own new-tab page; schema-1 JSON import/export; optional sync of
 organization and modules; declarative embed modules and opt-in YouTube adapter;
 standard same-origin Web App Manifest discovery and reusable popup sidecars.
@@ -103,7 +121,7 @@ The full ZIP contains runtime sources, tests and lockfile, excluding node_module
 Acceptance gate: existing tab → collapse/expand 20 times; browser restart;
 fixed header and right button stay reachable with compact rail; hide restores
 page width; upper/lower iframe source stays unchanged on metadata edits and
-closing the other pane; global X hides every rail; reducing resource cap sleeps
+closing the other pane; global X hides every rail; historical resource-cap tests slept
 excess panes; export/import preserves organization. Automated tests cover the
 state/DOM/API-double portions, not browser-owned UI.
 

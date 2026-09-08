@@ -49,7 +49,9 @@ Both are first-class shortcut entities; organizer button exposes both.
 Magnifier stays near bottom rail controls.
 
 ### Resource cap
-Idle sleep = 5 minutes; global live resource limit configurable up to 6.
+Cleanroom 2.2 (explicit user revision): protect open panes from idle sleep;
+parked frames expire after 5 minutes, per-window LRU background cache defaults
+to 12 (configurable 0–24). Supersedes the former six-live-resource cap.
 
 ### Modules are optional
 Provider-specific functionality is installable/removable declarative metadata.
