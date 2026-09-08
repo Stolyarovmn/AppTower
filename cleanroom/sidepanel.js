@@ -151,6 +151,7 @@ async function organizer() {
             item: {
               type: 'template',
               title: v.title,
+              ratio: w.ratio,
               top: w.panes.top,
               bottom: w.panes.bottom,
             },

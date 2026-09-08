@@ -128,3 +128,13 @@ The compact rail retains global disable. Settings uses a centered shared gear SV
 
 Mandatory historical regression rules: docs/22_CLEANROOM_REGRESSION_RULES.md in
 the repository. Local tests do not certify the two actual Edge menu controls.
+
+## 2.1.2 — extension identity, settings spacing, template layout
+
+Added transparent PNG extension/action icons in 16/32/48/128 sizes and vector
+source. Settings use explicit section and label/control gaps, with stacked
+layout for narrow windows. Template saves and restores split ratio; historical
+templates without ratio default to 50/50, bounds remain 20–80%. This is backward
+compatible optional metadata in schema 1. User confirmed 2.1.1 worked; that does
+not establish a live Edge pass for 2.1.2. CSS computed-style tests check spacing
+rules, not browser geometry. Model tests cover ratio persistence/default/bounds.

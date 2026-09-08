@@ -16,3 +16,13 @@ test('sync applies newer organization while preserving local pane URLs',()=>{let
 test('serialized writes do not lose concurrent shortcut additions',async()=>{const saved={};const storage={local:{async get(){return structuredClone(saved);},async set(v){Object.assign(saved,v);}},sync:{async set(){}}};const store=createStore(storage);await Promise.all(['a','b','c'].map(id=>store.write({type:'add',item:{id,url:`https://${id}.test`}})));assert.equal((await store.read()).workspaces[0].items.length,3);});
 test('DNR rules apply only to extension initiated subframes on active compatibility origins',()=>{let d=reduce(defaults(),{type:'pane',value:{url:'https://a.test:8443/path',mode:'C'}});d=reduce(d,{type:'pane',pane:'bottom',value:{url:'https://safe.test',mode:'S'}});const rules=compatibilityRules(d,'extensionid');assert.equal(rules.length,1);assert.deepEqual(rules[0].condition.initiatorDomains,['extensionid']);assert.deepEqual(rules[0].condition.resourceTypes,['sub_frame']);assert.equal(new RegExp(rules[0].condition.regexFilter).test('https://a.test:8443/path'),true);assert.equal(new RegExp(rules[0].condition.regexFilter).test('https://aXtest:8443/path'),false);});
 test('global lease cap evicts oldest even if site requests keepalive',()=>{assert.deepEqual(evictLeases({a:{at:1},b:{at:2}},'c',2),['a']);assert.equal(evictLeases(Object.fromEntries(Array.from({length:6},(_,i)=>['x'+i,{at:i}])),'new',999).length,1);});
+
+test('templates preserve split ratio through validate/export/open without changing URLs',()=>{
+ let d=add(add(defaults(),'a','https://a.test'),'b','https://b.test');
+ d=reduce(d,{type:'layout',ratio:0.7});d=reduce(d,{type:'combine',id:'a',targetId:'b',kind:'template'});
+ const id=d.workspaces[0].items[0].id;d=validate(JSON.parse(JSON.stringify(d)));
+ d=reduce(d,{type:'layout',ratio:0.3});d=reduce(d,{type:'open-item',id});
+ assert.equal(d.workspaces[0].ratio,0.7);assert.equal(d.workspaces[0].panes.top.url,'https://a.test/');
+ delete d.workspaces[0].items[0].ratio;assert.equal(validate(d).workspaces[0].items[0].ratio,0.5);
+ d.workspaces[0].items[0].ratio=9;assert.equal(validate(d).workspaces[0].items[0].ratio,0.8);
+});

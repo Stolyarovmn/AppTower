@@ -72,6 +72,7 @@ export function item(value, inGroup = false) {
       id: text(value.id) || crypto.randomUUID(),
       type: 'template',
       title: text(value.title) || 'Шаблон',
+      ratio: Math.max(0.2, Math.min(0.8, Number.isFinite(Number(value.ratio)) ? Number(value.ratio) : 0.5)),
       top: site(value.top),
       bottom: site(value.bottom),
     };
@@ -335,6 +336,7 @@ export function reduce(input, action) {
               id: crypto.randomUUID(),
               type: 'template',
               title: text(action.name) || 'Шаблон',
+              ratio: w.ratio,
               top: a.item,
               bottom: b.item,
             }
@@ -388,6 +390,7 @@ export function reduce(input, action) {
           },
         };
         w.split = true;
+        w.ratio = x.ratio;
       } else {
         const p = action.pane || w.activePane;
         w.panes[p] = { url: x.url, title: x.title, mode: x.mode };
