@@ -1,3 +1,12 @@
+# 2.2.1 UI refinement
+
+Shared dialog close X / outside-pointer dismissal, horizontal Template | Group
+choice cards, pastel swatches plus native custom color picker, filled group
+initials, two-rectangle layout indicator, settings navigation groups and icons.
+Address toolbar reserves 10px inset plus focus outline room. Loaded favicons
+remove fallback initials; failure restores them. Add form has a clear button.
+Native collapse lifecycle is unchanged: retaining the document remains unverified.
+
 # AppTower Cleanroom 2.2.0 — test build
 
 Changes: restored the original application icon (asset reuse requested by user),

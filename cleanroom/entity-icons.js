@@ -12,7 +12,8 @@ globalThis.__atv2ShortcutIcon = function shortcutIcon(item, overlap = 50) {
       href.searchParams.set('size', '32');
       img.src = href.href;
       img.draggable = false;
-      img.onerror = () => img.remove();
+      img.onload = () => { for (const child of [...n.childNodes]) if (child.nodeType === 3) child.remove(); };
+      img.onerror = () => { img.remove(); n.textContent = (x.title || '?').slice(0, 2).toUpperCase(); };
       n.append(img);
     }
     return n;
@@ -23,8 +24,7 @@ globalThis.__atv2ShortcutIcon = function shortcutIcon(item, overlap = 50) {
     el.append(tile(item.bottom), tile(item.top));
   } else if (item.type === 'group') {
     el.classList.add('group-icon');
-    el.style.color = item.color || '#648bd8';
-    el.innerHTML = `<svg viewBox="0 0 20 20" aria-hidden="true">${globalThis.__atv2IconPaths.group}</svg>`;
+    const n = tile(item); n.style.backgroundColor = item.color || '#b8c7df'; el.append(n);
   } else el.append(tile(item));
   return el;
 }

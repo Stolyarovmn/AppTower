@@ -1,6 +1,6 @@
 import { icon, shortcutIcon } from './icons.js';
 import { button } from './client.js';
-export function form(title, fields, submit = 'Сохранить') {
+export function form(title, fields, submit = 'Сохранить', options = {}) {
   return new Promise((resolve) => {
     const dialog = document.createElement('dialog'),
       f = document.createElement('form'),
@@ -27,7 +27,17 @@ export function form(title, fields, submit = 'Сохранить') {
       }
       input.value = field.value ?? '';
       input.required = !!field.required;
-      label.append(input);
+      if (field.type === 'color') {
+        const palette = document.createElement('div'); palette.className = 'palette';
+        for (const color of ['#b8c7df','#c5bddb','#d8b8c4','#debfae','#dfd2ad','#bfd2b8','#b4cecc','#c7cbd1']) {
+          const swatch = button('', () => { input.value = color; input.dispatchEvent(new input.ownerDocument.defaultView.Event('input')); });
+          swatch.style.backgroundColor = color; swatch.setAttribute('aria-label', color);
+          const update = () => swatch.setAttribute('aria-pressed', String(input.value.toLowerCase() === color));
+          input.addEventListener('input', update); update(); palette.append(swatch);
+        }
+        input.title = 'Другой цвет'; input.setAttribute('aria-label', 'Другой цвет'); input.className = 'custom-color';
+        palette.append(input); label.append(palette);
+      } else label.append(input);
       f.append(label);
       controls[field.name] = input;
       if (field.change)
@@ -35,12 +45,15 @@ export function form(title, fields, submit = 'Сохранить') {
     }
     const actions = document.createElement('div');
     actions.className = 'dialog-actions';
-    const cancel = button('Отмена', () => dialog.close());
+    if (options.clear) {
+      const clear = button('', () => { for (const name of options.clear) if (controls[name]) controls[name].value = ''; controls.url?.focus(); });
+      clear.className = 'dialog-clear'; clear.title = 'Очистить форму'; clear.setAttribute('aria-label', clear.title); clear.innerHTML = icon('broom'); f.querySelector('h2').after(clear);
+    }
     const save = document.createElement('button');
     save.type = 'submit';
     save.className = 'primary';
     save.textContent = submit;
-    actions.append(cancel, save);
+    actions.append(save);
     f.append(actions);
     dialog.append(f);
     document.body.append(dialog);
@@ -57,7 +70,7 @@ export function form(title, fields, submit = 'Сохранить') {
       dialog.remove();
       resolve(result);
     };
-    dialog.showModal();
+    present(dialog);
   });
 }
 export function menu(title, actions, anchor) {
@@ -78,18 +91,18 @@ export function menu(title, actions, anchor) {
     if (options.danger) b.classList.add('danger');
     wrap.append(b);
   }
-  if (!anchor) wrap.append(button('Закрыть', () => dialog.close()));
+
   dialog.append(wrap);
   document.body.append(dialog);
   dialog.onclose = () => dialog.remove();
-  dialog.showModal();
+  present(dialog);
   if (anchor) {
     dialog.classList.add('context-menu');
     const a = anchor.getBoundingClientRect(), r = dialog.getBoundingClientRect();
     const left = a.left >= r.width + 8 ? a.left - r.width - 6 : a.right + 6;
     dialog.style.left = `${Math.max(8, Math.min(left, innerWidth - r.width - 8))}px`;
     dialog.style.top = `${Math.max(8, Math.min(a.top, innerHeight - r.height - 8))}px`;
-    dialog.addEventListener('click', e => { if (e.target === dialog) dialog.close(); });
+
     const resized = () => dialog.close();
     window.addEventListener('resize', resized);
     dialog.addEventListener('close', () => window.removeEventListener('resize', resized), {once:true});
@@ -102,14 +115,18 @@ export function chooseCombination() {
     wrap.className = 'template-order';
     const h = document.createElement('h2'); h.textContent = 'Как объединить сайты?';
     const p = document.createElement('p'); p.textContent = 'Шаблон открывает два сайта одновременно. Группа хранит ярлыки вместе.';
-    wrap.append(h, p);
+    wrap.append(h);
+    const choices = document.createElement('div'); choices.className = 'combination-choices'; wrap.append(choices);
     let result = null;
     for (const [kind, label] of [['template', 'Шаблон'], ['group', 'Группа']]) {
       const b = button(label, () => { result = kind; d.close(); });
-      b.insertAdjacentHTML('afterbegin', icon(kind)); wrap.append(b);
+      b.className = 'combination-choice'; b.textContent = '';
+      const heading = document.createElement('strong'); heading.textContent = label;
+      const description = document.createElement('span'); description.textContent = kind === 'template' ? 'Два сайта одновременно, сверху и снизу' : 'Ярлыки вместе, с именем и цветом';
+      b.innerHTML = icon(kind); b.append(heading, description); choices.append(b);
     }
-    wrap.append(button('Отмена', () => d.close())); d.append(wrap); document.body.append(d);
-    d.onclose = () => { d.remove(); resolve(result); }; d.showModal();
+    d.append(wrap); document.body.append(d);
+    d.onclose = () => { d.remove(); resolve(result); }; present(d);
   });
 }
 export function templateOrder(top, bottom, overlap = 50) {
@@ -128,8 +145,24 @@ export function templateOrder(top, bottom, overlap = 50) {
     const swap = button('Поменять местами', () => { reverse = !reverse; render(); });
     swap.insertAdjacentHTML('afterbegin', icon('swap'));
     const actions = document.createElement('div'); actions.className = 'dialog-actions';
-    actions.append(button('Отмена', () => d.close()), button('Сохранить', () => { result = {reverse}; d.close(); }));
+    actions.append(button('Сохранить', () => { result = {reverse}; d.close(); }));
     wrap.append(h,p,preview,rows,swap,actions); d.append(wrap); document.body.append(d); render();
-    d.onclose = () => { d.remove(); resolve(result); }; d.showModal();
+    d.onclose = () => { d.remove(); resolve(result); }; present(d);
   });
+}
+
+// One dismissal and focus policy for all transient surfaces.
+export function present(dialog) {
+  if (dialog.dataset.dismissBound) { dialog.showModal(); return; }
+  dialog.dataset.dismissBound = "true";
+  const trigger = document.activeElement;
+  const close = dialog.querySelector('.dialog-close') || document.createElement('button'); close.type = 'button';
+  close.className = 'dialog-close'; close.setAttribute('aria-label', 'Закрыть'); close.title = 'Закрыть'; close.innerHTML = icon('close');
+  close.onclick = () => dialog.close(); dialog.append(close);
+  let outside = false, pointerClose = false;
+  const isOutside = e => { const r = dialog.getBoundingClientRect(); return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom; };
+  dialog.addEventListener('pointerdown', e => { pointerClose = true; outside = e.target === dialog && isOutside(e); });
+  dialog.addEventListener('pointerup', e => { if (outside && e.target === dialog && isOutside(e)) dialog.close(); outside = false; });
+  dialog.addEventListener('close', () => { if (pointerClose && document.activeElement === trigger) trigger?.blur(); }, {once:true});
+  dialog.showModal();
 }

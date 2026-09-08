@@ -33,7 +33,7 @@
       button:hover{background:rgba(255,255,255,.08)}
       button:focus-visible{outline:1px solid #5aa2ff;outline-offset:-2px}
       svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
-.group-icon svg{width:26px;height:26px}.entity-icon{position:relative;width:34px;height:34px;display:grid;place-items:center}
+.group-icon .tile{color:#26303a;font-weight:650}.entity-icon{position:relative;width:34px;height:34px;display:grid;place-items:center}
 .tile{width:26px;height:26px;border-radius:7px;background:#ddd;color:#222;display:grid;place-items:center;font-size:10px;overflow:hidden;position:relative}
 .tile img{position:absolute;width:100%;height:100%;object-fit:contain}
 .template-icon .tile{position:absolute;width:18px;height:18px;left:var(--offset);top:var(--offset)}

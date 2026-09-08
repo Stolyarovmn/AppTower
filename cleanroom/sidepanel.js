@@ -8,7 +8,7 @@ import {
 } from './ui/client.js';
 import { url, flatten, locate } from './core/model.js';
 import { icon, iconButton, shortcutIcon } from './ui/icons.js';
-import { form, menu, chooseCombination, templateOrder } from './ui/dialogs.js';
+import { form, menu, chooseCombination, templateOrder, present } from './ui/dialogs.js';
 import { installDrag } from './ui/drag.js';
 import { createPanes } from './ui/panes.js';
 const windowId = (await chrome.windows.getCurrent()).id;
@@ -50,7 +50,7 @@ async function addSite() {
           ['tab', 'Текущая вкладка браузера'],
           ['top', 'Верхняя область'],
           ['bottom', 'Нижняя область'],
-          ['custom', 'Другой адрес'],
+          
         ],
         change: (value, controls) => {
           controls.url.value = sources[value].url;
@@ -61,6 +61,7 @@ async function addSite() {
       { name: 'url', label: 'URL', value: sources.tab.url, required: true },
     ],
     'Добавить',
+    {clear:['title','url']},
   );
   if (value)
     await act({ type: 'add', openIfEmpty: true, item: { title: value.title, url: value.url } });
@@ -89,7 +90,7 @@ async function editItem(x) {
         ],
       },
     );
-  if (x.type === 'group') fields.push({name:'color',label:'Цвет',type:'color',value:x.color || '#648bd8'});
+  if (x.type === 'group') fields.push({name:'color',label:'Цвет',type:'color',value:x.color || '#b8c7df'});
   const v = await form('Настроить', fields);
   if (v) await act({ type: 'edit', id: x.id, value: v });
 }
@@ -112,7 +113,7 @@ function context(x, anchor) {
   );
   if (x.type === 'template') actions.push(['Открыть шаблон', () => openItem(x), {icon:'template'}]);
   if (x.type === 'group') actions.push(['Разгруппировать', () => act({type:'ungroup',id:x.id}), {icon:'group'}]);
-  if (x.type === 'template') actions.push(['Разобрать на сайты', () => act({type:'decompose',id:x.id})]);
+  if (x.type === 'template') actions.push(['Разобрать шаблон', () => act({type:'decompose',id:x.id})]);
   actions.push(['Настроить', () => editItem(x), {icon:'settings'}]);
   actions.push(['Удалить', () => { if (confirm(`Удалить «${x.title}»?`)) return act({type:'remove',id:x.id}); }, {icon:'trash',danger:true}]);
   menu(x.title, actions, anchor);
@@ -124,7 +125,7 @@ async function organizer() {
       async () => {
         const v = await form('Новая группа', [
           { name: 'title', label: 'Название', required: true },
-          { name:'color',label:'Цвет',type:'color',value:'#648bd8' },
+          { name:'color',label:'Цвет',type:'color',value:'#b8c7df' },
         ]);
         if (v)
           await act({
@@ -168,7 +169,7 @@ async function drop(id, targetId, position) {
     ? await templateOrder(source, target, state.settings.overlap)
     : await form('Новая группа', [
       {name:'name',label:'Название',required:true},
-      {name:'color',label:'Цвет',type:'color',value:'#648bd8'},
+      {name:'color',label:'Цвет',type:'color',value:'#b8c7df'},
     ]);
   if (v) await act({type:'combine',id,targetId,kind,...v});
 }
@@ -189,7 +190,8 @@ async function render() {
   panes.dataset.layout = w.split ? 'split' : 'single';
   panes.dataset.single = w.singlePane || 'top';
   $('split-toggle').setAttribute('aria-pressed', String(w.split));
-  $('split-toggle').innerHTML = icon(w.split ? 'template' : 'single');
+  $('split-toggle').innerHTML = icon('template');
+  $('split-toggle').classList.toggle('is-split', w.split);
   $('split-toggle').title = w.split ? 'Две области — перейти к одной' : 'Одна область — разделить на две';
   $('split-toggle').setAttribute('aria-label', $('split-toggle').title);
   document.querySelector('.pane[data-pane="top"]').style.flex = w.split
@@ -352,7 +354,7 @@ splitter.onkeydown = (e) => {
 };
 function search() {
   const d = $('search-dialog');
-  if (!d.open) d.showModal();
+  if (!d.open) present(d);
   $('search-input').value = '';
   renderSearch();
   $('search-input').focus();

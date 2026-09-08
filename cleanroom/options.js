@@ -1,3 +1,4 @@
+import { icon } from './ui/icons.js';
 import {
   read,
   mutate,
@@ -95,10 +96,18 @@ function render() {
         location.hash = id;
         render();
       });
+      b.insertAdjacentHTML('afterbegin', icon(({general:'settings',appearance:'palette',workspaces:'template',shortcuts:'group',recent:'clock',sites:'globe',performance:'performance',modules:'modules',apps:'single',data:'data',diagnostics:'search'})[id]));
+      b.dataset.section = id;
       b.setAttribute('aria-current', section === id ? 'page' : 'false');
       return b;
     }),
   );
+  for (const [title, ids] of [['Интерфейс',['general','appearance']],['Организация',['workspaces','shortcuts','recent']],['Сайты и ресурсы',['sites','performance','modules','apps']],['Обслуживание',['data','diagnostics']]]) {
+    const heading = document.createElement('h3'); heading.textContent = title;
+    const group = document.createElement('div'); group.className = 'nav-group'; group.append(heading);
+    for (const id of ids) group.append([...nav.querySelectorAll('button')].find(b => b.dataset.section === id));
+    nav.append(group);
+  }
   if (section === 'general') {
     row(
       'AppTower включён',

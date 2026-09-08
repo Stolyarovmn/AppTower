@@ -71,3 +71,16 @@ nor iframe idle policy can preserve that document or its audio afterward.
 A persistent renderer/container design remains required before this user
 acceptance item can be marked passed. Do not work around it with unsupported
 browser-internal APIs, hidden UI patches, or a fake successful test.
+
+## 2.2.1 visual gate
+
+All transient dialogs use shared X and outside-pointer dismissal. No Cancel or
+Close text footer. Keyboard focus remains accessible; pointer dismissal must not
+leave a trigger outline. Toolbar inset must include the focus outline extents.
+Template/group choice uses two equal columns separated by a rule; each has an
+icon, heading, and description. Layout icon always has two rectangles; lower
+fill indicates split. Group tiles show first two letters on a pastel fill.
+Color palette is inline with a separate custom color control. Site initials are
+fallback only: remove after favicon load and restore on failure. Settings nav
+uses named sections and outline icons. Native collapse is not changed by this
+visual release; do not claim retained pages/audio without live evidence.

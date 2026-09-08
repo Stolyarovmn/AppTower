@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AppTower Cleanroom",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "From-scratch AppTower lifecycle and side-panel implementation.",
   "minimum_chrome_version": "141",
   "permissions": [
