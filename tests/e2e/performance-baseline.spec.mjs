@@ -121,13 +121,18 @@ test("ATN-PERF-001 collect Side Panel startup, interaction, idle CPU and heap ba
     await panel.locator("#cancel-site").click();
 
     const perfSession = await context.newCDPSession(panel);
-    let beforeIdle;
+    const idleTaskDurationSamples = [];
+    const idleScriptDurationSamples = [];
     let afterIdle;
     try {
       await perfSession.send("Performance.enable");
-      beforeIdle = metricsMap(await perfSession.send("Performance.getMetrics"));
-      await panel.waitForTimeout(1_000);
-      afterIdle = metricsMap(await perfSession.send("Performance.getMetrics"));
+      for (let i = 0; i < 5; i += 1) {
+        const beforeIdle = metricsMap(await perfSession.send("Performance.getMetrics"));
+        await panel.waitForTimeout(1_000);
+        afterIdle = metricsMap(await perfSession.send("Performance.getMetrics"));
+        idleTaskDurationSamples.push(((afterIdle.TaskDuration || 0) - (beforeIdle.TaskDuration || 0)) * 1000);
+        idleScriptDurationSamples.push(((afterIdle.ScriptDuration || 0) - (beforeIdle.ScriptDuration || 0)) * 1000);
+      }
     } finally {
       await perfSession.detach();
     }
@@ -142,8 +147,8 @@ test("ATN-PERF-001 collect Side Panel startup, interaction, idle CPU and heap ba
       longTasks:Array.isArray(window.__atnPerfLongTasks) ? window.__atnPerfLongTasks : []
     }));
 
-    const taskDurationMs = ((afterIdle.TaskDuration || 0) - (beforeIdle.TaskDuration || 0)) * 1000;
-    const scriptDurationMs = ((afterIdle.ScriptDuration || 0) - (beforeIdle.ScriptDuration || 0)) * 1000;
+    const taskDurationMs = percentile(idleTaskDurationSamples, 0.5);
+    const scriptDurationMs = percentile(idleScriptDurationSamples, 0.5);
 
     const result = {
       capturedAt:new Date().toISOString(),
@@ -152,8 +157,11 @@ test("ATN-PERF-001 collect Side Panel startup, interaction, idle CPU and heap ba
       searchDialog:summarize(searchSamples),
       addDialogMs:Number(addDialogMs.toFixed(2)),
       idleOneSecond:{
+        samples:idleTaskDurationSamples.length,
         taskDurationMs:Number(taskDurationMs.toFixed(3)),
-        scriptDurationMs:Number(scriptDurationMs.toFixed(3))
+        taskDurationSamplesMs:idleTaskDurationSamples.map(value => Number(value.toFixed(3))),
+        scriptDurationMs:Number(scriptDurationMs.toFixed(3)),
+        scriptDurationSamplesMs:idleScriptDurationSamples.map(value => Number(value.toFixed(3)))
       },
       heap:{
         usedMiB:Number(((afterIdle.JSHeapUsedSize || 0) / 1024 / 1024).toFixed(3)),
