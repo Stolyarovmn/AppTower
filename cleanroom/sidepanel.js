@@ -24,6 +24,20 @@ function error(e) {
   $('toast').hidden = false;
   setTimeout(() => ($('toast').hidden = true), 6000);
 }
+const workspaceTabs = document.createElement('div'); workspaceTabs.className='workspace-tabs';
+$('workspace').before(workspaceTabs); $('workspace').hidden=true;
+async function selectWorkspace(id) { workspaceId=id; await chrome.storage.session.set({[sessionKey]:id}); await render(); }
+function renderWorkspaceTabs() {
+  workspaceTabs.replaceChildren();
+  const overflow=iconButton('Все рабочие области','chevron',()=>menu('Рабочие области',state.workspaces.map(w=>[w.name,()=>selectWorkspace(w.id),{icon:'workspaces',selected:w.id===current().id}]),overflow));
+  overflow.classList.add('workspace-overflow');
+  const buttons=state.workspaces.map(w=>{const b=button(w.name,()=>selectWorkspace(w.id));b.setAttribute('aria-pressed',String(w.id===current().id));b.className='workspace-tab';workspaceTabs.append(b);return b;});
+  workspaceTabs.append(overflow);
+  let remaining=workspaceTabs.clientWidth-overflow.offsetWidth-8, full=false;
+  for(const b of buttons){const width=b.getBoundingClientRect().width;if(full||width>remaining){b.hidden=true;full=true;}else remaining-=width+6;}
+  overflow.hidden=!full;
+}
+new ResizeObserver(()=>{if(state)renderWorkspaceTabs();}).observe(workspaceTabs);
 const renderer = createPanes(windowId, error);
 const current = () =>
   state.workspaces.find((w) => w.id === workspaceId) || state.workspaces[0];
@@ -98,7 +112,7 @@ async function openItem(x, pane, anchor) {
   if (x.type === 'group') {
     menu(
       x.title,
-      x.items.map((child) => [child.title, () => openItem(child, pane)]),
+      x.items.map((child) => [child.title, () => openItem(child, pane), {entity:child}]),
       anchor || [...list.children].find(b => b.dataset.id === x.id),
     );
     return;
@@ -113,7 +127,7 @@ function context(x, anchor) {
   );
   if (x.type === 'template') actions.push(['Открыть шаблон', () => openItem(x), {icon:'template'}]);
   if (x.type === 'group') actions.push(['Разгруппировать', () => act({type:'ungroup',id:x.id}), {icon:'group'}]);
-  if (x.type === 'template') actions.push(['Разобрать шаблон', () => act({type:'decompose',id:x.id})]);
+  if (x.type === 'template') actions.push(['Разобрать шаблон', () => act({type:'decompose',id:x.id}), {icon:'ungroup'}]);
   actions.push(['Настроить', () => editItem(x), {icon:'settings'}]);
   actions.push(['Удалить', () => { if (confirm(`Удалить «${x.title}»?`)) return act({type:'remove',id:x.id}); }, {icon:'trash',danger:true}]);
   menu(x.title, actions, anchor);
@@ -187,6 +201,7 @@ async function render() {
       return o;
     }),
   );
+  renderWorkspaceTabs();
   panes.dataset.layout = w.split ? 'split' : 'single';
   panes.dataset.single = w.singlePane || 'top';
   $('split-toggle').setAttribute('aria-pressed', String(w.split));
@@ -197,8 +212,7 @@ async function render() {
   document.querySelector('.pane[data-pane="top"]').style.flex = w.split
     ? `${w.ratio} 1 0`
     : '1';
-  document.querySelector('.pane[data-pane="bottom"]').style.flex =
-    `${1 - w.ratio} 1 0`;
+  document.querySelector('.pane[data-pane="bottom"]').style.flex = w.split ? `${1 - w.ratio} 1 0px` : '1 1 0px';
   for (const p of document.querySelectorAll('.pane'))
     p.classList.toggle('active', p.dataset.pane === w.activePane);
   const signature = JSON.stringify([w.id, w.items, state.settings.overlap]);
@@ -228,11 +242,12 @@ async function render() {
     !!w.panes.top.url || (!w.split && w.singlePane === 'bottom');
   $('empty-state').querySelector('h2').textContent = w.items.length
     ? 'Откройте сайт из колонки'
-    : 'Ваши сайты рядом';
+    : state.updatedAt === 0 ? 'Ваши сайты рядом' : 'Откройте или добавьте сайт';
   await renderer.render(state, w);
   updateOverflow();
 }
 function updateOverflow() {
+  const find = $('shortcut-overflow-search'); if(find) find.hidden = list.scrollHeight <= list.clientHeight;
   $('scroll-up').hidden = list.scrollTop < 2;
   $('scroll-down').hidden =
     list.scrollHeight - list.clientHeight - list.scrollTop < 2;
@@ -257,6 +272,7 @@ for (const [id, label, delta] of [
   if (delta < 0) list.before(b);
   else list.after(b);
 }
+const overflowSearch=iconButton('Найти ярлык','search',search);overflowSearch.id='shortcut-overflow-search';overflowSearch.hidden=true;list.after(overflowSearch);
 list.addEventListener('scroll', updateOverflow);
 new ResizeObserver(updateOverflow).observe(list);
 installDrag(list, drop, error);
@@ -313,14 +329,14 @@ for (const el of document.querySelectorAll('.pane')) {
       ...['A', 'S', 'C', 'R'].map((mode, i) => [
         ['Авто', 'Обычный iframe', 'Совместимость', 'Отдельное окно'][i],
         () => act({ type: 'pane', pane: name, value: { mode } }),
-        {selected: current().panes[name].mode === mode},
+        {selected: current().panes[name].mode === mode, icon: ['auto','frame','shield','app'][i]},
       ]),
       [
         'Открыть обычной вкладкой',
-        () => chrome.tabs.create({ url: current().panes[name].url }),
+        () => chrome.tabs.create({ url: current().panes[name].url }), {icon:'app'},
       ],
-      ['Приостановить', () => renderer.sleep(name)],
-      ['Очистить', () => act({ type: 'pane', pane: name, value: { url: '' } })],
+      ['Приостановить', () => renderer.sleep(name), {icon:'pause'}],
+      ['Очистить', () => act({ type: 'pane', pane: name, value: { url: '' } }), {icon:'broom'}],
     ], el.querySelector('[data-action="more"]'));
 }
 const splitter = document.querySelector('.splitter');
@@ -365,6 +381,7 @@ function renderSearch() {
   const entries = [
     ...flatten(current()).map((x) => ({
       label: x.title,
+      entity:x,
       run: () => openItem(x),
     })),
     ...state.recent.map((x) => ({
@@ -391,12 +408,10 @@ function renderSearch() {
   results.replaceChildren(
     ...entries
       .filter((x) => x.label.toLowerCase().includes(q))
-      .map((x) =>
-        button(x.label, async () => {
-          $('search-dialog').close();
-          await x.run();
-        }),
-      ),
+      .map((x) => {
+        const b=button(x.label, async () => { $('search-dialog').close(); await x.run(); });
+        if(x.entity)b.prepend(shortcutIcon(x.entity));return b;
+      }),
   );
 }
 $('search').onclick = search;

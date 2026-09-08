@@ -84,3 +84,13 @@ Color palette is inline with a separate custom color control. Site initials are
 fallback only: remove after favicon load and restore on failure. Settings nav
 uses named sections and outline icons. Native collapse is not changed by this
 visual release; do not claim retained pages/audio without live evidence.
+
+## 2.3 gate
+
+Single bottom pane must have flex-grow 1 and fill the same area as single top.
+Loaded site icons must have transparent tile backgrounds on every surface.
+Group menu entries include site icons. Menu actions align left. Workspace buttons
+are a fully fitting prefix in persisted order; overflow provides all workspaces.
+No chrome_url_overrides: onboarding belongs inside the empty extension only.
+Boolean/module choices use labeled switches. No claim of inheriting private
+Edge/Chrome settings UI. Original icon retained pending a verified sharper source.

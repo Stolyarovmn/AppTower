@@ -12,8 +12,8 @@ globalThis.__atv2ShortcutIcon = function shortcutIcon(item, overlap = 50) {
       href.searchParams.set('size', '32');
       img.src = href.href;
       img.draggable = false;
-      img.onload = () => { for (const child of [...n.childNodes]) if (child.nodeType === 3) child.remove(); };
-      img.onerror = () => { img.remove(); n.textContent = (x.title || '?').slice(0, 2).toUpperCase(); };
+      img.onload = () => { n.style.background = 'transparent'; for (const child of [...n.childNodes]) if (child.nodeType === 3) child.remove(); };
+      img.onerror = () => { n.style.background = '';  img.remove(); n.textContent = (x.title || '?').slice(0, 2).toUpperCase(); };
       n.append(img);
     }
     return n;

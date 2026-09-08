@@ -17,3 +17,5 @@ test('template order controls pane opening and group color survives persistence'
  assert.equal(validate(group).workspaces[0].items[0].color,'#ffcc00');
  assert.equal(validate({...group,settings:{}}).settings.backgroundLimit,12);
 });
+
+test('workspace ordering preserves identities and pane data',()=>{let d=reduce(defaults(),{type:'workspace-add',name:'Second'});const first=d.workspaces[0].id,second=d.workspaces[1].id;d=reduce(d,{type:'workspace-move',workspaceId:second,direction:-1});assert.deepEqual(d.workspaces.map(w=>w.id),[second,first]);});

@@ -256,6 +256,10 @@ export function reduce(input, action) {
     case 'workspace-add':
       d.workspaces.push(workspace(text(action.name) || 'Новая область'));
       break;
+    case 'workspace-move': {
+      const from=d.workspaces.findIndex(x=>x.id===w.id), to=Math.max(0,Math.min(d.workspaces.length-1,from+(action.direction<0?-1:1)));
+      d.workspaces.splice(from,1);d.workspaces.splice(to,0,w);break;
+    }
     case 'workspace-rename':
       w.name = text(action.name) || w.name;
       break;

@@ -82,6 +82,7 @@ export function menu(title, actions, anchor) {
   wrap.append(h);
   for (const [label, run, options = {}] of actions) {
     const b = button(label, async () => { dialog.close(); await run(); });
+    if (options.entity) b.prepend(shortcutIcon(options.entity));
     if (options.icon) b.insertAdjacentHTML('afterbegin', icon(options.icon));
     if (options.selected !== undefined) {
       b.setAttribute('role', 'menuitemradio');

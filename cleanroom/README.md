@@ -1,3 +1,13 @@
+# 2.3.0 workspace navigation and layout fixes
+
+Bottom single pane fills available height. Site icons appear in group menus,
+search and settings lists; loaded favicon tiles are transparent. Workspace
+buttons show a complete fitting prefix with overflow menu; ordering is configurable.
+New-tab override is removed; browser start page is no longer replaced. Empty
+AppTower retains internal onboarding. Settings use switches for booleans/modules,
+semantic icons and left-aligned actions. Native browser settings widgets are not
+imported. Native collapse lifecycle and original app icon assets are unchanged.
+
 # 2.2.1 UI refinement
 
 Shared dialog close X / outside-pointer dismissal, horizontal Template | Group

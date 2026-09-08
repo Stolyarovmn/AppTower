@@ -112,3 +112,10 @@ label .custom-color{width:28px;height:28px;min-height:28px;padding:2px;margin:0;
 .context-menu .menu-content button{justify-content:flex-start}
 
 dialog form:has(.dialog-clear) h2{margin-right:76px}
+
+/* Menu rows have one left-aligned icon column. */
+dialog .menu-content button:not(.dialog-close){justify-content:flex-start;text-align:left;width:100%;gap:12px}
+dialog .menu-content button .entity-icon{width:24px;height:24px}.menu-content .tile{width:22px;height:22px}
+.workspace-tabs{display:flex;align-items:center;gap:6px;flex:1;min-width:0;overflow:hidden}.workspace-tab{white-space:nowrap;flex-shrink:0;min-height:32px;border:1px solid transparent;border-radius:7px;padding:5px 10px;background:transparent}.workspace-tab[aria-pressed="true"]{background:var(--hover);border-color:var(--border)}.workspace-overflow{flex-shrink:0}
+.workspace-tabs [hidden],#workspace[hidden],#shortcut-overflow-search[hidden]{display:none}
+select{padding-inline:10px 30px}

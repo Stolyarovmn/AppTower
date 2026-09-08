@@ -1,4 +1,4 @@
-import { icon } from './ui/icons.js';
+import { icon, shortcutIcon } from './ui/icons.js';
 import {
   read,
   mutate,
@@ -42,6 +42,7 @@ function hint(text) {
   content.append(p);
 }
 function row(label, value, options, change) {
+  if(options.length===2 && options.every(([v])=>['true','false'].includes(String(v)))) { toggle(label,String(value)==='true',v=>change(String(v)));return; }
   const box = document.createElement('div');
   box.className = 'setting-row';
   const l = document.createElement('label');
@@ -59,12 +60,13 @@ function row(label, value, options, change) {
   box.append(l);
   content.append(box);
 }
-function card(label, actions) {
+function card(label, actions, entity) {
   const c = document.createElement('div');
   c.className = 'card';
   const text = document.createElement('span');
   text.textContent = label;
-  c.append(text, ...actions.map(([title, fn]) => button(title, fn)));
+  if(entity)c.append(shortcutIcon(entity));
+  c.append(text, ...actions.map(([title, fn]) => {const b=button(title,fn);const symbol=({'Открыть':'app','Открыть как приложение':'app','Переименовать':'edit','Удалить':'trash','Выше':'up','Ниже':'down'})[title];if(symbol)b.insertAdjacentHTML('afterbegin',icon(symbol));return b;}));
   content.append(c);
 }
 function pickJSON(run) {
@@ -96,7 +98,7 @@ function render() {
         location.hash = id;
         render();
       });
-      b.insertAdjacentHTML('afterbegin', icon(({general:'settings',appearance:'palette',workspaces:'template',shortcuts:'group',recent:'clock',sites:'globe',performance:'performance',modules:'modules',apps:'single',data:'data',diagnostics:'search'})[id]));
+      b.insertAdjacentHTML('afterbegin', icon(({general:'settings',appearance:'palette',workspaces:'workspaces',shortcuts:'group',recent:'clock',sites:'globe',performance:'performance',modules:'modules',apps:'app',data:'sync',diagnostics:'search'})[id]));
       b.dataset.section = id;
       b.setAttribute('aria-current', section === id ? 'page' : 'false');
       return b;
@@ -136,8 +138,8 @@ function render() {
         },
       ],
       [
-        'Новая вкладка',
-        () => chrome.tabs.create({ url: chrome.runtime.getURL('newtab.html') }),
+        'Новая вкладка браузера',
+        () => chrome.tabs.create({}),
       ],
     ]);
   }
@@ -183,6 +185,8 @@ function render() {
     );
     for (const w of state.workspaces)
       card(w.name, [
+        ['Выше',()=>act({type:'workspace-move',workspaceId:w.id,direction:-1})],
+        ['Ниже',()=>act({type:'workspace-move',workspaceId:w.id,direction:1})],
         [
           'Переименовать',
           async () => {
@@ -247,7 +251,7 @@ function render() {
             'Удалить',
             () => act({ type: 'remove', workspaceId: w.id, id: x.id }),
           ],
-        ]);
+        ], x);
     }
   }
   if (section === 'recent') {
@@ -356,11 +360,7 @@ function render() {
     }
   }
   if (section === 'modules') {
-    content.append(
-      button('Добавить модуль YouTube', () =>
-        act({ type: 'module-add', module: { type: 'youtube' } }),
-      ),
-    );
+    toggle('Модуль YouTube',state.modules.some(m=>m.type==='youtube'&&m.enabled),enabled=>act({type:'module-add',module:{type:'youtube',enabled}}));
     content.append(
       button('Импортировать модуль JSON', () =>
         pickJSON((module) => act({ type: 'module-add', module })),
@@ -369,10 +369,12 @@ function render() {
     hint(
       'Модули — проверяемые данные. Формат: {"type":"embed","host":"example.com","target":"https://example.com/embed","name":"Пример"}. Модуль заменяет адрес только в режиме Авто и для указанного host.',
     );
-    for (const m of state.modules)
+    for (const m of state.modules) {
+      if(m.type !== 'youtube') toggle(m.name,m.enabled,enabled=>act({type:'module-add',module:{...m,enabled}}));
       card(m.name, [
         ['Удалить', () => act({ type: 'module-remove', id: m.id })],
       ]);
+  }
   }
   if (section === 'apps') {
     hint(
@@ -384,7 +386,7 @@ function render() {
           'Открыть как приложение',
           () => send({ type: 'APP_SIDECAR', url: p.start_url }),
         ],
-      ]);
+      ], {title:p.name,url:p.start_url});
     content.append(
       button('Открытые отдельные окна', async () => {
         const data =
@@ -438,3 +440,5 @@ function render() {
     ]);
 }
 render();
+
+function toggle(label,value,change){const row=document.createElement('label');row.className='setting-row toggle-row';const text=document.createElement('span');text.textContent=label;const input=document.createElement('input');input.type='checkbox';input.setAttribute('role','switch');input.checked=!!value;input.onchange=()=>change(input.checked);row.append(text,input);content.append(row);}
