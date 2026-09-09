@@ -1,0 +1,38 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {JSDOM} from 'jsdom';
+import {defaults,reduce} from '../core/model.js';
+test('settings use drag handles, icon actions and module switch without saved noise',async()=>{
+ const d=new JSDOM(fs.readFileSync(new URL('../options.html',import.meta.url),'utf8'),{url:'chrome-extension://test/options.html#workspaces'});
+ Object.assign(globalThis,{document:d.window.document,window:d.window,location:d.window.location,confirm:()=>true});let state=reduce(defaults(),{type:'workspace-add',name:'Дополнительная'});
+ globalThis.chrome={runtime:{getURL:p=>'chrome-extension://test'+p,sendMessage:async m=>{if(m.type==='APP_MUTATE')state=reduce(state,m.action);return {ok:true,state};}},storage:{onChanged:{addListener(){}}}};
+ await import('../options.js');
+ assert.equal(document.querySelectorAll('.nav-group').length,4);
+ const css=fs.readFileSync(new URL('../options.css',import.meta.url),'utf8'); const style=document.createElement('style');style.textContent=css;document.head.append(style);
+ assert.equal(window.getComputedStyle(document.querySelector('.workspace-order-row')).gridTemplateColumns,'30px minmax(0,1fr) 36px 36px');
+ assert.equal(window.getComputedStyle(document.querySelector('.drag-handle')).width,'30px');
+ assert.equal(document.querySelectorAll('.drag-handle[draggable="true"]').length,2);
+ assert.doesNotMatch(document.getElementById('content').textContent,/Выше|Ниже/);
+ assert.ok(document.querySelector('.workspace-order-row .icon-action[aria-label="Переименовать"]'));
+ state=reduce(state,{type:'add',item:{url:'https://example.test',title:'Example'}});
+ document.querySelector('[data-section="modules"]').click();
+ for(let i=0;i<3;i++)await Promise.resolve();
+ // Pull the changed store state into the options document.
+ document.querySelector('[role="switch"]').dispatchEvent(new d.window.Event('change'));
+ for(let i=0;i<6;i++)await Promise.resolve();
+ document.querySelector('[data-section="sites"]').click();
+ for(let i=0;i<3;i++)await Promise.resolve();
+ const siteGroup=document.querySelector('.site-settings-group');
+ assert.ok(siteGroup);assert.equal(siteGroup.querySelectorAll('.setting-row').length,4);
+ assert.equal(document.querySelectorAll('#content>.setting-row').length,0);
+ document.querySelector('[data-section="appearance"]').click();
+ for(let i=0;i<3;i++)await Promise.resolve();
+ assert.equal(document.querySelectorAll('.theme-segments button').length,3);
+ assert.equal(document.querySelector('.custom-color-trigger').textContent,'');
+ assert.equal(document.querySelector('.custom-color-trigger').getAttribute('aria-label'),'Другой цвет');
+ document.querySelector('[data-section="modules"]').click();
+ for(let i=0;i<3;i++)await Promise.resolve();
+ const toggle=document.querySelector('[role="switch"]');assert.ok(toggle);assert.equal(toggle.checked,false);toggle.checked=true;toggle.dispatchEvent(new d.window.Event('change'));
+ for(let i=0;i<6;i++)await Promise.resolve();assert.equal(state.modules.find(m=>m.type==='youtube').enabled,true);assert.equal(document.getElementById('status').textContent,'');assert.doesNotMatch(document.getElementById('content').textContent,/Удалить/);assert.ok(document.querySelector('[data-section="data"] svg'));d.window.close();
+});

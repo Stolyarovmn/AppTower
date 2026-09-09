@@ -1,0 +1,45 @@
+name: verify
+
+on:
+  push:
+    branches:
+      - main
+      - release/**
+    paths:
+      - extension/**
+      - .github/workflows/verify.yml
+  pull_request:
+    paths:
+      - extension/**
+      - .github/workflows/verify.yml
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+      - name: Install test dependencies
+        working-directory: extension
+        run: npm ci --ignore-scripts
+      - name: Validate manifest JSON
+        run: node -e "JSON.parse(require('fs').readFileSync('extension/manifest.json','utf8'))"
+      - name: Check manifest permission budget
+        run: node extension/tools/check-permissions.mjs
+      - name: Extension unit and contract tests
+        working-directory: extension
+        run: npm test
+      - name: Verify no legacy imports or fixed extension key
+        run: |
+          ! grep -R "\.\./app\|/app/\|edge-manual-gate-fixes\|manual-gate-fixes\|rail-prelude\|rail-style-contract" extension --exclude-dir=node_modules --include='*.js' --include='*.html' --include='*.css'
+          ! grep -n '"key"' extension/manifest.json
+      - name: Package store extension
+        run: python extension/tools/package.py --output dist/AppTower-test.zip
+      - name: Upload test build
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: AppTower-${{ github.sha }}
+          path: dist/AppTower-test.zip
+          if-no-files-found: error

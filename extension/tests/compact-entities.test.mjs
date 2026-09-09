@@ -1,0 +1,21 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {JSDOM} from 'jsdom';
+import {defaults,reduce} from '../core/model.js';
+test('compact rail preserves templates, group color, control order and expand command',async()=>{
+ const dom=new JSDOM('<html><body></body></html>',{url:'https://page.test',runScripts:'outside-only',pretendToBeVisual:true}),w=dom.window;
+ let state=defaults();state.settings.theme='dark';
+ state=reduce(state,{type:'add',item:{type:'template',id:'pair',top:{url:'https://a.test',title:'A'},bottom:{url:'https://b.test',title:'B'}}});
+ state=reduce(state,{type:'add',item:{type:'group',id:'folder',title:'Work',color:'#ffcc00',items:[]}});
+ const event=()=>({listeners:[],addListener(fn){this.listeners.push(fn);}}),messages=[],incoming=event();let root;
+ const attach=w.Element.prototype.attachShadow;w.Element.prototype.attachShadow=function(init){root=attach.call(this,init);return root;};
+ w.chrome={runtime:{getURL:p=>'chrome-extension://test'+p,onMessage:incoming,connect:()=>({onMessage:event(),onDisconnect:event()}),sendMessage:async m=>{messages.push(m);return m.type==='APP_GET'?{ok:true,state}:{ok:true};}},storage:{onChanged:event()}};
+ for(const file of ['icon-data.js','entity-icons.js','rail.js'])w.eval(fs.readFileSync(new URL('../'+file,import.meta.url),'utf8'));
+ await new Promise(r=>setImmediate(r));for(const fn of incoming.listeners)fn({type:'RAIL_VISIBILITY',visible:true},{},()=>{});
+ const labels=[...root.querySelectorAll('.rail > button')].map(b=>b.title);
+ assert.deepEqual(labels.slice(-4),['Поиск','Добавить текущую страницу','Группы и шаблоны','Настройки']);
+ assert.equal(root.querySelectorAll('.template-icon .tile').length,2);assert.equal(root.querySelectorAll('.group-icon').length,1);
+ root.querySelector('.shortcuts button').click();assert.deepEqual(JSON.parse(JSON.stringify(messages.at(-1))),{type:'OPEN_PANEL',command:{type:'open-item',id:'pair'}});
+ dom.window.close();
+});

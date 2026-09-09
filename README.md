@@ -1,98 +1,43 @@
-# App Tower
+# AppTower
 
-App Tower — Manifest V3 расширение для Microsoft Edge и Google Chrome,
-которое воссоздаёт и расширяет концепт правой «башни приложений»: постоянная
-полка-рейл, нативный Side Panel (где поддерживается), две независимые web-панели,
-группы/шаблоны, воркспейсы, PWA/модули, управление ресурсами и «план управления»
-в духе настроек браузера.
+AppTower adds a persistent right-side workspace to Microsoft Edge and Google
+Chrome. Keep frequently used sites, groups and two-pane templates in one place,
+open the panel when needed, and return to a compact rail when it is collapsed.
 
-Контекст: Microsoft поэтапно отключает нативный «Sidebar app list»
-(«App Tower») в Edge 149+ (начиная с Microsoft-аккаунтов) — расширение
-восполняет эту фичу и расширяет её.
+## What it does
 
-<details><summary>English</summary>
+- opens sites in independent upper and lower panes;
+- keeps shortcuts, groups, templates and workspaces;
+- opens a site in its own browser window when an iframe is unsuitable;
+- provides per-site zoom and notification settings;
+- adapts its colors to the browser or system theme.
 
-A Manifest V3 browser extension for Microsoft Edge and Google Chrome that
-recreates and extends the classic right-side "App Tower": a persistent shortcut
-rail, a native Side Panel where available, two independent web panes,
-groups/templates, workspaces, PWA/module adapters, resource management and a
-browser-settings-like control plane.
+Some sites deliberately prohibit embedding, or require a normal browser tab for
+login, media protection or full screen. AppTower provides a normal-tab and
+separate-window route for those sites.
 
-Context: Microsoft is retiring the native Sidebar app list ("App Tower")
-in Edge 149+ (phased, starting with Microsoft account users); this
-extension restores and extends it.
-</details>
+## Install
 
-## Возможности
+Store links will appear here after review by Microsoft Edge Add-ons and the
+Chrome Web Store. Until then, download a release ZIP, unpack it, open the
+browser extensions page, enable Developer mode and choose **Load unpacked**.
 
-- **Рейл** — постоянная вертикальная полка с сайтами, группами и двухпанельными
-  шаблонами. Доступна без шорткатов (свёрнутая — тонкий rail с поиском внизу).
-- **Две независимые панели** — верхняя и нижняя; смена одной не перезагружает
-  другую.
-- **Нативный Side Panel** — основной режим на Edge/Chrome; для браузеров без
-  Side Panel — sidecar-окно (fallback).
-- **Воркспейсы** — наборы панелей; **группы и шаблоны** — first-class сущности.
-- **PWA / модули** — адаптеры (YouTube, Яндекс.Музыка) как декларативные
-  data-only модули.
-- **Управление ресурсами** — бездействующие web-панели засыпают через 5 минут;
-  лимит живых ресурсов — 6.
-- **Опциональный Sync** — по аккаунту браузера (выключен по умолчанию).
+Supported browsers: current Microsoft Edge and Google Chrome with the Side Panel
+API. The manifest requires Chromium 141 or later.
 
-## Требования
+## Privacy and support
 
-- Microsoft Edge или Google Chrome **116+** (MV3, `minimum_chrome_version: 116`).
+AppTower has no account, analytics or advertising. It stores your settings in
+browser storage; optional browser sync is enabled only by you. Read the full
+[privacy policy](PRIVACY.md). Report problems through
+[GitHub Issues](https://github.com/Stolyarovmn/AppTower/issues).
 
-## Установка из исходников (dev mode)
+## Releases
 
-1. Возьмите каталог `app/`.
-2. `chrome://extensions` → включите «Режим разработчика».
-3. «Загрузить нераспакованное расширение» → выберите каталог `app/`.
-4. Кликните по иконке расширения — откроется tower (Side Panel).
+Each release is built from a `release/*` branch, tagged as `vX.Y.Z`, tested and
+attached to the corresponding GitHub Release. The legacy v1 implementation and
+its historical artifacts remain available in the `legacy/v1` branch.
 
-## Сборка и валидация
+## License
 
-```bash
-node tools/validate.mjs            # статическая проверка манифеста/JS/JSON
-python tools/package.py            # чистые full-replacement ZIP в dist/
-python tools/make_yandex_variant.py # (пере)генерация Yandex-fallback
-```
-
-Пакетировщик **никогда** не включает `.pem` / `.crx` / секреты в ZIP.
-
-## Каталог
-
-```text
-app/                         исходники расширения (Edge/Chrome, v1.0.0)
-variants/yandex-sidecar/     Chromium/Yandex fallback (генерируется)
-archive/releases/            исторические релизы (ZIP)
-archive/release-notes/       исторические release notes
-archive/RELEASE_INDEX.csv    индекс версий/платформ/SHA-256
-docs/                        продукт, архитектура, статус, тесты, roadmap
-tools/                       валидация и пакетирование
-.github/                     CI + шаблоны issue/PR
-AGENTS.md                    обязательные правила для кодинг-агентов
-```
-
-Начните с `docs/00_START_HERE.md` и `docs/01_PROJECT_STATUS.md`.
-Безопасность и права — `docs/08`; подача в сторы — `docs/21`.
-
-## Каталоги
-
-Распространение — **Microsoft Edge Add-ons** и **Google Chrome Web Store**.
-Ссылки появятся здесь после одобрения. (Yandex fallback — вне сторов, как
-sidecar для браузеров без Side Panel.)
-
-## Статус
-
-Статичная валидация пройдена; **поведение рантайма в Edge/Chrome — source of
-truth** (Side Panel lifecycle, user-gesture, встраивание сайтов). См.
-`docs/01_PROJECT_STATUS.md` и `docs/10_KNOWN_ISSUES.md`.
-
-## Лицензия
-
-MIT — см. `LICENSE`.
-
-## Вклад
-
-PR welcome: `main` = проверенная база; ветки `feature/<name>`, `fix/<name>`;
-теги релизов `vX.Y.Z`. Перед правкой прочитайте `AGENTS.md`.
+[MIT](LICENSE)

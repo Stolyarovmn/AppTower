@@ -1,0 +1,28 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {JSDOM} from 'jsdom';
+import {defaults,reduce,KEY} from '../core/model.js';
+const tick=async()=>{for(let i=0;i<8;i++)await new Promise(r=>setImmediate(r));};
+const event=()=>({listeners:[],addListener(fn){this.listeners.push(fn);},emit(...args){for(const fn of this.listeners)fn(...args);}});
+test('actual Side Panel boots, adds browser tab, searches, splits and updates metadata without frame reload',async()=>{
+  const dom=new JSDOM(fs.readFileSync(new URL('../sidepanel.html',import.meta.url),'utf8'),{url:'chrome-extension://test/sidepanel.html',pretendToBeVisual:true});
+  Object.assign(globalThis,{window:dom.window,document:dom.window.document,ResizeObserver:class{observe(){}},innerWidth:500,innerHeight:900});
+  dom.window.HTMLDialogElement.prototype.showModal=function(){this.open=true;};dom.window.HTMLDialogElement.prototype.close=function(){this.open=false;this.dispatchEvent(new dom.window.Event('close'));};
+  let state=defaults();const changed=event(),messages=[];const srcWrites=[];const descriptor=Object.getOwnPropertyDescriptor(dom.window.HTMLIFrameElement.prototype,'src');Object.defineProperty(dom.window.HTMLIFrameElement.prototype,'src',{get:descriptor.get,set(value){srcWrites.push({frame:this,value});descriptor.set.call(this,value);}});
+  globalThis.chrome={windows:{getCurrent:async()=>({id:1})},storage:{session:{get:async()=>({}),set:async()=>{}},onChanged:changed},runtime:{getURL:path=>'chrome-extension://test'+path,onMessage:event(),connect:()=>({onMessage:event(),disconnect(){}}),sendMessage:async m=>{messages.push(m);if(m.type==='APP_GET')return {ok:true,state:structuredClone(state)};if(m.type==='GET_ACTIVE_TAB')return {ok:true,tab:{title:'Browser tab',url:'http://browser.test/page'}};if(m.type==='APP_MUTATE'){state=reduce(state,m.action);changed.emit({[KEY]:{newValue:structuredClone(state)}},'local');return {ok:true,state:structuredClone(state)};}return {ok:true};}},tabs:{create:async()=>({})}};
+  globalThis.alert=message=>{throw Error(message);};globalThis.confirm=()=>true;
+  const interval=globalThis.setInterval;globalThis.setInterval=(fn,ms)=>{const id=interval(fn,ms);id.unref();return id;};
+  await import('../sidepanel.js');await tick();
+  const $=id=>document.getElementById(id);
+  assert.equal($('empty-state').hidden,false);
+  $('add').click();await tick();const dialog=document.querySelector('dialog[open]');assert.ok(dialog);const inputs=dialog.querySelectorAll('input');assert.equal(inputs[1].value,'http://browser.test/page');dialog.querySelector('form').dispatchEvent(new dom.window.Event('submit',{cancelable:true}));await tick();
+  assert.equal(state.workspaces[0].items.length,1);
+  $('shortcut-list').querySelector('button').click();await tick();
+  const top=document.querySelector('.pane[data-pane="top"] iframe');assert.equal(top.src,'http://browser.test/page');const address=document.querySelector('.pane[data-pane="top"] [data-role="url"]');assert.equal(address.value,'browser.test/page');document.querySelector('.pane[data-pane="top"] [data-action="go"]').click();await tick();assert.equal(state.workspaces[0].panes.top.url,'http://browser.test/page','untouched displayed HTTP keeps its scheme');address.focus();assert.equal(address.value,'http://browser.test/page');address.blur();assert.equal(address.value,'browser.test/page');const count=srcWrites.filter(x=>x.frame===top).length;
+  await chrome.runtime.sendMessage({type:'APP_MUTATE',action:{type:'edit',id:state.workspaces[0].items[0].id,value:{title:'Renamed'}}});await tick();assert.equal(srcWrites.filter(x=>x.frame===top).length,count,'renaming does not reload top');
+  $('split-toggle').click();await tick();const bottom=document.querySelector('.pane[data-pane="bottom"]');bottom.querySelector('input').value='https://bottom.test/';bottom.querySelector('[data-action="go"]').click();await tick();assert.equal(bottom.querySelector('iframe').src,'https://bottom.test/');assert.equal(srcWrites.filter(x=>x.frame===top).length,count,'bottom navigation leaves top unchanged');
+  $('search').click();await tick();assert.equal($('search-dialog').open,true);$('search-input').value='Renamed';$('search-input').dispatchEvent(new dom.window.Event('input'));assert.match($('search-results').textContent,/Renamed/);
+  $('search-dialog').close();const bottomFrame=bottom.querySelector('iframe'),bottomWrites=srcWrites.filter(x=>x.frame===bottomFrame).length;document.querySelector('.pane[data-pane="top"] [data-action="close"]').click();await tick();assert.equal(srcWrites.filter(x=>x.frame===bottomFrame).length,bottomWrites,'closing top preserves bottom document');assert.equal(state.workspaces[0].singlePane,'bottom');assert.equal(bottom.style.flexGrow,'1');assert.equal(bottom.style.flexBasis,'0px');$('collapse').click();await tick();assert.ok(messages.some(x=>x.type==='COLLAPSE_PANEL'));
+  dom.window.close();globalThis.setInterval=interval;
+});

@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "sidePanel": "Native browser panel",
+    "storage": "Local workspace and optional browser sync",
+    "tabs": "Explicit current-page capture and owned windows",
+    "scripting": "Restore local rail scripts in existing tabs",
+    "contextMenus": "Explicit add/open browser context actions",
+    "declarativeNetRequestWithHostAccess": "Scoped compatibility for extension subframes",
+    "favicon": "Browser-provided shortcut icons"
+  },
+  "optional_permissions": {
+    "contentSettings": "User-requested per-origin notification settings"
+  },
+  "host_permissions": {
+    "http://*/*": "Existing generic rail and compatibility baseline; narrowing is TASK 12",
+    "https://*/*": "Existing generic rail and compatibility baseline; narrowing is TASK 12"
+  },
+  "optional_host_permissions": {},
+  "content_script_matches": ["http://*/*", "https://*/*"],
+  "content_script_all_frames": false
+}
