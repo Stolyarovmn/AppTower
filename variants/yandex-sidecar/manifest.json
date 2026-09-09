@@ -10,7 +10,6 @@
     "favicon",
     "declarativeNetRequestWithHostAccess",
     "scripting",
-    "declarativeNetRequestFeedback",
     "windows",
     "alarms",
     "contextMenus"
@@ -92,8 +91,7 @@
     "newtab": "newtab/newtab.html"
   },
   "optional_permissions": [
-    "contentSettings",
-    "notifications"
+    "contentSettings"
   ],
   "options_ui": {
     "page": "options/options.html",

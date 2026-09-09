@@ -1,6 +1,25 @@
 const FALLBACK_WINDOW_KEY = "atnTowerFallbackWindowsV1";
 const DISABLED_SIDE_PANEL_TABS_KEY = "atnDisabledSidePanelTabsV1";
 
+// Native chrome.sidePanel pages do not get our sidecar hostWindowId query
+// parameter. sidepanel.js historically did Number(params.get("hostWindowId")),
+// and Number(null) is 0, so a native panel incorrectly bound itself to window
+// 0 instead of chrome.windows.getCurrent(). Put an explicitly non-numeric
+// sentinel into native side-panel URLs before the importing module evaluates.
+// Sidecar URLs already carry a real numeric hostWindowId and are untouched.
+if (typeof document !== "undefined" && typeof history !== "undefined") {
+  try {
+    const url = new URL(location.href);
+    if (
+      url.pathname.endsWith("/sidepanel/sidepanel.html") &&
+      !url.searchParams.has("hostWindowId")
+    ) {
+      url.searchParams.set("hostWindowId", "current");
+      history.replaceState(history.state, "", url);
+    }
+  } catch {}
+}
+
 export function detectBrowser() {
   const ua = globalThis.navigator?.userAgent || "";
   if (/YaBrowser\//i.test(ua)) return {id:"yandex", style:"yandex", name:"Yandex Browser"};
@@ -41,19 +60,36 @@ export function applyBrowserSkin(documentRef = document) {
   return browser;
 }
 
+async function disabledSidePanelTabIds() {
+  const data = await chrome.storage.session.get(DISABLED_SIDE_PANEL_TABS_KEY);
+  return new Set((data[DISABLED_SIDE_PANEL_TABS_KEY] || []).map(Number).filter(Number.isInteger));
+}
+
 export async function openTowerContainer(windowId, {intent=null, tabId=null} = {}) {
   const numericWindowId = Number(windowId);
   const numericTabId = Number(tabId);
   if (sidePanelPermissionGrantedByManifest() && chrome.sidePanel?.open && Number.isInteger(numericWindowId)) {
+    // Normal opens must not call setOptions(enabled:true) every time: Edge can
+    // recreate an already-visible Side Panel document when per-tab options are
+    // rewritten. Re-enable only a tab that App Tower itself disabled as the
+    // compatibility collapse fallback.
+    let mustRestoreTab = false;
     if (Number.isInteger(numericTabId) && chrome.sidePanel?.setOptions) {
-      // Do not await between these calls. sidePanel.open() must stay inside the
-      // original user-gesture chain. Chromium queues setOptions before open.
+      try {
+        mustRestoreTab = (await disabledSidePanelTabIds()).has(numericTabId);
+      } catch {}
+    }
+
+    if (mustRestoreTab) {
+      // Keep open() in the original user-gesture chain: start both browser API
+      // calls before awaiting either promise.
       const enablePromise = chrome.sidePanel.setOptions({tabId:numericTabId,enabled:true});
       const openPromise = chrome.sidePanel.open({tabId:numericTabId});
       await Promise.all([enablePromise,openPromise]);
       forgetDisabledSidePanelTab(numericTabId).catch(()=>{});
-      return {kind:"sidePanel", windowId:numericWindowId, tabId:numericTabId};
+      return {kind:"sidePanel", windowId:numericWindowId, tabId:numericTabId, restored:true};
     }
+
     await chrome.sidePanel.open({windowId:numericWindowId});
     return {kind:"sidePanel", windowId:numericWindowId};
   }
@@ -103,15 +139,13 @@ export async function openTowerContainer(windowId, {intent=null, tabId=null} = {
 }
 
 async function rememberDisabledSidePanelTab(tabId) {
-  const data = await chrome.storage.session.get(DISABLED_SIDE_PANEL_TABS_KEY);
-  const ids = new Set((data[DISABLED_SIDE_PANEL_TABS_KEY] || []).map(Number).filter(Number.isInteger));
+  const ids = await disabledSidePanelTabIds();
   ids.add(Number(tabId));
   await chrome.storage.session.set({[DISABLED_SIDE_PANEL_TABS_KEY]:[...ids]});
 }
 
 async function forgetDisabledSidePanelTab(tabId) {
-  const data = await chrome.storage.session.get(DISABLED_SIDE_PANEL_TABS_KEY);
-  const ids = new Set((data[DISABLED_SIDE_PANEL_TABS_KEY] || []).map(Number).filter(Number.isInteger));
+  const ids = await disabledSidePanelTabIds();
   if (!ids.delete(Number(tabId))) return;
   await chrome.storage.session.set({[DISABLED_SIDE_PANEL_TABS_KEY]:[...ids]});
 }
@@ -163,7 +197,7 @@ export async function closeTowerContainer(windowId) {
 
     // Compatibility fallback for Edge builds where close() isn't implemented:
     // disable the active tab and KEEP it disabled. The next explicit App Tower
-    // open re-enables it in the same user-gesture chain.
+    // open re-enables exactly that tab rather than rewriting every open.
     try {
       const tabId=await disableNativeSidePanelForActiveTab(id);
       if (Number.isInteger(tabId)) return {kind:"sidePanel",method:"tab-disable",tabId};

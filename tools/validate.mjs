@@ -65,6 +65,12 @@ function validateTree(root, {fallback=false}={}) {
   }
   const manifest = JSON.parse(read(manifestPath));
 
+  if (typeof manifest.description !== "string" || !manifest.description.trim()) {
+    fail(`${label}: manifest description missing`);
+  } else if (manifest.description.length > 132) {
+    fail(`${label}: manifest description is ${manifest.description.length} chars; Chrome Web Store maximum is 132`);
+  }
+
   const refs = [];
   if (manifest.background?.service_worker) refs.push(manifest.background.service_worker);
   if (manifest.side_panel?.default_path) refs.push(manifest.side_panel.default_path);

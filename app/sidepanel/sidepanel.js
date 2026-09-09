@@ -49,6 +49,41 @@ const __atnHostWindowId = Number.isInteger(Number(__atnParams.get("hostWindowId"
   : __atnWindow.id;
 let __atnPanelPort = null;
 let __atnPanelReconnectTimer = null;
+let __atnWorkspaceMutationDepth = 0;
+let __atnWorkspaceRefreshPending = false;
+let __atnWorkspaceRefreshSwitched = false;
+
+async function __atnRefreshWorkspace(switched = false) {
+  await loadState();
+  if (switched) state.sleepingPanes.clear();
+  renderAll(false);
+}
+
+function __atnHandleWorkspaceChanged(message) {
+  const switched = Boolean(message.workspaceId && message.workspaceId !== state.workspaceId);
+  if (__atnWorkspaceMutationDepth > 0) {
+    __atnWorkspaceRefreshPending = true;
+    __atnWorkspaceRefreshSwitched ||= switched;
+    return;
+  }
+  __atnRefreshWorkspace(switched).catch(() => {});
+}
+
+async function __atnWithWorkspaceMutation(callback) {
+  __atnWorkspaceMutationDepth += 1;
+  try {
+    return await callback();
+  } finally {
+    __atnWorkspaceMutationDepth = Math.max(0, __atnWorkspaceMutationDepth - 1);
+    if (__atnWorkspaceMutationDepth === 0 && __atnWorkspaceRefreshPending) {
+      const switched = __atnWorkspaceRefreshSwitched;
+      __atnWorkspaceRefreshPending = false;
+      __atnWorkspaceRefreshSwitched = false;
+      await __atnRefreshWorkspace(switched);
+    }
+  }
+}
+
 function __atnConnectPanelPort() {
   clearTimeout(__atnPanelReconnectTimer);
   if (__atnPanelPort) return;
@@ -57,11 +92,7 @@ function __atnConnectPanelPort() {
     __atnPanelPort = port;
     port.onMessage.addListener(message => {
       if (message?.type === "ATN_WORKSPACE_CHANGED") {
-        const switched = Boolean(message.workspaceId && message.workspaceId !== state.workspaceId);
-        loadState().then(() => {
-          if (switched) state.sleepingPanes.clear();
-          renderAll(false);
-        }).catch(() => {});
+        __atnHandleWorkspaceChanged(message);
       }
       if (message?.type === "ATN_SLEEP_PANE" && ["top","bottom"].includes(message.pane)) {
         sleepPane(message.pane,message.reason || "idle");
@@ -1682,29 +1713,36 @@ async function navigateFromInput(name) {
   const url = normalizeUrl(input.value);
   if (!url) { input.select(); return; }
 
-  const previous = state.panes[name] || {};
-  const inferred = inferDefaultsForUrl(url);
+  await __atnWithWorkspaceMutation(async () => {
+    const previous = state.panes[name] || {};
+    const inferred = inferDefaultsForUrl(url);
 
-  // Typing a new URL is a new navigation intent, so it always begins in Auto.
-  // If the user wants S/C/R for this URL they can choose it afterwards.
-  state.panes[name] = {
-    ...previous,
-    url,
-    title:url,
-    mode:"auto",
-    compatDomains:normalizeCompatDomains(inferred.compatDomains),
-    sourceSiteId:null
-  };
-  state.layout.activePane = name;
-  state.lastInteractedPane = name;
-  state.focus = null;
+    // Typing a new URL is a new navigation intent, so it always begins in Auto.
+    // If the user wants S/C/R for this URL they can choose it afterwards.
+    state.panes[name] = {
+      ...previous,
+      url,
+      title:url,
+      mode:"auto",
+      compatDomains:normalizeCompatDomains(inferred.compatDomains),
+      sourceSiteId:null
+    };
+    state.layout.activePane = name;
+    state.lastInteractedPane = name;
+    state.focus = null;
 
-  state.sleepingPanes.delete(name);
-  await syncCompatRules();
-  await persistWorkspaceState({panes:state.panes,layout:state.layout});
-  await chrome.runtime.sendMessage({type:"RECORD_RECENT",windowId:__atnHostWindowId,url,title:url,kind:"site"}).catch(()=>{});
-  // URL changed only in this pane. A normal render reloads only frames whose src changed.
-  renderAll(false);
+    state.sleepingPanes.delete(name);
+    // Persist the user intent before accepting workspace-change broadcasts from
+    // earlier writes. Otherwise a delayed refresh can reload the old URL while
+    // this navigation is awaiting compatibility-rule synchronization.
+    const panes = structuredClone(state.panes);
+    const layout = structuredClone(state.layout);
+    await persistWorkspaceState({panes,layout});
+    await syncCompatRules();
+    await chrome.runtime.sendMessage({type:"RECORD_RECENT",windowId:__atnHostWindowId,url,title:url,kind:"site"}).catch(()=>{});
+    // URL changed only in this pane. A normal render reloads only frames whose src changed.
+    renderAll(false);
+  });
 }
 
 async function cycleMode(name, direction) {

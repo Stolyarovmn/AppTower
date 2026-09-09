@@ -1,137 +1,123 @@
-# 16 — Conversation / design handoff
+# 16 — Design history / engineering handoff
 
-This is the curated product history needed to continue work without replaying
-the whole chat.
+This document preserves product decisions and runtime lessons that matter for future development without depending on private conversation history.
 
 ## Origin
 
-The project started because the old Microsoft Edge right sidebar/App Tower was
-removed/retired. The goal became a replacement extension that feels native but
-adds capabilities the old sidebar did not have.
+App Tower began as an independent replacement concept for the retired/retiring Microsoft Edge right-side app-list experience, then expanded beyond parity into a browser workspace layer.
 
-An existing third-party extension ("Classic Sidebar") was inspected only to
-understand the feasible architecture: native extension Side Panel containing
-extension HTML, with external sites framed inside and a compatibility DNR
-approach. Its code was not to be copied/distributed.
+A third-party sidebar extension was inspected only to understand feasible browser-extension architecture. App Tower's codebase and product design remain independent.
 
-## Early requirements
+## Early product requirements
 
-- right-side rail similar to old Edge App Tower
-- panel manually resizable by browser/user
-- collapse/expand without covering page content
-- rail remains visible in collapsed state
-- preserve width when possible
-- split content horizontally into upper/lower panes
-- panes independent
-- active pane follows interaction
-- system theme/manual override
-- no duplicated/misaligned controls
-- no extra scrollbars
-- add current page
-- arbitrary URL
-- import/export
-- sync
-- no default shortcut list
+- right-side rail similar to the old Edge app tower;
+- browser/user-resizable Side Panel;
+- collapse/expand without permanently covering page content;
+- rail remains visible while collapsed;
+- preserve usable panel width/state where browser APIs permit;
+- split content into independent upper/lower panes;
+- active pane follows interaction;
+- system theme plus manual override;
+- no duplicated/misaligned controls or extra scrollbars;
+- Add Current and arbitrary URL;
+- import/export and optional browser sync;
+- no default shortcut list on fresh install.
 
 ## Renderer evolution
 
-Initial Secure/Compatibility/Real Page modes evolved into canonical **Auto**.
+Initial Secure / Compatibility / Real Page modes evolved into canonical **Auto**.
 
-Auto:
-1. optional module renderer
-2. PWA-aware app behavior
-3. normal web + scoped compatibility
+Auto should prefer, in order:
 
-User specifically wanted every new/manual scenario to begin as Auto, rather
-than silently persisting Secure/Compatibility.
+1. supported declarative module behavior;
+2. PWA-aware app behavior;
+3. normal web rendering with scoped compatibility as appropriate.
 
-## Media
+New/manual navigation scenarios should start in Auto unless the user explicitly overrides the renderer mode.
 
-Yandex Music initially motivated a compact media adapter. The requirement
-expanded from one track to album/playlist/favorites/general provider support.
-This led to the decision that provider logic should be optional modules so users
-do not carry Yandex/Spotify/etc code they never use.
+## Media and modules
 
-Current architecture therefore has declarative modules and a future Module Store
-idea.
-
-## PWA discussion
-
-Installable web apps/PWAs were considered because they are often better suited
-to narrow app-like surfaces.
+A compact Yandex Music player idea exposed a broader requirement: service-specific behavior should not bloat the core for every user.
 
 Decision:
-- discover standard Web App Manifest
-- use its metadata/shortcuts
-- do not depend on deprecated Edge-specific PWA sidebar metadata
-- optionally launch top-level app-like sidecar to escape iframe restrictions
+
+- optional/provider-specific behavior belongs in declarative modules;
+- module manifests remain data-only;
+- no remote executable JS/WASM module loading;
+- the media contract stays provider-neutral;
+- play/pause or other transport controls are exposed only when backed by a verified provider integration.
+
+## PWA / Web App direction
+
+PWAs/Web App Manifests are useful metadata and top-level app surfaces for sites that are poor iframe candidates.
+
+Decision:
+
+- discover standard Web App Manifest metadata;
+- use manifest metadata/shortcuts where useful;
+- do not depend on deprecated Edge-specific PWA sidebar metadata;
+- allow a top-level Real Page/PWA sidecar when iframe restrictions make an embedded surface inappropriate.
 
 ## Shortcut organization
 
-Requirements grew beyond a flat rail:
+The rail evolved from a flat list into first-class shortcut entities:
 
-- wheel/touchpad/touch scrolling
-- up/down overflow arrows
-- groups with editable names and initials icon
-- pointer drag/drop
-- site on site asks Group or Template
-- two-pane templates with 50% default favicon overlap
-- TOP icon above BOTTOM icon
-- overlap adjustable
-- swap top/bottom
-- group/template management accessible without discovering hidden context menus
+- wheel/touchpad/touch scrolling;
+- overflow arrows;
+- groups with editable names and initials;
+- pointer drag/reorder;
+- site-on-site choice between Group and Template;
+- two-pane templates;
+- default 50% favicon overlap;
+- TOP icon above BOTTOM icon;
+- adjustable overlap;
+- swap top/bottom;
+- group/template management visible without relying only on hidden context menus.
 
 ## Control plane
 
-As features grew, settings moved from a panel dialog to a dedicated Options
-Page with left navigation.
+As features grew, settings moved from a panel dialog to a dedicated Options page with browser-settings-like left navigation.
 
-The user wanted it to feel as native as possible. Browser APIs are used for
-real native context-menu actions, while in-extension menus are styled for the
-browser. Injecting a custom App Tower section into the browser's own Settings
-left navigation is not supported.
+Native browser APIs are used where they genuinely provide native UI, such as browser context menus. Extension HTML is browser-styled but must not be described as truly native browser settings UI.
 
-## Workspace/search/performance phase
+A custom App Tower section cannot be inserted into the browser's internal Settings left navigation through supported public extension APIs.
 
-Agreed directions:
+## Workspace / search / resource management
 
-- App Tower Workspaces
-- possible browser-native workspace binding if a public API exists
-- search magnifier at bottom
-- Recent
-- session snapshots deferred as "too early"
-- mandatory sleep after 5 minutes
-- hard maximum 6 live web/media resources
-- site notifications and settings
-- per-site configuration
-- dynamic/linked template idea to develop later
-- Sidecar Manager
-- media shelf/contract
-- module permissions dashboard
+Current agreed direction:
+
+- App Tower Workspaces bound to browser windows;
+- use native browser Workspace identity only if a stable public API becomes available;
+- search magnifier at the bottom of the rail;
+- App Tower Recent;
+- idle web-pane sleep after 5 minutes;
+- hard maximum of 6 live web/media resources;
+- per-site settings and browser content settings where supported;
+- Sidecar Manager for top-level Real Page/PWA windows;
+- media shelf/contract;
+- module permissions dashboard.
 
 ## Browser targets
 
-- Edge and Chrome are primary.
-- Yandex Browser should have a fallback rather than forcing all features through
-  `chrome.sidePanel`.
-- BrowserAdapter introduced to isolate container behavior.
-- Firefox may come later.
+- Edge and Chrome are primary targets.
+- Yandex Browser uses a generated sidecar fallback rather than forcing all behavior through `chrome.sidePanel`.
+- Browser-specific container operations belong behind BrowserAdapter.
+- Firefox is a possible future adapter, not a current supported target.
 
-## Important runtime lessons from user testing
+## Runtime lessons that must remain regression tests
 
-1. Collapsed and expanded rails were simultaneously visible because Port
-   disconnect was wrongly treated as Side Panel close.
-2. Different font/SVG icon sources caused visually different rails.
-3. Group/template dialogs lost state when a previous dialog closed.
-4. Native favicon drag produced the browser's prohibited-drop cursor.
-5. Workspace changes caused forced iframe reloads of both panes.
-6. `sidePanel.open()` after async work loses user activation in some paths.
-7. Search re-render-on-hover destroyed the clickable result before click.
-8. Generic YouTube iframe behavior is unstable and should not be "fixed" by
-   repeatedly inventing arbitrary mobile URLs.
-9. Add-current logic must know whether the user means pane content or the
-   browser tab behind the Side Panel.
-10. Collapse/expand must work even with zero shortcuts and after restart.
+1. A runtime Port disconnect is not proof that the native Side Panel closed.
+2. Browser Side Panel open/close events are authoritative where available.
+3. Collapsed and expanded rails must never be simultaneously visible.
+4. Mixed font/SVG icon sources cause visibly inconsistent rails; use a shared deterministic icon system.
+5. Dialog draft state must not depend on a previous dialog surviving close events.
+6. Native favicon/image drag can produce the browser's prohibited-drop cursor; pointer drag must own the gesture.
+7. Ordinary workspace writes must not force-reload both pane iframes.
+8. `sidePanel.open()` may lose required user activation if asynchronous work happens first.
+9. Search result re-rendering during hover/focus can destroy click targets.
+10. Generic YouTube iframe behavior is unstable; do not invent arbitrary URL rewrites without evidence.
+11. Add Current must distinguish active pane content from the browser tab behind the Side Panel.
+12. Collapse/expand must work with zero shortcuts and after browser restart.
+13. Third-party anti-bot/CAPTCHA behavior must not be bypassed with compatibility rules.
 
-These lessons should be preserved as regression tests, not forgotten with each
-new version.
+These lessons belong in acceptance/regression coverage and should not be rediscovered release by release.
