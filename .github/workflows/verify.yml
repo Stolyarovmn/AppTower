@@ -23,7 +23,9 @@ jobs:
           node-version: 24
       - name: Install test dependencies
         working-directory: extension
-        run: npm ci --ignore-scripts
+        run: |
+          npm ci --ignore-scripts
+          npm install --no-save --ignore-scripts @playwright/test@1.56.0
       - name: Validate manifest JSON
         run: node -e "JSON.parse(require('fs').readFileSync('extension/manifest.json','utf8'))"
       - name: Check manifest permission budget
@@ -31,6 +33,12 @@ jobs:
       - name: Extension unit and contract tests
         working-directory: extension
         run: npm test
+      - name: Install Playwright Chromium
+        working-directory: extension
+        run: npx playwright install --with-deps chromium
+      - name: Chromium extension E2E (headed/Xvfb)
+        working-directory: extension
+        run: xvfb-run -a npx playwright test tests/e2e/sidepanel-smoke.spec.mjs --workers=1 --reporter=line
       - name: Verify no legacy imports or fixed extension key
         run: |
           ! grep -R "\.\./app\|/app/\|edge-manual-gate-fixes\|manual-gate-fixes\|rail-prelude\|rail-style-contract" extension --exclude-dir=node_modules --include='*.js' --include='*.html' --include='*.css'
