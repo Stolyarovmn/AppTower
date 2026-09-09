@@ -1,4 +1,5 @@
 globalThis.__atv2IconPaths = Object.freeze({
+  eyedropper: '<path d="m12 3 5 5M11 4l3-2 4 4-2 3M13 6l-9 9v3h3l9-9M4 15l3 3"/>',
   template: '<rect x="3" y="2" width="14" height="6" rx="1"/><rect x="3" y="12" width="14" height="6" rx="1"/>',
   single: '<rect x="3" y="2" width="14" height="16" rx="2"/>',
   swap: '<path d="M6 3v14m-3-3 3 3 3-3M14 17V3m-3 3 3-3 3 3"/>',

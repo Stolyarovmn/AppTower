@@ -14,7 +14,7 @@ test('compact rail preserves templates, group color, control order and expand co
  for(const file of ['icon-data.js','entity-icons.js','rail.js'])w.eval(fs.readFileSync(new URL('../'+file,import.meta.url),'utf8'));
  await new Promise(r=>setImmediate(r));for(const fn of incoming.listeners)fn({type:'RAIL_VISIBILITY',visible:true},{},()=>{});
  const labels=[...root.querySelectorAll('.rail > button')].map(b=>b.title);
- assert.deepEqual(labels.slice(-4),['Добавить текущую страницу','Группы и шаблоны','Поиск','Настройки']);
+ assert.deepEqual(labels.slice(-4),['Поиск','Добавить текущую страницу','Группы и шаблоны','Настройки']);
  assert.equal(root.querySelectorAll('.template-icon .tile').length,2);assert.equal(root.querySelectorAll('.group-icon').length,1);
  root.querySelector('.shortcuts button').click();assert.deepEqual(JSON.parse(JSON.stringify(messages.at(-1))),{type:'OPEN_PANEL',command:{type:'open-item',id:'pair'}});
  dom.window.close();

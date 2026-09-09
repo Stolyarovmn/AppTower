@@ -21,7 +21,7 @@ test('context menu anchors to trigger; choice cancellation and template order ar
  const t=shortcutIcon({type:'template',top:a,bottom:b});assert.equal(t.querySelectorAll('.tile').length,2);assert.match(t.lastChild.textContent,/A/);
  const g=shortcutIcon({type:'group',title:'Group',color:'#ff0000'});assert.equal(g.querySelector('.tile').style.backgroundColor,'rgb(255, 0, 0)');assert.equal(g.textContent,'GR');
  const creating=form('Группа',[{name:'color',label:'Цвет',type:'color',value:'#b8c7df'}]);
- d=document.querySelector('dialog');assert.equal(d.querySelectorAll('.palette button').length,8);
+ d=document.querySelector('dialog');assert.equal(d.querySelectorAll('.palette button[aria-pressed]').length,8);
  assert.ok(d.querySelector('.dialog-close'));assert.equal([...d.querySelectorAll('button')].some(b=>b.textContent==='Отмена'),false);
  const swatch=d.querySelectorAll('.palette button')[2];swatch.click();await Promise.resolve();await Promise.resolve();assert.equal(swatch.getAttribute('aria-pressed'),'true');
  d.dispatchEvent(new dom.window.MouseEvent('pointerdown',{clientX:-2,clientY:-2}));d.dispatchEvent(new dom.window.MouseEvent('pointerup',{clientX:-2,clientY:-2}));assert.equal(await creating,null,'outside click dismisses without saving');

@@ -9,6 +9,9 @@ test('settings use drag handles, icon actions and module switch without saved no
  globalThis.chrome={runtime:{getURL:p=>'chrome-extension://test'+p,sendMessage:async m=>{if(m.type==='APP_MUTATE')state=reduce(state,m.action);return {ok:true,state};}},storage:{onChanged:{addListener(){}}}};
  await import('../options.js');
  assert.equal(document.querySelectorAll('.nav-group').length,4);
+ const css=fs.readFileSync(new URL('../options.css',import.meta.url),'utf8'); const style=document.createElement('style');style.textContent=css;document.head.append(style);
+ assert.equal(window.getComputedStyle(document.querySelector('.workspace-order-row')).gridTemplateColumns,'30px minmax(0,1fr) 36px 36px');
+ assert.equal(window.getComputedStyle(document.querySelector('.drag-handle')).width,'30px');
  assert.equal(document.querySelectorAll('.drag-handle[draggable="true"]').length,2);
  assert.doesNotMatch(document.getElementById('content').textContent,/Выше|Ниже/);
  assert.ok(document.querySelector('.workspace-order-row .icon-action[aria-label="Переименовать"]'));

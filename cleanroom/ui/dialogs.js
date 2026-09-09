@@ -36,7 +36,7 @@ export function form(title, fields, submit = 'Сохранить', options = {})
           input.addEventListener('input', update); update(); palette.append(swatch);
         }
         input.title = 'Другой цвет'; input.setAttribute('aria-label', 'Другой цвет'); input.className = 'custom-color';
-        palette.append(input); label.append(palette);
+        palette.append(customColorControl(input)); label.append(palette);
       } else label.append(input);
       f.append(label);
       controls[field.name] = input;
@@ -166,4 +166,14 @@ export function present(dialog) {
   dialog.addEventListener('pointerup', e => { if (outside && e.target === dialog && isOutside(e)) dialog.close(); outside = false; });
   dialog.addEventListener('close', () => { if (pointerClose && document.activeElement === trigger) trigger?.blur(); }, {once:true});
   dialog.showModal();
+}
+
+export function customColorControl(input) {
+  const wrap = document.createElement('span'); wrap.className = 'custom-color-control';
+  const trigger = document.createElement('button'); trigger.type = 'button';
+  trigger.className = 'custom-color-trigger'; trigger.innerHTML = icon('eyedropper');
+  trigger.append(document.createTextNode('Другой цвет…'));
+  trigger.onclick = () => { if (typeof input.showPicker === 'function') input.showPicker(); else input.click(); };
+  input.className = 'native-color-input'; input.tabIndex = -1;
+  wrap.append(trigger,input); return wrap;
 }

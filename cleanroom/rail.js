@@ -43,9 +43,10 @@
     `;
     const rail=document.createElement("div");rail.className="rail";
     const sep=document.createElement("div");sep.className="sep";
+    const bottomSep=document.createElement("div");bottomSep.className="sep";
     const spacer=document.createElement("div");spacer.className="spacer";
     shortcutArea=document.createElement("div");shortcutArea.className="shortcuts";
-    rail.append(button("Закрыть AppTower",svg(globalThis.__atv2IconPaths?.close||""),()=>chrome.runtime.sendMessage({type:"APP_DISABLE"})),button("Развернуть AppTower",icons.expand,()=>open()),sep,shortcutArea,spacer,button("Добавить текущую страницу",icons.add,()=>open({type:"add-current"})),button("Группы и шаблоны",svg(globalThis.__atv2IconPaths?.group||""),()=>open({type:"organize"})),button("Поиск",icons.search,()=>open({type:"search"})),button("Настройки",icons.settings,()=>chrome.runtime.sendMessage({type:"APP_OPTIONS"})));
+    rail.append(button("Закрыть AppTower",svg(globalThis.__atv2IconPaths?.close||""),()=>chrome.runtime.sendMessage({type:"APP_DISABLE"})),button("Развернуть AppTower",icons.expand,()=>open()),sep,shortcutArea,spacer,button("Поиск",icons.search,()=>open({type:"search"})),bottomSep,button("Добавить текущую страницу",icons.add,()=>open({type:"add-current"})),button("Группы и шаблоны",svg(globalThis.__atv2IconPaths?.group||""),()=>open({type:"organize"})),button("Настройки",icons.settings,()=>chrome.runtime.sendMessage({type:"APP_OPTIONS"})));
     root.append(style,rail);
     document.documentElement.append(host);
     renderConfig();

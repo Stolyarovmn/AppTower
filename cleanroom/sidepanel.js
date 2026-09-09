@@ -252,7 +252,7 @@ async function render() {
   updateOverflow();
 }
 function updateOverflow() {
-  const find = $('shortcut-overflow-search'); if(find) find.hidden = list.scrollHeight <= list.clientHeight;
+
   $('scroll-up').hidden = list.scrollTop < 2;
   $('scroll-down').hidden =
     list.scrollHeight - list.clientHeight - list.scrollTop < 2;
@@ -271,13 +271,15 @@ for (const [id, label, delta] of [
     list.scrollBy({ top: delta, behavior: 'smooth' }),
   );
   b.id = id;
-  b.className = 'scroll-arrow';
-  b.textContent = delta < 0 ? '⌃' : '⌄';
+  b.className = 'scroll-arrow rail-button';
+  b.setAttribute('aria-label',label); b.title=label;
+  b.innerHTML = icon(delta < 0 ? 'up' : 'down');
   b.hidden = true;
   if (delta < 0) list.before(b);
   else list.after(b);
 }
-const overflowSearch=iconButton('Найти ярлык','search',search);overflowSearch.id='shortcut-overflow-search';overflowSearch.hidden=true;list.after(overflowSearch);
+const bottomSeparator = document.querySelector('.rail-spacer').nextElementSibling;
+rail.insertBefore($('search'), bottomSeparator);
 list.addEventListener('scroll', updateOverflow);
 new ResizeObserver(updateOverflow).observe(list);
 installDrag(list, drop, error);

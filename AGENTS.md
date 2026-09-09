@@ -35,7 +35,7 @@ The Yandex/Chromium fallback is generated/maintained under
 - Pointer/touch drag must suppress native image/favicon drag.
 - Template icon overlap defaults to 50%; the TOP site is visually above and
   opens in the upper pane.
-- Search icon is at the bottom of the rail.
+- Exactly one Search icon is permanently above the bottom separator in both rails.
 - Open Cleanroom panes are protected from automatic idle eviction. Only parked
   background pages expire after 5 minutes; per-window background cache defaults
   to 12 (configurable 0–24). This supersedes the old six-live-resource cap.

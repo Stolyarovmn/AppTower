@@ -105,3 +105,13 @@ repeat action names beside self-describing icons. Search results remain left
 aligned and every non-site command has a semantic icon. Web App entries dedupe by
 start URL. The browser new-tab page is never overridden; first-install welcome is
 an ordinary extension tab. Application icons are exported from one vector source.
+
+## 2.4.1 visual regression requirements
+- Exactly one persistent Search above the bottom separator, even without overflow.
+- Scroll arrows use the same 36px hit area, SVG and hover as rail controls.
+- Workspace grip occupies a fixed 30px column; title aligns left in the next column.
+- Never apply generic span flex rules to drag handles or entity icons.
+- Custom color has an eyedropper AND visible “Другой цвет…” label; native picker opens on click.
+- Sites is derived from shortcut origins, recursively including groups/templates; no manual Add Site.
+- Reference settings surfaces: rounded grouped cards, subtle shadow, left labels, right actions.
+- DOM-presence tests alone cannot certify layout; verify computed grid/width and live geometry.

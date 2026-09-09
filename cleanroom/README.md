@@ -1,3 +1,12 @@
+# 2.4.1 visual consistency and automatic site settings
+
+Custom color now has an eyedropper and visible label opening the native picker.
+Workspace grip uses a fixed grid column; title remains left-aligned. Search is
+unique and always above the bottom separator in both rails. Scroll arrows share
+rail button size and hover. Sites derives origins from shortcuts including groups
+and templates. Settings surfaces follow the supplied Edge reference proportions,
+rounding and colors. Live Edge appearance remains unverified.
+
 # 2.4.0 separate-window return and settings cleanup
 
 Selecting “Отдельное окно” now opens the popup immediately. Reload targets the

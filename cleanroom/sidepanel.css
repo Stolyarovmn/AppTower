@@ -122,3 +122,12 @@ select{padding-inline:10px 30px}
 .search-results button{display:flex;align-items:center;justify-content:flex-start!important;text-align:left!important;gap:12px;width:100%}
 .search-results button .entity-icon{width:26px;height:26px;flex:0 0 26px}
 .search-results button>svg{width:20px;height:20px;flex:0 0 20px;fill:none;stroke:currentColor;stroke-width:1.55;stroke-linecap:round;stroke-linejoin:round}
+
+.custom-color-control{position:relative;display:inline-flex;flex:0 0 auto!important;min-width:0!important}
+.native-color-input{position:absolute!important;width:1px!important;height:1px!important;opacity:0;pointer-events:none;padding:0!important}
+.palette .custom-color-trigger, .custom-color-trigger{width:auto;min-height:36px;height:auto;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--toolbar);display:inline-flex;align-items:center;gap:8px}
+.custom-color-trigger svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.55}
+.scroll-arrow.rail-button{width:36px;height:36px;min-height:36px;border-radius:8px}
+.scroll-arrow.rail-button:hover{background:var(--hover)}
+dialog{border-radius:18px;box-shadow:0 8px 24px #0004;border-color:var(--border)}
+.context-menu h2{margin-right:38px}.context-menu .menu-content{padding:12px}

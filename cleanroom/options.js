@@ -7,7 +7,7 @@ import {
   download,
   button,
 } from './ui/client.js';
-import { form } from './ui/dialogs.js';
+import { form, customColorControl } from './ui/dialogs.js';
 import { validate, flatten } from './core/model.js';
 let state = await read(),
   section = location.hash.slice(1) || 'general',
@@ -203,7 +203,7 @@ function render() {
     card('Цвет акцента', [
       ['Системный', () => act({ type: 'settings', value: { accent: '' } })],
     ]);
-    content.lastChild.append(color);
+    content.lastChild.append(customColorControl(color));
     row(
       'Перекрытие иконок шаблона',
       state.settings.overlap,
@@ -355,18 +355,16 @@ function render() {
   }
   if (section === 'sites') {
     hint(
-      'Здесь хранятся правила показа сайтов внутри AppTower. Добавление правила не создаёт ярлык: оно задаёт масштаб, режим отдельного окна, удержание в памяти и уведомления для всего сайта.',
+      'Сайты ваших ярлыков, групп и шаблонов появляются здесь автоматически. Параметры применяются ко всем ярлыкам одного сайта.',
     );
-    content.append(
-      labeledAction('Добавить сайт', async () => {
-        const v = await form('Параметры сайта', [
-          { name: 'url', label: 'URL', required: true },
-        ]);
-        if (v)
-          await act({ type: 'site-settings', url: v.url, value: { zoom: 1 } });
-      }),
-    );
-    for (const [origin, s] of Object.entries(state.sites)) {
+    const origins = new Set();
+    for (const w of state.workspaces) for (const item of flatten(w)) {
+      for (const site of item.type === 'template' ? [item.top,item.bottom] : [item])
+        if (site.url) origins.add(new URL(site.url).origin);
+    }
+    if (!origins.size) hint('Добавьте ярлык в AppTower — его сайт появится здесь автоматически.');
+    for (const origin of origins) {
+      const s = state.sites[origin] || {zoom:1,pwaApp:false,neverSleep:false,notifications:'ask'};
       card(origin, [[
         'Сбросить',
         () => {
