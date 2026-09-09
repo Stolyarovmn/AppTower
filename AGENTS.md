@@ -35,9 +35,10 @@ The Yandex/Chromium fallback is generated/maintained under
 - Pointer/touch drag must suppress native image/favicon drag.
 - Template icon overlap defaults to 50%; the TOP site is visually above and
   opens in the upper pane.
-- Search icon is at the bottom of the rail.
-- Idle web panes sleep after 5 minutes; the configurable hard cap is at most 6
-  live web/media pane resources.
+- Exactly one Search icon is permanently above the bottom separator in both rails.
+- Open Cleanroom panes are protected from automatic idle eviction. Only parked
+  background pages expire after 5 minutes; per-window background cache defaults
+  to 12 (configurable 0–24). This supersedes the old six-live-resource cap.
 - Optional service integrations belong in declarative modules, not hard-coded
   provider logic in the core.
 - Imported module manifests must remain data-only. Do not add remote executable
@@ -88,3 +89,11 @@ check where possible.
 - Use browser-native APIs where possible; inside extension HTML use a browser
   skin rather than pretending custom HTML is truly native.
 - UI text is currently primarily Russian.
+
+## Cleanroom regression gate
+
+Before editing cleanroom/, also read docs/22_CLEANROOM_REGRESSION_RULES.md.
+Historical user complaints remain acceptance requirements for rewritten code.
+For Cleanroom releases, version/package cleanroom/; legacy app/ and archive/
+are not the release source. Exercise both extension-action and browser-owned
+panel entry paths; never infer live Edge success from mocked API tests.
