@@ -114,11 +114,16 @@ test("ATN-PERF-001 collect Side Panel startup, interaction, idle CPU and heap ba
 
     await web.bringToFront();
     await panel.bringToFront();
-    const addStarted = nodePerformance.now();
-    await panel.locator("#rail-add").click();
-    await expect.poll(() => panel.locator("#site-dialog").evaluate(element => element.open === true)).toBe(true);
-    const addDialogMs = nodePerformance.now() - addStarted;
-    await panel.locator("#cancel-site").click();
+    const addDialogSamples = [];
+    for (let i = 0; i < 5; i += 1) {
+      const addStarted = nodePerformance.now();
+      await panel.locator("#rail-add").click();
+      await expect.poll(() => panel.locator("#site-dialog").evaluate(element => element.open === true)).toBe(true);
+      addDialogSamples.push(nodePerformance.now() - addStarted);
+      await panel.locator("#cancel-site").click();
+      await expect.poll(() => panel.locator("#site-dialog").evaluate(element => element.open === true)).toBe(false);
+    }
+    const addDialog = summarize(addDialogSamples);
 
     const perfSession = await context.newCDPSession(panel);
     const idleTaskDurationSamples = [];
@@ -155,7 +160,8 @@ test("ATN-PERF-001 collect Side Panel startup, interaction, idle CPU and heap ba
       chromiumVersion:await context.browser()?.version?.() || "unknown",
       startup:summarize(startupSamples),
       searchDialog:summarize(searchSamples),
-      addDialogMs:Number(addDialogMs.toFixed(2)),
+      addDialogMs:addDialog.medianMs,
+      addDialogSamplesMs:addDialogSamples.map(value => Number(value.toFixed(2))),
       idleOneSecond:{
         samples:idleTaskDurationSamples.length,
         taskDurationMs:Number(taskDurationMs.toFixed(3)),
