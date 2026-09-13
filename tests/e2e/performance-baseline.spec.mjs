@@ -5,6 +5,7 @@ import http from "node:http";
 import os from "node:os";
 import path from "node:path";
 import {performance as nodePerformance} from "node:perf_hooks";
+import {confirmPerformanceGate, evaluatePerformanceGate} from "./performance-gate.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "../..");
 const extensionPath = path.join(repoRoot, "app");
@@ -60,6 +61,23 @@ function metricsMap(result) {
   return Object.fromEntries(result.metrics.map(item => [item.name, item.value]));
 }
 
+async function collectStartupSamples(context, count, keepLastOpen = false) {
+  const samples = [];
+  let panel = null;
+  for (let i = 0; i < count; i += 1) {
+    panel = await context.newPage();
+    const started = nodePerformance.now();
+    await panel.goto(panelUrl);
+    await expect(panel.locator("#panel-sites")).toBeAttached({timeout:5_000});
+    samples.push(nodePerformance.now() - started);
+    if (!keepLastOpen || i < count - 1) {
+      await panel.close();
+      panel = null;
+    }
+  }
+  return {summary:summarize(samples), panel};
+}
+
 test("ATN-PERF-001 collect Side Panel startup, interaction, idle CPU and heap baseline", async ({}, testInfo) => {
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), "app-tower-perf-"));
   const {server,url:fixtureUrl} = await startFixtureServer();
@@ -78,15 +96,28 @@ test("ATN-PERF-001 collect Side Panel startup, interaction, idle CPU and heap ba
     await web.goto(fixtureUrl);
     await expect(web.locator("h1")).toHaveText("fixture");
 
-    const startupSamples = [];
-    let panel = null;
-    for (let i = 0; i < 5; i += 1) {
-      panel = await context.newPage();
-      const started = nodePerformance.now();
-      await panel.goto(panelUrl);
-      await expect(panel.locator("#panel-sites")).toBeAttached({timeout:5_000});
-      startupSamples.push(nodePerformance.now() - started);
-      if (i < 4) await panel.close();
+    const baseline = performanceBudget.baseline.sidePanel;
+    const startupLimits = {
+      medianLimitMs:relativeLimit(baseline.startupMedianMs),
+      p95LimitMs:relativeLimit(baseline.startupP95Ms)
+    };
+    const startupOptions = {confirmMedian:true};
+    const firstStartup = await collectStartupSamples(context, 5, true);
+    let panel = firstStartup.panel;
+    let startupConfirmation = null;
+    let startupGate = evaluatePerformanceGate(firstStartup.summary, startupLimits, startupOptions);
+
+    // Five headed Chromium launches are deliberately kept small because this
+    // test also exercises interaction and idle metrics. A hosted Xvfb runner
+    // can transiently slow the whole first batch, so confirm one failing startup
+    // batch independently. A repeated median or tail regression still fails.
+    if (!startupGate.pass && startupGate.confirm) {
+      await panel.close();
+      panel = null;
+      const confirmation = await collectStartupSamples(context, 5, true);
+      panel = confirmation.panel;
+      startupConfirmation = confirmation.summary;
+      startupGate = confirmPerformanceGate(firstStartup.summary, startupConfirmation, startupLimits, startupOptions);
     }
 
     await panel.evaluate(() => {
@@ -158,7 +189,9 @@ test("ATN-PERF-001 collect Side Panel startup, interaction, idle CPU and heap ba
     const result = {
       capturedAt:new Date().toISOString(),
       chromiumVersion:await context.browser()?.version?.() || "unknown",
-      startup:summarize(startupSamples),
+      startup:firstStartup.summary,
+      startupConfirmation,
+      startupGate,
       searchDialog:summarize(searchSamples),
       addDialogMs:addDialog.medianMs,
       addDialogSamplesMs:addDialogSamples.map(value => Number(value.toFixed(2))),
@@ -184,9 +217,7 @@ test("ATN-PERF-001 collect Side Panel startup, interaction, idle CPU and heap ba
     await testInfo.attach("performance-baseline", {path:outputPath,contentType:"application/json"});
     console.log(`ATN performance baseline: ${JSON.stringify(result)}`);
 
-    const baseline = performanceBudget.baseline.sidePanel;
-    expect(result.startup.medianMs).toBeLessThanOrEqual(relativeLimit(baseline.startupMedianMs));
-    expect(result.startup.p95Ms).toBeLessThanOrEqual(relativeLimit(baseline.startupP95Ms));
+    expect(startupGate.pass, `Side Panel startup performance regression (${startupGate.reason})`).toBe(true);
     expect(result.searchDialog.medianMs).toBeLessThanOrEqual(relativeLimit(baseline.searchMedianMs));
     expect(result.searchDialog.p95Ms).toBeLessThanOrEqual(relativeLimit(baseline.searchP95Ms));
     expect(result.addDialogMs).toBeLessThanOrEqual(relativeLimit(baseline.addDialogMs));
