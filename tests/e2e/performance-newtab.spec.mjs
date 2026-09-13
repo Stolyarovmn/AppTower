@@ -4,6 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import {performance as nodePerformance} from "node:perf_hooks";
+import {confirmPerformanceGate, evaluatePerformanceGate} from "./performance-gate.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "../..");
 const extensionPath = path.join(repoRoot, "app");
@@ -39,6 +40,20 @@ function relativeLimit(value) {
   return value * (1 + performanceBudget.relativeTolerance);
 }
 
+async function collectNewTabSamples(context, count) {
+  const samples = [];
+  for (let i = 0; i < count; i += 1) {
+    const page = await context.newPage();
+    const started = nodePerformance.now();
+    await page.goto(newTabUrl);
+    await expect(page.locator("#nt-rail")).toBeVisible({timeout:5_000});
+    await expect(page.locator("#nt-search")).toBeEnabled({timeout:5_000});
+    samples.push(nodePerformance.now() - started);
+    await page.close();
+  }
+  return summarize(samples);
+}
+
 const extensionId = extensionIdFromManifestKey(manifest.key);
 const newTabUrl = `chrome-extension://${extensionId}/newtab/newtab.html`;
 
@@ -55,25 +70,32 @@ test("ATN-PERF-002 collect New Tab first-interactive baseline", async ({}, testI
   });
 
   try {
-    const samples = [];
-    // A 20-sample nearest-rank p95 is still the second-worst sample, which made
-    // two unrelated host-scheduler/Xvfb stalls fail an otherwise healthy run.
-    // Forty samples keep the same budget while requiring a sustained tail
-    // regression (more than 5% of measurements) to move the p95 over it.
-    for (let i = 0; i < 40; i += 1) {
-      const page = await context.newPage();
-      const started = nodePerformance.now();
-      await page.goto(newTabUrl);
-      await expect(page.locator("#nt-rail")).toBeVisible({timeout:5_000});
-      await expect(page.locator("#nt-search")).toBeEnabled({timeout:5_000});
-      samples.push(nodePerformance.now() - started);
-      await page.close();
+    const baseline = performanceBudget.baseline.newTab;
+    const limits = {
+      medianLimitMs:relativeLimit(baseline.firstInteractiveMedianMs),
+      p95LimitMs:relativeLimit(baseline.firstInteractiveP95Ms)
+    };
+
+    const first = await collectNewTabSamples(context, 40);
+    const firstGate = evaluatePerformanceGate(first, limits);
+    let confirmation = null;
+    let gate = firstGate;
+
+    // Hosted Xvfb occasionally produces a short scheduler stall that moves the
+    // nearest-rank p95 while the median remains healthy. Confirm only that
+    // narrow case with an independent 40-sample batch; median regressions still
+    // fail immediately and repeated tail regressions still fail the gate.
+    if (!firstGate.pass && firstGate.confirm) {
+      confirmation = await collectNewTabSamples(context, 40);
+      gate = confirmPerformanceGate(first, confirmation, limits);
     }
 
     const result = {
       capturedAt:new Date().toISOString(),
       chromiumVersion:await context.browser()?.version?.() || "unknown",
-      newTabFirstInteractive:summarize(samples)
+      newTabFirstInteractive:first,
+      confirmation,
+      gate
     };
 
     const outputPath = testInfo.outputPath("performance-newtab-baseline.json");
@@ -81,9 +103,7 @@ test("ATN-PERF-002 collect New Tab first-interactive baseline", async ({}, testI
     await testInfo.attach("performance-newtab-baseline", {path:outputPath,contentType:"application/json"});
     console.log(`ATN New Tab performance baseline: ${JSON.stringify(result)}`);
 
-    const baseline = performanceBudget.baseline.newTab;
-    expect(result.newTabFirstInteractive.medianMs).toBeLessThanOrEqual(relativeLimit(baseline.firstInteractiveMedianMs));
-    expect(result.newTabFirstInteractive.p95Ms).toBeLessThanOrEqual(relativeLimit(baseline.firstInteractiveP95Ms));
+    expect(gate.pass, `New Tab performance regression (${gate.reason})`).toBe(true);
   } finally {
     await context.close().catch(() => {});
     fs.rmSync(profile, {recursive:true,force:true,maxRetries:5,retryDelay:100});
